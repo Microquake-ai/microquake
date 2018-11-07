@@ -36,6 +36,7 @@ log_level = logging.getLogger().getEffectiveLevel()
 
 debug = False
 
+
 class Event(obsevent.Event):
 
     extra_keys = ['ACCEPTED', 'ASSOC_SEISMOGRAM_NAMES', 'AUTO_PROCESSED',
@@ -73,6 +74,7 @@ class Event(obsevent.Event):
             out += ' | %s %-2s' % (magnitude.mag,
                                    magnitude.magnitude_type)
         return out
+
 
 class Origin(obsevent.Origin):
     __doc__ = obsevent.Origin.__doc__.replace('obspy', 'microquake')
@@ -169,8 +171,6 @@ class Arrival(obsevent.Arrival):
     def get_pick(self):
         if self.pick_id is not None:
             return self.pick_id.get_referred_object()
-
-
 
 
 def read_events(*args, **kwargs):
