@@ -384,7 +384,7 @@ def get_catalogue(base_url, start_datetime, end_datetime, site,
         event_name = row[1]['EVENT_NAME']
 
         if get_arrivals:
-            (picks, arrivals) = get_picks(base_url, event_name, site)
+            (picks, arrivals) = get_picks(base_url, event_name, site, timezone)
 
             event.picks = picks
             event.preferred_origin().arrivals = arrivals
