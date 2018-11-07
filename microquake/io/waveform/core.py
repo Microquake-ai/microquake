@@ -21,6 +21,7 @@ plugin for reading and writing various waveform format expending
 
 from microquake.core import logger
 from microquake.core.util.decorator import uncompress_file as uncompress
+import logging
 
 from IPython.core.debugger import Tracer
 
@@ -473,7 +474,6 @@ def read_TEXCEL_CSV(filename, **kwargs):
     :return: ~microquake.core.stream.Stream
     """
 
-    import matplotlib.pyplot as plt
     from microquake.core import Stream, Trace
     from microquake.core.trace import Stats
     from dateutil.parser import parse
@@ -572,8 +572,69 @@ def read_TEXCEL_CSV(filename, **kwargs):
         stats.channel = 'vertical'
         tr_z = Trace(data=z / 1000.0, header=stats)
 
+    return Stream(traces=[tr_x, tr_y, tr_z])
 
 
-        return Stream(traces=[tr_x, tr_y, tr_z])
+def create_mseed_chunk(stream):
+    """
+    Create an mseed files and breaks it 512 bytes mseeds
+    :param stream: stream data
+    :type stream: microquake.core.stream.Stream
+    :return: Dictionary containing a list of keys and the mseed file chunks
+    """
+
+    from struct import unpack, pack
+    from datetime import datetime
+    from io import BytesIO
+    from numpy import arange
+
+
+    mseed_byte_array = BytesIO
+    stream.write(mseed_byte_array, format='MSEED')
+
+    mseed_chunk_size = 4096
+    keys = []
+    blobs = []
+
+    starts = arange(0, len(mseed_byte_array), mseed_chunk_size)
+
+    for start in starts:
+        end = start + mseed_chunk_size
+        chunk = mseed_byte_array[start:end]
+
+        y = unpack('>H',chunk[20:22])[0]
+        DoY = unpack('>H', chunk[22:24])[0]
+        H = unpack('>B', chunk[24:25])[0]
+        M = unpack('>B', chunk[25:26])[0]
+        S = unpack('>B', chunk[26:27])[0]
+        r = unpack('>B', chunk[27:28])[0]
+        ToMS = unpack('>H', chunk[28:30])[0]
+
+        dt = datetime.strptime('%s/%0.3d %0.2d:%0.2d:%0.2d.%0.3d'
+                               % (y, DoY, H, M, S, ToMS),
+                               '%Y/%j %H:%M:%S.%f')
+        keys.append(dt)
+        blobs.append(chunk)
+
+    return {'key': keys, 'blob': blobs}
+
+    # df = DataFrame()
+    #
+    # df_grouped = df.groupby(['key'])
+    #
+    # logger.debug("Grouped DF Stats:" + str(df_grouped.size()))
+    #
+    # chunks = []
+    # for name, group in df_grouped:
+    #     data = b''
+    #     for g in group['blob'].values:
+    #         data += g
+    #     timestamp = int(name.timestamp() * 1e3)
+    #     key = name.strftime('%Y-%d-%m %H:%M:%S.%f').encode('utf-8')
+    #     kafka_handler.send_to_kafka(kafka_topic, message=data, key=key,
+    #                                 timestamp=int(timestamp))
+    # kafka_handler.producer.flush()
+    # etime = time.time() - stime
+    # logger.info("==> Inserted stream chunks into Kafka in: %.2f" % etime)
 
 

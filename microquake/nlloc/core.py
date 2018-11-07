@@ -29,6 +29,7 @@ from microquake.core.event import Catalog, Arrival, Origin
 from microquake.core.util.attribdict import AttribDict
 from microquake.core import UTCDateTime
 import logging
+from glob import glob
 
 logger = logging.getLogger()
 
@@ -553,7 +554,8 @@ class NLL(object):
 
     def _clean_outputs(self):
         try:
-            for f in glob(os.path.join(self.base_folder, 'loc', self.base_name))
+            for f in glob(os.path.join(self.base_folder, 'loc',
+                                       self.base_name)):
                 os.remove(f)
         except:
             pass

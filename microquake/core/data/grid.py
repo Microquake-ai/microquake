@@ -211,108 +211,6 @@ def read_grid_collection(file_path, format="HDF5"):
     pass
 
 
-class GridCollection(object):
-    """
-    object containing a collection of grids. This object provides method to
-    filter grids.
-
-    :param grid_data_list: list of GridData object
-    :return: GridCollection object
-
-    """
-
-    def __init__(self):
-        """
-        :param grid_data_list: list of GridData object
-        :return: GridCollection object
-        """
-        self.__grid_data_list = []
-
-
-    def append(self, grid_data_object):
-        """
-        check compatibility with other element of the collection
-        """
-        if not grid_data_object:
-            raise TypeError("object must be a "
-                            "microquake.core.data.grid.GridData object")
-        if not self.__grid_data_list:
-            self.__grid_data_list.append(grid_data_object)
-
-        else:
-            if not self.__grid_data_list[0].check_compatibility(
-                    grid_data_object):
-                raise ValueError('trying to append a grid incompatible with '
-                                 'grids in the list. All grids need to be '
-                                 'compatible')
-
-    def __setattr__(self, name, value):
-        pass
-
-    def __getattr__(self, name):
-        if not self.__grid_data_list:
-            return
-        self.__grid_data_list[0].__dict__[name]
-
-    def __str__(self):
-        str = """
-        origin: %s
-        shape: %s
-        spacing: %s
-        length: %d
-        """ % (self.origin, self.shape, self.spacing,
-               len(self.__grid_data_list))
-
-    def __repr__(self):
-        pass
-
-    def __add__(self, grid_data):
-        if not type(grid_data) == GridData:
-            raise TypeError('operand must be a '
-                            'microquake.core.data.grid.GridData object')
-
-        self.__grid_data_list.append(self, grid_data)
-        return self
-
-    def write_h5f(self, filepath):
-        import h5py
-
-        hf = h5py.File(filepath, 'w')
-
-        hf.create_dataset('sta_locs', data=stalocs.astype(np.float32))
-        hf.create_dataset('grid_locs', data=gridlocs.astype(np.float32))
-        hf.create_dataset('tts_p', data=ttP)
-        hf.create_dataset('tts_s', data=ttS)
-        hf.attrs['shape'] = shape
-        hf.attrs['origin'] = origin
-        hf.attrs['spacing'] = spacing
-        hf.create_dataset('grid_def', data=gdef)
-        # hf.create_dataset('grid_def', data=gdef)
-        hf.create_dataset('sta_names', data=names)
-        hf.close()
-
-
-
-
-        # example read
-        hf = h5py.File(ddir + 'ttable.h5', 'r')
-        shape = hf.attrs['shape']
-        origin = hf.attrs['origin']
-        spacing = hf.attrs['spacing']
-        ds = hf['tts_p']
-
-        tt0 = ds[0].reshape(shape)
-
-        names = hf['names'][:]
-        find_id = b"005"
-
-        ix = np.where(names == find_id)[0][0]
-
-        tt_sta = ds[ix]
-
-
-
-
 class GridData(object):
     """
     object containing a grid define at regularly spaced node. Note that the
@@ -358,8 +256,15 @@ class GridData(object):
                 'type')
         self.__dict__[attr] = value
 
-    def __repr__(selfs):
-        pass
+    def __repr__(self):
+        repr_str =  """
+        spacing: %s
+        origin : %s
+        shape  : %s
+        seed   : %s
+        type   : %s
+        """ % (self.spacing, self.origin, self.shape, self.seed, self.type)
+        return repr_str
 
     def __mul__(self, other):
         if isinstance(other, GridData):
