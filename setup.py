@@ -24,7 +24,7 @@ with open('HISTORY.md') as history_file:
     history = history_file.read().replace('.. :changelog:', '')
 
 requirements = [
-    'SQLAlchemy',  # for interaction with SQL database
+    # 'SQLAlchemy',  # for interaction with SQL database
     'cycler',
     'future',
     'IPython',
@@ -36,15 +36,15 @@ requirements = [
     'python-dateutil',
     'pytz',  # time zone support
     'obspy',
-    'memoize',
-    'pyevtk',
-    'pyvtk',  # for reading and writing grids and event location in vtk format
+    # 'memoize',
+    # 'pyevtk',
+    # 'pyvtk',  # for reading and writing grids and event location in vtk format
     # 'bson',  # for interaction with mongodb installed with pymongo
     'pymongo',  # for the db module and interaction with mongodb
-    'py4j',  # for spark 
+    # 'py4j',  # for spark 
     'scikit-fmm',  # for the eikonal solver
-    'mplstereonet', # to plot the station
-    'pandas'
+    # 'mplstereonet', # to plot the station
+    # 'pandas'
     #'libcomcat' # for manipulating error ellipsoid
 ]
 
