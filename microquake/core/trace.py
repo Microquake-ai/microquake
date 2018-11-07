@@ -18,7 +18,7 @@ Expansion of the obspy.core.trace module
 """
 
 import obspy.core.trace as obstrace
-# from obspy.core.trace import Stats
+from obspy.core.trace import Stats
 from microquake.core.util import tools
 import numpy as np
 
