@@ -575,7 +575,7 @@ def read_TEXCEL_CSV(filename, **kwargs):
     return Stream(traces=[tr_x, tr_y, tr_z])
 
 
-def create_mseed_chunk(stream):
+def mseed_decomposer(stream):
     """
     Create an mseed files and breaks it 512 bytes mseeds
     :param stream: stream data
@@ -587,10 +587,12 @@ def create_mseed_chunk(stream):
     from datetime import datetime
     from io import BytesIO
     from numpy import arange
+    from IPython.core.debugger import Tracer
 
+    obj = BytesIO()
+    stream.write(obj, format='MSEED')
 
-    mseed_byte_array = BytesIO
-    stream.write(mseed_byte_array, format='MSEED')
+    mseed_byte_array = obj.getvalue()
 
     mseed_chunk_size = 4096
     keys = []
@@ -618,23 +620,6 @@ def create_mseed_chunk(stream):
 
     return {'key': keys, 'blob': blobs}
 
-    # df = DataFrame()
-    #
-    # df_grouped = df.groupby(['key'])
-    #
-    # logger.debug("Grouped DF Stats:" + str(df_grouped.size()))
-    #
-    # chunks = []
-    # for name, group in df_grouped:
-    #     data = b''
-    #     for g in group['blob'].values:
-    #         data += g
-    #     timestamp = int(name.timestamp() * 1e3)
-    #     key = name.strftime('%Y-%d-%m %H:%M:%S.%f').encode('utf-8')
-    #     kafka_handler.send_to_kafka(kafka_topic, message=data, key=key,
-    #                                 timestamp=int(timestamp))
-    # kafka_handler.producer.flush()
-    # etime = time.time() - stime
-    # logger.info("==> Inserted stream chunks into Kafka in: %.2f" % etime)
+
 
 
