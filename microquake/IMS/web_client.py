@@ -589,7 +589,7 @@ def get_picks(base_url, event_name, site, timezone):
     return (picks, arrivals)
 
 
-def get_picks_event(base_url, event, site):
+def get_picks_event(base_url, event, site, timezone):
     """
     get pick for an microquake event
     :param base_url:
@@ -600,7 +600,7 @@ def get_picks_event(base_url, event, site):
 
     event_name = event.EVENT_NAME
 
-    (picks, arrivals) = get_picks(base_url, event_name, site)
+    (picks, arrivals) = get_picks(base_url, event_name, site, timezone)
 
 
     event.preferred_origin().arrivals = arrivals
@@ -609,7 +609,7 @@ def get_picks_event(base_url, event, site):
     return event
 
 
-def get_seismogram_event(base_url, event, network_code):
+def get_seismogram_event(base_url, event, network_code, timezone):
     """
     Read the seismograms related to an event using the IMS REST API interface
     :param base_url: base url of the IMS server e.g.
@@ -629,7 +629,8 @@ def get_seismogram_event(base_url, event, network_code):
     station_codes = event.TRIGGERED_SITES.split(';')
     traces = []
     for sname, station_code in zip(seismogram_names, station_codes):
-        st = get_seismogram(base_url, sname, network_code, station_code)
+        st = get_seismogram(base_url, sname, network_code, station_code,
+                            timezone)
         for tr in st:
             traces.append(tr)
 
