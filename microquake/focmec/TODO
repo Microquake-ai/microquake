@@ -1,0 +1,5 @@
+Adding the FOCMEC code to the repository and have the code compiled and
+added to the path at setup.
+
+Possibly using the internal functions rather than the program interfaced using
+proc. 

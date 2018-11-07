@@ -1,0 +1,1 @@
+from obspy.core.util.attribdict import *

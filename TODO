@@ -1,0 +1,41 @@
+* Module structure discussion
+** Should the microquake library and the microquake system be separated into two
+project
+** Base project in a virtual machine with all server and services set-up?
+
+* Database 
+** Establishing the structure of the database, which database and how the data
+will be stored and retreive from the database
+** Perhaps the database schema can be much simpler than the QuakeML schema. For
+instance, we need to store only event location, magnitude, uncertainty
+(something similar to what ESG or IMS are providing). The for comprehensive
+information, the database can point to QuakeML file.
+** if the QuakeML schema is adopted, a mechanism will be required to ensure that
+the database and the QuakeML files are synchronized. This might be difficult. 
+*** Preferrence for a SQL database following the QuakeML schema.
+** Fixing the SQL module and making sure the Catalog object can be written
+directly and losslessly to the SQL database
+** Potentially completing the mongodb module
+
+* Potential management of multiple events, multiple origin: How do we manage 
+multiple events, origins etc.?
+
+* User interface
+** microquakeWave (picker)
+*** Should get the list of events from the SQL database, it takes too much time
+to read list of event by getting a list of QuakeML files from the data directory
+*** Picks and other event information should reading and writing of event
+information should be done directly from QuakeML files
+*** if location exist, order seismograms by distance from events
+*** enable location of events
+*** add a plot in one corner showing using stereographic projection the
+distribution of sensor with respect to the event hypocenter location
+*** option to show predicted arrivals
+*** display of uncertainty
+*** Event duplication, creating new origin?
+
+* Focal mechanism
+** completing the focal mechanism module
+
+
+
