@@ -33,7 +33,7 @@ sloc = np.array([651275., 4767395, -175])
 time = UTCDateTime(datetime(2017, 1, 1))
 # depth_errors = QuantityError(uncertainty=5)
 
-pick = Pick(method='snr_picker', snr=3.3, time=time, phase_hint='P')
+pick = Pick(method='snr_picker', snr=3.3, time=time, phase_hint='P', trace_id='.003..C')
 arv = Arrival(ray=raydat, phase='P', pick_id=pick.resource_id)
 
 og = Origin(time=time, x=sloc[0], y=sloc[1], z=sloc[2], arrivals=[arv])
@@ -83,3 +83,4 @@ check_key_match(og, og2)
 
 check_key_match(arv.get_pick(), arv2.get_pick())
 
+p2 = arv2.get_pick()

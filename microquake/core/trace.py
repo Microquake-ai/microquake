@@ -49,6 +49,9 @@ class Trace(obstrace.Trace):
                              stepsize_samp, snr_wlens_samp)
         return newpick / sr, snr
 
+    def time_to_index(self, time):
+        return int((time - self.stats.starttime) * self.stats.sampling_rate)
+
     def times(self):
         sr = self.stats.sampling_rate
         return np.linspace(0, len(self.data) / sr, len(self.data))
