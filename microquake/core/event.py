@@ -143,16 +143,15 @@ class Pick(obsevent.Pick):
         _set_attr_handler(self, name, value)
 
     def __str__(self, **kwargs):
-
         string = """
-       resource_id: %s
           trace_id: %s
               time: %s
-            method: %s
+            method: %s [%s]
    evaluation_mode: %s
  evaluation_status: %s
+       resource_id: %s
         """ \
-            % (self.resource_id, self.trace_id, self.time.strftime("%Y/%m/%d %H:%M:%S.%f"), self.method, self.evaluation_mode, self.evaluation_status)
+            % (self.trace_id, self.time.strftime("%Y/%m/%d %H:%M:%S.%f"), self.method, self.snr, self.evaluation_mode, self.evaluation_status, self.resource_id)
         return string
 
 
@@ -182,7 +181,7 @@ def read_events(*args, **kwargs):
 def _init_handler(self, obspy_obj, **kwargs):
     """
     Handler to initialize microquake objects which
-    inherit from ObsPy objects. If obspy_obj is none,
+    inherit from ObsPy class. If obspy_obj is none,
     Kwargs is expected to be a mix of obspy kwargs
     and microquake kwargs specified by the hardcoded
     extra_keys.

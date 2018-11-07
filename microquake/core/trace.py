@@ -20,6 +20,8 @@ Expansion of the obspy.core.trace module
 import obspy.core.trace as obstrace
 from obspy.core.trace import Stats
 from microquake.core.util import tools
+from microquake.core.event import Pick
+
 import numpy as np
 
 
@@ -30,27 +32,18 @@ class Trace(obstrace.Trace):
             self.stats = trace.stats
             self.data = trace.data
     
+    @property
+    def sr(self):
+        return self.stats.sampling_rate
+    
     def ppv(self):
-        """
-        Calculate the PPV for a given trace
-        :return: PPV
-        """
         return np.max(np.abs(self.data))
 
-    def snr_repick(self, pick_time, wlen_search, stepsize, snr_wlens):
-
-        sr = self.stats.sampling_rate
-        ipick = int(pick_time * sr)
-        stepsize_samp = int(stepsize * sr)
-        snr_wlens_samp = (snr_wlens * sr).astype(int)
-        wlen_search_samp = int(wlen_search * sr)
-
-        newpick, snr = tools.repick_using_snr(self.data, ipick, wlen_search_samp,
-                             stepsize_samp, snr_wlens_samp)
-        return newpick / sr, snr
-
     def time_to_index(self, time):
-        return int((time - self.stats.starttime) * self.stats.sampling_rate)
+        return int((time - self.stats.starttime) * self.sr)
+
+    def index_to_time(self, index):
+        return self.stats.starttime + index * self.sr
 
     def times(self):
         sr = self.stats.sampling_rate
@@ -60,3 +53,19 @@ class Trace(obstrace.Trace):
         from microquake.imaging.waveform import WaveformPlotting
         waveform = WaveformPlotting(stream=self, **kwargs)
         return waveform.plotWaveform()
+
+    def make_pick(self, pick_time, wlen_search,
+                 stepsize, snr_wlens, phase_hint=None):
+
+        ipick = self.time_to_index(pick_time)
+        sr = self.stats.sampling_rate
+        stepsize_samp = int(stepsize * sr)
+        snr_wlens_samp = (snr_wlens * sr).astype(int)
+        wlen_search_samp = int(wlen_search * sr)
+
+        newpick, snr = tools.repick_using_snr(self.data, ipick, wlen_search_samp,
+                             stepsize_samp, snr_wlens_samp)
+
+        pick = Pick(time=self.index_to_time(newpick), trace_id=self.id, phase_hint=phase_hint, evaluation_mode='automatic', evaluation_status='preliminary', method='snr', snr=snr)
+
+        return pick
