@@ -134,7 +134,7 @@ class Magnitude(obsevent.Magnitude):
 
 class Pick(obsevent.Pick):
     __doc__ = obsevent.Pick.__doc__.replace('obspy', 'microquake')
-    extra_keys = ['method', 'snr']
+    extra_keys = ['method', 'snr', 'trace_id']
 
     def __init__(self, obspy_obj=None, **kwargs):
         _init_handler(self, obspy_obj, **kwargs)
@@ -146,14 +146,13 @@ class Pick(obsevent.Pick):
 
         string = """
        resource_id: %s
+          trace_id: %s
               time: %s
             method: %s
    evaluation_mode: %s
  evaluation_status: %s
         """ \
-            % (self.resource_id, self.time.strftime("%Y/%m/%d %H:%M:%S.%f"),
-            self.method, self.evaluation_mode,
-            self.evaluation_status)
+            % (self.resource_id, self.trace_id, self.time.strftime("%Y/%m/%d %H:%M:%S.%f"), self.method, self.evaluation_mode, self.evaluation_status)
         return string
 
 
