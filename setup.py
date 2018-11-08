@@ -24,10 +24,7 @@ with open('HISTORY.md') as history_file:
     history = history_file.read().replace('.. :changelog:', '')
 
 requirements = [
-    # 'SQLAlchemy',  # for interaction with SQL database
-    'cycler',
     'future',
-    'IPython',
     'lxml',
     'numpy',
     'scipy',
@@ -41,11 +38,11 @@ requirements = [
     # 'pyvtk',  # for reading and writing grids and event location in vtk format
     # 'bson',  # for interaction with mongodb installed with pymongo
     'pymongo',  # for the db module and interaction with mongodb
-    # 'py4j',  # for spark 
+    # 'py4j',  # for spark
     'scikit-fmm',  # for the eikonal solver
     # 'mplstereonet', # to plot the station
     # 'pandas'
-    #'libcomcat' # for manipulating error ellipsoid
+    # 'libcomcat' # for manipulating error ellipsoid
 ]
 
 # http://blog.prabeeshk.com/blog/2014/10/31/install-apache-spark-on-ubuntu-14-dot-04/
