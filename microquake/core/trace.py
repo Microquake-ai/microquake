@@ -43,7 +43,7 @@ class Trace(obstrace.Trace):
         return int((time - self.stats.starttime) * self.sr)
 
     def index_to_time(self, index):
-        return self.stats.starttime + index * self.sr
+        return self.stats.starttime + (index / self.sr)
 
     def times(self):
         sr = self.stats.sampling_rate

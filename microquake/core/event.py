@@ -232,32 +232,31 @@ def _init_from_obspy_object(mquake_obj, obspy_obj):
 def _set_attr_handler(self, name, value, namespace='MICROQUAKE'):
     """
     Generic handler to set attributes for microquake objects
-    which inherit from ObsPy objects. Assigns attributes not
-    in default obspy object to extra args so they are correctly
-    written to quakeML. Automatically loads any attributes in
-    self['extra'] to regular attributes so microquake objects
-    saved and reloaded from quakeml have extra attributes
-    reassigned.
+    which inherit from ObsPy objects. If 'name' is not in
+    default keys then it will be set in self['extra'] dict. If
+    'name' is not in default keys but in the self.extra_keys
+    then it will also be set as a class attribute. When loading
+    extra keys from quakeml file, those in self.extra_keys will
+    be set as attributes.
     """
 
-    # parses extra args when constructing uquake from obspy
-    if name in self.extra_keys:
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            self[name] = value
-            if type(value) is np.ndarray:
-                value = "npy64_" + array_to_b64(value)
-            self['extra'][name] = {'value': value, 'namespace': namespace}
-
-    elif name in self.defaults.keys():
+    #  use obspy default setattr for default keys
+    if name in self.defaults.keys():
         super(type(self), self).__setattr__(name, value)
+    # recursive parse of extra args when constructing uquake from obspy
     elif name == 'extra':
         if 'extra' not in self:  # hack for deepcopy to work
             self['extra'] = {}
         for key, adict in value.items():
             self.__setattr__(key, parse_string_val(adict.value))
-    else:
-        raise KeyError(name)
+    else:  # branch for extra keys
+        if name in self.extra_keys:
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                self[name] = value
+        if type(value) is np.ndarray:
+            value = "npy64_" + array_to_b64(value)
+        self['extra'][name] = {'value': value, 'namespace': namespace}
         
 
 def isfloat(value):
