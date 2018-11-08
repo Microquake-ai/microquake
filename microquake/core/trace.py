@@ -20,7 +20,7 @@ Expansion of the obspy.core.trace module
 import obspy.core.trace as obstrace
 from obspy.core.trace import Stats
 from microquake.core.util import tools
-from microquake.core.event import Pick
+from microquake.core.event import Pick, WaveformStreamID
 
 import numpy as np
 
@@ -66,6 +66,8 @@ class Trace(obstrace.Trace):
         newpick, snr = tools.repick_using_snr(self.data, ipick, wlen_search_samp,
                              stepsize_samp, snr_wlens_samp)
 
-        pick = Pick(time=self.index_to_time(newpick), trace_id=self.id, phase_hint=phase_hint, evaluation_mode='automatic', evaluation_status='preliminary', method='snr', snr=snr)
+        waveform_id = WaveformStreamID(channel_code=self.stats.channel, station_code=self.stats.station)
+
+        pick = Pick(time=self.index_to_time(newpick), waveform_id=waveform_id, phase_hint=phase_hint, evaluation_mode='automatic', evaluation_status='preliminary', method='snr', snr=snr)
 
         return pick
