@@ -7,6 +7,7 @@ import numpy as np
 
 import csv
 import copy
+import os
 
 ns_tag='mq'
 ns='MICROQUAKE'
@@ -214,7 +215,13 @@ class Channel(obspy.core.inventory.channel.Channel):
 #obs_Station.x = property(lambda self: self.latitude)
 def main():
 
-    stations = read_csv('/Users/mth/mth/python_pkgs/spp/common/sensors.csv')
+    if 'SPP_COMMON' not in os.environ:
+        print("Set your SPP envs!")
+        exit(2)
+
+    sensor_csv = os.environ['SPP_COMMON'] + '/sensors.csv'
+    stations = read_csv(sensor_csv)
+    #stations = read_csv('/Users/mth/mth/python_pkgs/spp/common/sensors.csv')
     obspy_stations = []
     for station in stations:
         obspy_stations.append(Station.from_csv_station(station))
