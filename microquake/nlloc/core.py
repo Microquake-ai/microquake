@@ -69,12 +69,13 @@ def read_nlloc_hypocenter_file(filename, picks=None,
                        int(geo[5]), int(geo[6]), s, us)
         tme = UTCDateTime(tme)
 
-        origin = event.Origin()
         if 'REJECTED' in all_lines[0]:
-            origin.evaluation_status = 'rejected'
+            # origin.evaluation_status = 'rejected'
+            evaluation_status = 'rejected'
             logger.warning('Event located on grid boundary')
         else:
-            origin.evaluation_status = evaluation_status
+            evaluation_status = evaluation_status
+            # origin.evaluation_status = evaluation_status
 
         hyp_x = float(hyp[2]) * 1000
         hyp_y = float(hyp[4]) * 1000
@@ -84,16 +85,25 @@ def read_nlloc_hypocenter_file(filename, picks=None,
         #method = '%s %s' % (sign[3], search[1])
         method = '%s %s' % ("NLLOC", search[1])
 
-        origin.x = hyp_x
-        origin.y = hyp_y
-        origin.z = hyp_z
-        origin.time = tme
-        origin.evaluation_mode = evaluation_mode # why automatic here
-        origin.epicenter_fixed = int(0)
-        origin.method = method
-        origin.creation_info = event.CreationInfo()
-        origin.creation_info.author = 'microquake'
-        origin.creation_info.creation_time = UTCDateTime.now()
+        # origin.x = hyp_x
+        # origin.y = hyp_y
+        # origin.z = hyp_z
+        # origin.time = tme
+        # origin.evaluation_mode = evaluation_mode # why automatic here
+        # origin.epicenter_fixed = int(0)
+        # origin.method = method
+        # creation_info = event.CreationInfo()
+        creation_info = event.CreationInfo(author='microquake',
+                                           creation_time=UTCDataTime.now())
+
+        # origin.creation_info.author = 'microquake'
+        # origin.creation_info.creation_time = UTCDateTime.now()
+
+        origin = event.Origin(x=hyp_x, y=hyp_y, z=hyp_z, time=tme,
+                              evaluation_mode=evaluation_mode,
+                              evaluation_status=evaluation_status,
+                              epicenter_fixed=0, method=method,
+                              creation_info=creation_info)
 
         xminor = np.cos(float(stat[22]) * np.pi / 180) * np.sin(float(stat[20])
                                                                 * np.pi / 180)
@@ -571,7 +581,7 @@ class NLL(object):
         self.worker_folder = tempfile.mkdtemp(dir=self.base_folder).split('/')[-1]
 
         os.mkdir(os.path.join(self.base_folder, self.worker_folder, 'loc'))
-        os.mkdir(os.path.join(self.base_folder, self.worker_folcer, 'obs'))
+        os.mkdir(os.path.join(self.base_folder, self.worker_folder, 'obs'))
         logger.debug('%s.%s: cwd=%s' % (__name__,'_prepare_project_folder',
                                         os.getcwd()))
 
@@ -867,23 +877,9 @@ class NLL(object):
             logger.debug('%s.%s: pref origin=[%s]' % (__name__,fname,po))
 
             if not po:
-                logger.warn('%s.%s: No pref origin --> WE SHOULDNT BE HERE!' % (__name__,fname))
-                origin = Origin()
-                event.preferred_origin_id = origin.resource_id.id
-                for k, pick in enumerate(event.picks):
-                    arrival = Arrival()
-                    arrival.pick_id = pick.resource_id.id
-                    arrival.phase = pick.phase_hint
-                    origin.arrivals.append(arrival)
-
-                event.origins.append(origin)
-                event.preferred_origin_id = origin.resource_id.id
-
-                po = event.preferred_origin()
+                event.preferred_origin_id = event.origins[-1].resource_id.id
 
             for arr in po.arrivals:
-                #logger.debug('%s.%s: arr:%s' % (__name__,fname,arr))
-                #logger.debug('%s.%s: arr.pick_id:%s' % (__name__,fname,arr.pick_id))
 
                 pk = arr.pick_id.get_referred_object()
                 #logger.debug(pk)

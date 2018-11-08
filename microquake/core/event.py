@@ -95,7 +95,8 @@ class Origin(obsevent.Origin):
         if self.origin_uncertainty is None:
             return None
         else:
-            return self.confidence_ellipsoid.semi_major_axis_length
+            return self.origin_undertainty.confidence_ellipsoid\
+                .semi_major_axis_length
 
     def get_origin(self):
         if self.preferred_origin_id is not None:
