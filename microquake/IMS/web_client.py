@@ -19,11 +19,15 @@ module to interact IMS web API
 
 import numpy as np
 from logging import getLogger, INFO
+from IPython.core.debugger import Tracer
+
+logger = getLogger('microquake.IMS.web_api')
+logger.level = INFO
 
 
 def get_continuous(base_url, start_datetime, end_datetime,
                    site_ids, format='binary-gz', network='',
-                   sampling_rate=6000., nan_limit=10, logger_level=INFO):
+                   sampling_rate=6000., nan_limit=10):
     """
     :param base_url: base url of the IMS server
     example: http://10.95.74.35:8002/ims-database-server/databases/mgl
@@ -37,6 +41,11 @@ def get_continuous(base_url, start_datetime, end_datetime,
     :type format: str
     :param network: Network name (default = '')
     :type network: str
+    :param sampling_rate: signal sampling rate
+    :type sampling_rate: float
+    :param nan_limit: maximum length of a not a number sequence to be
+    interpolated
+    :type nan_limit: int
     :param dtype: output type for mseed
     :return: microquake.core.stream.Stream
     """
@@ -69,9 +78,7 @@ def get_continuous(base_url, start_datetime, end_datetime,
     from microquake.core import Trace, Stream, UTCDateTime
     import sys
     from time import time as timer
-
-    logger = getLogger('microquake.IMS.web_api')
-    logger.level = logger_level
+    from datetime import datetime
 
     if sys.version_info[0] < 3:
         from StringIO import StringIO
@@ -145,11 +152,11 @@ def get_continuous(base_url, start_datetime, end_datetime,
         time, sigs = strided_read(content)
 
         time_norm = (time - time[0]) / 1e9
-        nan_ranges = get_nan_ranges(time_norm, sampling_rate, limit=nan_limit)
-
         tstart_norm_new = (reqtime_start_nano - time[0]) / 1e9
         tend_norm_new = (reqtime_end_nano - time[0]) / 1e9
-        time_new = np.arange(tstart_norm_new, tend_norm_new, 1. / sampling_rate)
+        nan_ranges = get_nan_ranges(time_norm, sampling_rate, limit=nan_limit)
+
+        time_new = np.arange(time_norm[0], time_norm[-1], 1. / sampling_rate)
 
         newsigs = np.zeros((len(sigs), len(time_new)), dtype=np.float32)
         for i in range(len(sigs)):
@@ -172,7 +179,8 @@ def get_continuous(base_url, start_datetime, end_datetime,
             tr.stats.sampling_rate = sampling_rate
             tr.stats.network = str(network)
             tr.stats.station = str(site)
-            tr.stats.starttime = start_datetime_utc
+            tr.stats.starttime = UTCDateTime(datetime.fromtimestamp(time[0] /
+                                                                    1e9))
             tr.stats.channel = chans[i]
             stream.append(tr)
 
@@ -184,6 +192,13 @@ def get_continuous(base_url, start_datetime, end_datetime,
 
 
 def get_nan_ranges(tnorm, sr, limit):
+    """
+    Find gap in the data
+    :param tnorm: normalized time vector
+    :param sr: sampling rate
+    :param limit: maximum size for gap to be interpolated
+    :return:
+    """
     # limit is minimum consecutive missing dt's to assign nans
     diff = np.diff(tnorm) * sr
     ibad = np.where(diff > limit)[0]
@@ -194,6 +209,11 @@ def get_nan_ranges(tnorm, sr, limit):
 
 
 def strided_read(content):
+    """
+    Efficiently read the content of the binary object returned by the IMS server
+    :param content: content of the binary object returned by IMS
+    :return: time and signal
+    """
 
     npts = int(len(content) / 20)
     time = np.ndarray((npts,), '>q', content, 0, (20, ))

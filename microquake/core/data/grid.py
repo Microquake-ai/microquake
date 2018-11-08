@@ -41,7 +41,7 @@ def create(method, **kwargs):
         return _createOCS(**kwargs)
 
 
-def _createODS(origin=None, dimensions=None, spacing=None, val=0):
+def _createODS(origin=None, dimensions=None, spacing=None, val=0, **kwargs):
     """
     create a grid from origin, dimensions and spacing
     :param origin: grid origin
@@ -59,7 +59,7 @@ def _createODS(origin=None, dimensions=None, spacing=None, val=0):
     return grid
 
 
-def _createOCS(origin=None, corner=None, spacing=None, val=0, buf=0):
+def _createOCS(origin=None, corner=None, spacing=None, val=0, buf=0, **kwargs):
     """
     create a grid from origin, dimensions and spacing
     :param origin: grid origin (e.g., lower left corner for 2D grid)
@@ -233,6 +233,7 @@ class GridData(object):
         import numpy as np
         self.data = []
         data, np.ndarray
+        origin = np.array(origin)
         self.data = data
         if origin is None:
             self.origin = np.zeros(len(data.shape))
