@@ -75,15 +75,20 @@ class Station(obspy.core.inventory.station.Station):
                   restricted_status=stn.restricted_status, alternate_code=stn.alternate_code, \
                   comments=stn.comments, start_date=stn.start_date, end_date=stn.end_date, \
                   historical_code=stn.historical_code, data_availability=stn.data_availability)
-        if stn.extra:
+        if getattr(stn, 'extra', None):
             sta.extra = copy.deepcopy(stn.extra)
+
+        sta.channels = []
+        for cha in stn.channels:
+            sta.channels.append(Channel.from_obspy_channel(cha))
+
         return sta
 
     @classmethod
     def from_csv_station(cls, csv_station) -> obspy.core.inventory.Station :
         stn = csv_station
 
-        sta = Station(stn['code'], 0., 0., 0., site=Site(name='dummy site'))
+        sta = Station(stn['code'], 0., 0., 0., site=Site(name='Oyu Tolgoi'))
         sta.extra = AttribDict({'x': { 'namespace': ns, 'value': stn['x'], },
                                 'y': { 'namespace': ns, 'value': stn['y'], },
                                 'z': { 'namespace': ns, 'value': stn['z'], }
@@ -151,13 +156,31 @@ class Station(obspy.core.inventory.station.Station):
 
     def __str__(self):
         contents = self.get_contents()
+
+        x = self.latitude
+        y = self.longitude
+        z = self.elevation
         ret = ("Station {station_name}\n"
                "\tStation Code: {station_code}\n"
                "\tChannel Count: {selected}/{total} (Selected/Total)\n"
                "\t{start_date} - {end_date}\n"
                "\tAccess: {restricted} {alternate_code}{historical_code}\n"
-               "\tNorthing: {lat:.2f}, Easting: {lng:.2f}, "
-               "Elevation: {elevation:.1f} m\n")
+               "\tLatitude: {x:.2f}, Longitude: {y:.2f}, "
+               "Elevation: {z:.1f} m\n")
+
+        if getattr(self, 'extra', None):
+            if getattr(self.extra, 'x', None) and getattr(self.extra, 'y', None):
+                x = self.x
+                y = self.y
+                z = self.z
+                ret = ("Station {station_name}\n"
+                    "\tStation Code: {station_code}\n"
+                    "\tChannel Count: {selected}/{total} (Selected/Total)\n"
+                    "\t{start_date} - {end_date}\n"
+                    "\tAccess: {restricted} {alternate_code}{historical_code}\n"
+                    "\tNorthing: {x:.2f}, Easting: {y:.2f}, "
+                    "Elevation: {z:.1f} m\n")
+
         ret = ret.format(
             station_name=contents["stations"][0],
             station_code=self.code,
@@ -168,7 +191,7 @@ class Station(obspy.core.inventory.station.Station):
             restricted=self.restricted_status,
             alternate_code="Alternate Code: %s " % self.alternate_code if self.alternate_code else "",
             historical_code="Historical Code: %s " % self.historical_code if self.historical_code else "",
-            lat=self.y, lng=self.x, elevation=self.z)
+            x=x, y=y, z=z)
         ret += "\tAvailable Channels:\n"
         ret += "\n".join(_textwrap(
             ", ".join(_unified_content_strings(contents["channels"])),
@@ -179,6 +202,24 @@ class Station(obspy.core.inventory.station.Station):
 class Channel(obspy.core.inventory.channel.Channel):
 
     #__doc__ = obsevent.Origin.__doc__.replace('obspy', 'microquake')
+
+    @classmethod
+    def from_obspy_channel(cls, obspy_channel):
+        chn = obspy_channel
+        cha = Channel(chn.code, chn.location_code, chn.latitude, chn.longitude, chn.elevation, chn.depth, \
+                      chn.azimuth, chn.dip, chn.types, chn.external_references, chn.sample_rate, \
+                      chn.sample_rate_ratio_number_samples, chn.sample_rate_ratio_number_seconds, \
+                      chn.storage_format, chn.clock_drift_in_seconds_per_sample, chn.calibration_units, \
+                      chn.calibration_units_description, chn.sensor, chn.pre_amplifier, chn.data_logger, \
+                      chn.equipment, chn.response, chn.description, chn.comments, chn.start_date, \
+                      chn.end_date, chn.restricted_status, chn.alternate_code, chn.historical_code, \
+                      chn.data_availability)
+
+        if getattr(chn, 'extra', None):
+            cha.extra = copy.deepcopy(chn.extra)
+
+        return cha
+
 
     @property
     def cos1(self):
@@ -210,6 +251,58 @@ class Channel(obspy.core.inventory.channel.Channel):
         else:
             raise AttributeError
 
+def test_read_stationxml(xmlfile_in: str, xmlfile_out: str):
+    """
+        Read stationXML with or without namespace extras, wrap obspy Station/Channel in this class,
+        then write back out.
+    """
+    inv = read_inventory(xmlfile_in)
+    OT_stns = []
+    for station in inv[0].stations:
+        OT_stns.append(Station.from_obspy_station(station))
+    inv[0].stations = OT_stns
+    inv.write(xmlfile_out, format='STATIONXML', nsmap={ns_tag: ns})
+
+def test_read_csv_write_stationxml(sensor_csv: str, xmlfile_out: str):
+    """
+        Read sensor.csv file, convert to wrapped obspy stationXML and write out
+        Then read stationXML back in for good measure
+    """
+    stations = read_csv(sensor_csv)
+
+    source = 'mth-test'         # Network ID of the institution sending the message.
+    network = Network("OT")
+    network.stations = []
+    for station in stations:
+        network.stations.append(Station.from_csv_station(station))
+
+    inv = Inventory([network], source)
+    inv.write(xmlfile_out, format='STATIONXML', nsmap={ns_tag: ns})
+
+# TODO: Add test to be sure xml read in == xml written out
+    inv_read = read_inventory(xmlfile_out)
+    #inv_read = read_inventory('OT_bad.xml')
+
+    OT_stns = []
+    for station in inv_read[0].stations:
+        OT_stns.append(Station.from_obspy_station(station))
+    inv[0].stations = OT_stns
+    #inv.write(xmlfile_out, format='STATIONXML', nsmap={ns_tag: ns})
+
+def test_print_OT_xml_summary(xmlfile_in: str):
+    """
+        Simple test to read in an OT stationXML file (with extras confined to namespace)
+            and manipulate/print them as local Station/Channel objects
+    """
+    inv = read_inventory(xmlfile_in)
+    OT_stns = []
+    for station in inv[0].stations:
+        OT_stns.append(Station.from_obspy_station(station))
+
+    for stn in OT_stns:
+        print("%3s: <%.2f %.2f %8.2f>" % (stn.code, stn.y, stn.x, stn.z))
+        for chan in stn.channels:
+            print("  chan:%3s: <%.3f %.3f %.3f>" % (chan.code, chan.cos1, chan.cos2, chan.cos3))
 
 
 #obs_Station.x = property(lambda self: self.latitude)
@@ -220,23 +313,15 @@ def main():
         exit(2)
 
     sensor_csv = os.environ['SPP_COMMON'] + '/sensors.csv'
-    stations = read_csv(sensor_csv)
-    #stations = read_csv('/Users/mth/mth/python_pkgs/spp/common/sensors.csv')
-    obspy_stations = []
-    for station in stations:
-        obspy_stations.append(Station.from_csv_station(station))
 
-    source = 'mth-test'         # Network ID of the institution sending the message.
-    network = Network("OT")
-    network.stations = obspy_stations
-    inv = Inventory([network], source)
-    inv.write('OT3.xml', format='STATIONXML', nsmap={ns_tag: ns})
+    test_read_stationxml('resources/ANMO.xml', 'ANMO2.xml')
+    test_read_stationxml('resources/OT.xml', 'OT2.xml')
+    test_read_csv_write_stationxml(sensor_csv, 'OT_new.xml')
+    test_print_OT_xml_summary('OT_new.xml')
 
-    inv_read = read_inventory('OT3.xml')
-    #inv_read.write('OT4.xml', format='STATIONXML', nsmap={ns_tag: ns})
-    for station in inv_read[0].stations:
-        stn = Station.from_obspy_station(station)
-        print(stn)
+
+    exit()
+
 
 
 if __name__ == "__main__":
