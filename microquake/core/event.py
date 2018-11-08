@@ -39,7 +39,8 @@ debug = False
 
 class Event(obsevent.Event):
 
-    extra_keys = ['ACCEPTED', 'ASSOC_SEISMOGRAM_NAMES', 'AUTO_PROCESSED',
+    # _format keyword is actualy a missing obspy default
+    extra_keys = ['_format', 'ACCEPTED', 'ASSOC_SEISMOGRAM_NAMES', 'AUTO_PROCESSED',
                   'BLAST', 'CORNER_FREQUENCY', 'DYNAMIC_STRESS_DROP',
                   'ENERGY', 'ENERGY_P', 'ENERGY_S', 'EVENT_MODIFICATION_TIME',
                   'EVENT_NAME', 'EVENT_TIME_FORMATTED', 'EVENT_TIME_NANOS',
@@ -53,8 +54,7 @@ class Event(obsevent.Event):
 
     def __init__(self, obspy_obj=None, **kwargs):
         _init_handler(self, obspy_obj, **kwargs)
-        self.defaults['_format'] = None  # obsEvent read from quakeML contains this
-
+        
     def __setattr__(self, name, value):
         _set_attr_handler(self, name, value)
 
@@ -230,6 +230,40 @@ def _init_from_obspy_object(mquake_obj, obspy_obj):
 
 
 def _set_attr_handler(self, name, value, namespace='MICROQUAKE'):
+    """
+    Generic handler to set attributes for microquake objects
+    which inherit from ObsPy objects. If 'name' is not in
+    default keys then it will be set in self['extra'] dict. If
+    'name' is not in default keys but in the self.extra_keys
+    then it will also be set as a class attribute. When loading
+    extra keys from quakeml file, those in self.extra_keys will
+    be set as attributes.
+    """
+
+    #  use obspy default setattr for default keys
+    if name in self.defaults.keys():
+        super(type(self), self).__setattr__(name, value)
+    elif name in self.extra_keys:
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            self[name] = value
+        if type(value) is np.ndarray:
+            value = "npy64_" + array_to_b64(value)
+        self['extra'][name] = {'value': value, 'namespace': namespace}
+    # recursive parse of 'extra' args when constructing uquake from obspy
+    elif name == 'extra':
+        if 'extra' not in self:  # hack for deepcopy to work
+            self['extra'] = {}
+        for key, adict in value.items():
+            if key in self.extra_keys:
+                self.__setattr__(key, parse_string_val(adict.value))
+            else:
+                self['extra'][key] = adict
+    else:
+        raise KeyError(name)
+
+
+def _set_attr_handler2(self, name, value, namespace='MICROQUAKE'):
     """
     Generic handler to set attributes for microquake objects
     which inherit from ObsPy objects. If 'name' is not in
