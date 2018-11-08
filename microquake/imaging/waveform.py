@@ -47,8 +47,6 @@ from microquake.core.util.decorator import deprecated_keywords
 from microquake.imaging.util import (ObsPyAutoDateFormatter, _timestring)
 from microquake.imaging.util import _id_key as _ID_key
 
-from IPython.core.debugger import Tracer
-
 MINMAX_ZOOMLEVEL_WARNING_TEXT = "Warning: Zooming into MinMax Plot!"
 SECONDS_PER_DAY = 3600.0 * 24.0
 DATELOCATOR_WARNING_MSG = (

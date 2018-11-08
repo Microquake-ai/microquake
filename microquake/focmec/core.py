@@ -2,9 +2,6 @@
 Package to interact with the FOCMEC sofware (Snoke 2003)
 """
 
-from IPython.core.debugger import Tracer
-
-
 def incidence_phase_vectors(station, origin, velocity=None):
     """
     calculate the incidence vector for the P-, SV- and SH- phase at a station
@@ -84,8 +81,8 @@ def measure_wave_polarity(site, velocity, origin, picks, stream, wave_type='P'):
     # calculate travel time grid from the event location
     from microquake.simul.eik import eikonal_solver
 
-    tt = eikonal_solver(velocity, origin.loc) 
-    
+    tt = eikonal_solver(velocity, origin.loc)
+
 
 def calculate_polarity(station, travel_time, origin, pick):
     """
@@ -106,7 +103,7 @@ def calculate_polarity(station, travel_time, origin, pick):
     """
 
     # the vector from the station to the event need to be calculated. This will
-    # involve calculating a travel time grid from the velocity model. 
+    # involve calculating a travel time grid from the velocity model.
 
     pass
 

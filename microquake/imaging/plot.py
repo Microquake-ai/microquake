@@ -6,10 +6,8 @@ from microquake.core import event
 
 from microquake.core import logger
 
-from IPython.core.debugger import Tracer
 
-
-def guttenberg_richter(magnitudes, dates, bin_size=0.05, b_range=[-2.0, -0.5], 
+def guttenberg_richter(magnitudes, dates, bin_size=0.05, b_range=[-2.0, -0.5],
 	magnitude_type='Moment magnitude', xlim=[-2.0, 1.0], **kwargs):
 	"""
 	produce a Guttenberg Richter plot from a list of magnitudes
@@ -46,7 +44,7 @@ def guttenberg_richter(magnitudes, dates, bin_size=0.05, b_range=[-2.0, -0.5],
 	for i in cum_hist:
 	    new_cum_yearly_rate.append(i)
 
-	log_cum_sum = np.log10(new_cum_yearly_rate) 
+	log_cum_sum = np.log10(new_cum_yearly_rate)
 
 	cum = np.zeros(bins.shape)
 	min_mag = b_range[0]
@@ -153,7 +151,7 @@ class Plot(object):
 					for pick in prevPicks:
 						if pick['waveform_id'].station_code != station:
 							continue
-							
+
 						curStagePicks.append(pick)
 
 					curPicks.append(curStagePicks)
@@ -233,7 +231,7 @@ class Plot(object):
 				self.numPlots += 1
 
 			fig = plt.figure(figsize=(10, 2 * self.numPlots), dpi=100)
-		
+
 		plotOffset = 0
 
 		for curSt, t in enumerate(self._plotData):
@@ -271,7 +269,7 @@ class Plot(object):
 					continue
 
 				cur_starttime = tr.stats.starttime
-				self._make_plot(ax, tr.data, max_val, curPicks, starttime, cur_starttime, sr, transOffset, 
+				self._make_plot(ax, tr.data, max_val, curPicks, starttime, cur_starttime, sr, transOffset,
 					caption=caption)
 				plt.title('station %s' % tr.stats.station)
 

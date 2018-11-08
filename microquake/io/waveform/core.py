@@ -23,8 +23,6 @@ from microquake.core import logger
 from microquake.core.util.decorator import uncompress_file as uncompress
 import logging
 
-from IPython.core.debugger import Tracer
-
 
 def read_IMS_ASCII(path, net='', **kwargs):
     """
@@ -451,7 +449,7 @@ def read_hsf(filename, **kwargs):
 
         # scanning file for number of channel
 
-        Tracer()()
+        # Tracer()()
         hsffile.seek(0)
         # for i in range(0, 300, 4):
         #    hsffile.seek(i)
@@ -587,7 +585,6 @@ def mseed_decomposer(stream):
     from datetime import datetime
     from io import BytesIO
     from numpy import arange
-    from IPython.core.debugger import Tracer
 
     obj = BytesIO()
     stream.write(obj, format='MSEED')

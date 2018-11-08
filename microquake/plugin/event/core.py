@@ -18,8 +18,6 @@ format
     (http://www.gnu.org/copyleft/lesser.html)
 """
 
-from IPython.core.debugger import Tracer
-
 def write_simple_sqlite(catalog, filename, **kwargs):
     """
     :param catalog: catalogue object

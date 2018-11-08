@@ -19,7 +19,6 @@ module to interact IMS web API
 
 import numpy as np
 from logging import getLogger, INFO
-from IPython.core.debugger import Tracer
 
 logger = getLogger('microquake.IMS.web_api')
 logger.level = INFO
@@ -52,7 +51,7 @@ def get_continuous(base_url, start_datetime, end_datetime,
 
     """
     binary file structure:
-    * a binary header of size N bytes, consisting of 
+    * a binary header of size N bytes, consisting of
         - header size written as int32
         - netid written as int32
         - siteid written as int32
@@ -64,7 +63,7 @@ def get_continuous(base_url, start_datetime, end_datetime,
         - attenuator configuration id written as int32
         - remainder of bytes(N minus total so far) written as zero
         padded.
-    * A sequence of 20 - byte samples, each consisting of 
+    * A sequence of 20 - byte samples, each consisting of
         - sample timestamp, written as int64(time in nanoseconds)
         - raw X value as float32
         - raw Y value as float32

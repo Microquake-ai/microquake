@@ -4,7 +4,6 @@ from numpy.fft import fft
 from scipy.optimize import curve_fit
 from microquake.core import logger
 from scipy.ndimage.interpolation import map_coordinates
-# from IPython.core.debugger import Tracer
 from microquake.core.trace import Stats
 from microquake.core import Trace, Stream
 #import microquake.core.event as obspyevent
@@ -26,7 +25,7 @@ def geometrical_spreading(raypath):
 
     # Source receiver distance
     r = np.sum(segment_len)
-    
+
     if r < 1:
         r = 1
 
@@ -63,13 +62,13 @@ def anelastic_scattering_attenuation(raypath_or_distance, velocity, quality,
     Qray = map_coordinates(quality.data, ray.T, mode='nearest')
     Vray = map_coordinates(velocity.data, ray.T, mode='nearest')
     slen = np.sqrt(np.sum(np.diff(raypath, axis=0) ** 2, axis=1))
-    
+
     Att = np.zeros(f.shape)
     for k, segment in enumerate(ray[:-1, :]):
         Qval = np.mean(Qray[k:k + 2])
         Vval = np.mean(Vray[k:k + 2])
         Att += slen[k] / (Vval * Qval)
-    
+
     Aq_f = np.exp(-np.pi * f * Att)
     Aq = np.mean(Aq_f)
 
@@ -110,7 +109,7 @@ def geometrical_spreading_attenuation(raypath, velocity=None, quality=None, Mw=-
         Att = Ar * Aq
     else:
         Att = Ar
-    
+
     return Att
 
 def calculate_attenuation(raypath, velocity, quality=None, Mw=-1):
@@ -128,11 +127,11 @@ def calculate_attenuation(raypath, velocity, quality=None, Mw=-1):
         Att = Ar * Aq
     else:
         Att = Ar
-    
-    return Att
-    
 
-def calculate_attenuation_grid(seed, velocity, quality=None, locations=None, triaxial=True, 
+    return Att
+
+
+def calculate_attenuation_grid(seed, velocity, quality=None, locations=None, triaxial=True,
                             orientation=(0, 0, 1), pwave=True, progress=True, buf=0,
                             traveltime=None, eventSeed=False, Mw=-1., tt=None, return_tt=False,
                             homogeneous=True):
@@ -163,7 +162,7 @@ def calculate_attenuation_grid(seed, velocity, quality=None, locations=None, tri
     :param return_tt: if True, return traveltime grid
     :type return_tt: bool
     :param homogeneous: if True grid is considered homogeneous. Only geometrical spreading and radiation patterns
-    are accounted for 
+    are accounted for
     :type homogeneous: bool
     :rparam: Attenuation on a grid
     :rtype: microquake ImageData and
@@ -182,7 +181,7 @@ def calculate_attenuation_grid(seed, velocity, quality=None, locations=None, tri
 
     """
 
-        
+
     from microquake.simul import eik
 
     A = []
@@ -220,7 +219,7 @@ def calculate_attenuation_grid(seed, velocity, quality=None, locations=None, tri
         if homogeneous:
             ray = np.array([seed, coord])
             quality = None
-        else: 
+        else:
             if not tt:
                 tt = eik.EikonalSolver(velocity, seed)
 
@@ -240,18 +239,18 @@ def calculate_attenuation_grid(seed, velocity, quality=None, locations=None, tri
                 att_comp = tmpatt
             else:
                 att_comp = np.sqrt(1 - tmpatt ** 2)
-            
+
         A.append(att * att_comp)
 
     if not providedInputLocation:
         tmp = np.array(A).reshape(velocity.shape)
     else:
         tmp = np.array(A)
-    
+
     if return_tt:
         if not tt:
             tt = eik.EikonalSolver(velocity, seed)
-        
+
         import scipy.ndimage as ndimage
 
         tt_out = GridData(ndimage.map_coordinates(tt.data, tt.transform_to(locations).T),
@@ -320,7 +319,7 @@ def corner_frequency(Mw, vp=5000.0, vs=3500.0, SSD=1):
     .. note:: For tectonic earthquake, the SSD is reported to be between 1 - 100.
     For microseismic event, the SSD is generally close to 1 and can be lower.
     """
-    
+
     f0_p = 10 ** (1.32 + 0.33 * np.log10(SSD) + np.log10(vp / 1000.0) - 0.5 * Mw)
     f0_s = 10 ** (1.32 + 0.33 * np.log10(SSD) + np.log10(vs / 1000.0) - 0.5 * Mw)
 
@@ -427,7 +426,7 @@ def detection_level_sta_lta_grid(attenuationGrid, VpGrid, VsGrid,
     """
     Returns a grid containing the minimum magnitude detectable at the location stloc
     with the same dimensions as the attenuation grid.
-    
+
     :param attenuationGrid: Attenuation grid
     :type attenuationGrid: microquake.core.data.GridData
     :param VpGrid: P-wave velocity grid
@@ -460,7 +459,7 @@ def detection_level_sta_lta_grid(attenuationGrid, VpGrid, VsGrid,
     for Mw in magnitudes[-1::-1]:
         Pulse = synthetic_seismogram(Mw, duration=1.5, sampling_rate=10000, vp=5000.0, vs=3500.0,
                                         rho=2400, SSD=SSD, pwave=pwave)  # Displacement
-    
+
         Pulse.differentiate()  # Velocity
         if acceleration:
             Pulse.differentiate()  # Acceleration
@@ -757,7 +756,7 @@ def PPVfn(Mw, fc, Rho, V):
     """
     M0 = Mw2M0(Mw) # the seismic moment
     w0 = 2 * np.pi * fc
-    PPV = w0 ** 2 *  M0 / (4 * np.pi * Rho * (V ** 3)) 
+    PPV = w0 ** 2 *  M0 / (4 * np.pi * Rho * (V ** 3))
     return PPV
 
 
@@ -815,7 +814,7 @@ def return_triggered_sensor(epos, spos, sorient=None, stype=None, Magnitude=-1, 
 
 # The correction for sensor type is related to the frequency response
 # the result will also be a fraction e.g., 0.5
-    
+
     popt, pcov = interpolate_Fc_Mw()
     fc = FcMw(Magnitude, popt[0], popt[1])
     Mw = MwFc(fc, popt[0], popt[1])
@@ -828,7 +827,7 @@ def return_triggered_sensor(epos, spos, sorient=None, stype=None, Magnitude=-1, 
 
 class Trigger():
 
-    def __init__(self, Mw, vp=5000.0, vs=3500.0, rho=2400, STALTA_threshold=3., SSD=0.02, 
+    def __init__(self, Mw, vp=5000.0, vs=3500.0, rho=2400, STALTA_threshold=3., SSD=0.02,
              noise_level=0.02, acceleration=True):
 
         st = synthetic_seismogram(Mw,vp=vp, vs=vs, rho=rho, SSD=SSD, pwave=True)
@@ -852,7 +851,7 @@ class Trigger():
 
 class Sensitivity():
 
-    def __init__(self, Mw_min=-3., Mw_max=3., Mw_spacing=0.1, vp=5000.0, vs=3500.0, 
+    def __init__(self, Mw_min=-3., Mw_max=3., Mw_spacing=0.1, vp=5000.0, vs=3500.0,
                        rho=2400, STALTA_threshold=3., SSD=1,
                        noise_level=0.02, acceleration=True, pwave=True):
 
@@ -861,7 +860,7 @@ class Sensitivity():
         self.pwave = pwave
 
         signal_amplitude = []
-    
+
         for Mw_ in self.Mw:
             st = synthetic_seismogram(Mw_, vp=vp, vs=vs, rho=rho, SSD=SSD, pwave=pwave, duration=0.5)
 
@@ -891,8 +890,8 @@ class Sensitivity():
             return self.Mw_max
 
 
-def trigger_sensor(raypath, Mw, vp=5000.0, vs=3500.0, 
-                       rho=2400, STALTA_threshold=3., SSD=0.02, 
+def trigger_sensor(raypath, Mw, vp=5000.0, vs=3500.0,
+                       rho=2400, STALTA_threshold=3., SSD=0.02,
                        noise_level=0.02, acceleration=True):
     """
     Calculate the sensitivity at a specific location given a series sensor locations (location of senosor within an array)
@@ -938,8 +937,8 @@ def trigger_sensor(raypath, Mw, vp=5000.0, vs=3500.0,
     return (amp ** 2) / (noise_level ** 2) > STALTA_threshold
 
 
-def measure_sensitivity(raypath, Mw_min=-3., Mw_max=2., Mw_spacing=0.1, vp=5000.0, vs=3500.0, 
-                       rho=2400, STALTA_threshold=3., SSD=0.02, 
+def measure_sensitivity(raypath, Mw_min=-3., Mw_max=2., Mw_spacing=0.1, vp=5000.0, vs=3500.0,
+                       rho=2400, STALTA_threshold=3., SSD=0.02,
                        noise_level=0.02, acceleration=True):
 
     """
@@ -971,7 +970,7 @@ def measure_sensitivity(raypath, Mw_min=-3., Mw_max=2., Mw_spacing=0.1, vp=5000.
     :rparam: return the minimum matnigude that sensitivity in Miminum magnitude sensitivity
     :rtype: float
 
-    .. note: 
+    .. note:
 
     """
     nMw = (Mw_max - Mw_min) / Mw_spacing + 1
@@ -980,7 +979,7 @@ def measure_sensitivity(raypath, Mw_min=-3., Mw_max=2., Mw_spacing=0.1, vp=5000.
     att = geometrical_spreading(raypath) * radiation_pattern_attenuation()[0]
 
     signal_energy = []
-    
+
     for Mw_ in zip(Mw):
         st = synthetic_seismogram(Mw_, vp=vp, vs=vs, rho=rho, SSD=SSD, pwave=True,)
         if acceleration:
@@ -996,7 +995,7 @@ def measure_sensitivity(raypath, Mw_min=-3., Mw_max=2., Mw_spacing=0.1, vp=5000.
     if np.any(np.abs(signal_energy / (noise_level ** 2)) > STALTA_threshold):
         return Mw[np.abs(signal_energy / (noise_level ** 2)) > STALTA_threshold][0]
     else:
-        return None 
+        return None
 
 
 def moment_magnitude(stream, evt, site, vp, vs, ttpath=None,
@@ -1006,7 +1005,7 @@ def moment_magnitude(stream, evt, site, vp, vs, ttpath=None,
     WARNING
     Calculate the moment magnitude for an event.
     :param stream: seismogram
-    :type stream: microquake.Stream # does not exist yet 
+    :type stream: microquake.Stream # does not exist yet
     :param evt: event object
     :type evt: microquake.core.event.Event
     :param site: network information (contains stations information)
@@ -1150,7 +1149,7 @@ def moment_magnitude(stream, evt, site, vp, vs, ttpath=None,
                 continue
 
             radiation = radiation_pattern_attenuation()
-# MTH: 
+# MTH:
             #if phase.lower() == 'P':
             if phase.upper() == 'P':
                 radiation = radiation[0]
@@ -1254,7 +1253,7 @@ def moment_magnitude(stream, evt, site, vp, vs, ttpath=None,
         fcs = fcs[~np.isnan(Mw)]
         fcs = fcs[~np.isinf(Mw)]
 
-        
+
 
 # Drop -ve fcs!
         import numpy.ma as ma
