@@ -26,7 +26,6 @@ from microquake.core.util import tools
 from pkg_resources import load_entry_point
 
 from obspy.core.utcdatetime import UTCDateTime
-from IPython.core.debugger import Tracer
 
 
 class Stream(obsstream.Stream):
@@ -155,7 +154,7 @@ def is_valid(st_in, return_stream=False, STA=0.005, LTA=0.1, min_num_valid=5):
         :type return_stream: bool
         :param STA: short term average used to determine if an event is valid
         :type STA: float
-        :param LTA: long term average 
+        :param LTA: long term average
         :type LTA: float
         :param min_num_valid: minimum number of valid traces to declare the
         event valid
@@ -196,10 +195,11 @@ def is_valid(st_in, return_stream=False, STA=0.005, LTA=0.1, min_num_valid=5):
         try:
             tspan = (np.max(i2) - np.min(i2)) / sampling_rate
         except:
+            from IPython.core.debugger import Tracer
             Tracer()()
 
         ratio = np.max(np.abs(tr.data)) / np.std(tr.data)
-        
+
         accept = True
 
         if len(i2) < 3:
@@ -212,7 +212,7 @@ def is_valid(st_in, return_stream=False, STA=0.005, LTA=0.1, min_num_valid=5):
             if ratio < 12.5:
                 accept = False
         if tspan > 0.1:
-            accept = False  
+            accept = False
 
         if (len(i2) == 2) and (tspan > 0.01) and (tspan < 0.1):
             if ratio > 5:
