@@ -94,7 +94,7 @@ def read_nlloc_hypocenter_file(filename, picks=None,
         # origin.method = method
         # creation_info = event.CreationInfo()
         creation_info = event.CreationInfo(author='microquake',
-                                           creation_time=UTCDataTime.now())
+                                           creation_time=UTCDateTime.now())
 
         # origin.creation_info.author = 'microquake'
         # origin.creation_info.creation_time = UTCDateTime.now()
@@ -877,7 +877,7 @@ class NLL(object):
             logger.debug('%s.%s: pref origin=[%s]' % (__name__,fname,po))
 
             if not po:
-                event.preferred_origin_id = event.origins[-1].resource_id.id
+                logger.error('preferred origin is not set')
 
             for arr in po.arrivals:
 
