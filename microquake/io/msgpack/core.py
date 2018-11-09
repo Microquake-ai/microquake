@@ -1,6 +1,6 @@
 # import numpy as np
-import os
-import glob
+# import os
+# import glob
 from io import BytesIO
 from microquake.core import Stream
 from microquake.core import read
