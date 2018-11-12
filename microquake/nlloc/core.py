@@ -360,7 +360,7 @@ def read_NLL_grid(base_name):
     # Reading header file
     try:
         head = _read_nll_header_file(base_name + '.hdr')
-    except:
+    except ValueError:
         logger.error('error reading %s' % base_name + '.hdr')
 
     # Read binary buffer
@@ -369,7 +369,7 @@ def read_NLL_grid(base_name):
     if head.grid_type == 'SLOW_LEN':
         gdata = head.spacing / gdata
         head.grid_type = 'VELOCITY'
-        
+
     return GridData(gdata, spacing=head.spacing, origin=head.origin,
             seed=head.seed, seed_label=head.label, grid_type=head.grid_type)
 
@@ -1074,63 +1074,3 @@ LOCQUAL2ERR 0.0001 0.0001 0.0001 0.0001 0.0001
 
 LOCPHSTAT 9999.0 -1 9999.0 1.0 1.0 9999.9 -9999.9 9999.9
 """
-
-
-def gdef_to_points(gdef):
-    
-    shape, origin, spacing = gdef[:3], gdef[3:6], float(gdef[6])
-    # nx, ny, nz = shape
-    maxes = origin + shape * spacing
-    x = np.arange(origin[0], maxes[0], spacing).astype(np.float32)
-    y = np.arange(origin[1], maxes[1], spacing).astype(np.float32)
-    z = np.arange(origin[2], maxes[2], spacing).astype(np.float32)
-    points = np.zeros((np.product(shape), 3), dtype=np.float32)
-    # points = np.stack(np.meshgrid(x, y, z), 3).reshape(3, -1).astype(np.float32)
-    ix = 0
-    for xv in x:
-        for yv in y:
-            for zv in z:
-                points[ix] = [xv, yv, zv]
-                ix += 1
-    return points
-
-
-def read_nll_header(fle):
-    # print(fle)
-    dat = open(fle).read().split()
-    shape = np.array(dat[:3], dtype=int)
-    org = np.array(dat[3:6], dtype=np.float32) * 1000.
-    spacing = (np.array(dat[6:9], dtype=np.float32) * 1000.)[0]
-    sloc = np.array(dat[12:15], dtype=np.float32) * 1000.
-
-    return sloc, shape, org, spacing
-
-
-def ttable_from_nll_grids(path, key="OT.P"):
-    fles = np.sort(glob(os.path.join(path, key + '*.time.buf')))
-    hfles = np.sort(glob(os.path.join(path, key + '*.time.hdr')))
-    assert(len(fles) == len(hfles))
-    stas = np.array([f.split('.')[-3].zfill(3) for f in fles], dtype='S4')
-    isort = np.argsort(stas)
-    fles = fles[isort]
-    hfles = hfles[isort]
-    names = stas[isort]
-
-    vals = [read_nll_header(fle) for fle in hfles]
-    sloc, shape, org, spacing = vals[0]
-    slocs = np.array([v[0] for v in vals], dtype=np.float32)
-    ngrid = np.product(shape)
-
-    nsta = len(fles)
-    tts = np.zeros((nsta, ngrid), dtype=np.float32)
-
-    for i in range(nsta):
-        tts[i] = np.fromfile(fles[i], dtype='f4')
-
-    gdef = np.concatenate((shape, org, [spacing])).astype(np.int32)
-
-    ndict = {}
-    for i, sk in enumerate(names):
-        ndict[sk.decode('utf-8')] = i
-
-    return tts, slocs, ndict, gdef
