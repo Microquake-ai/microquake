@@ -11,7 +11,6 @@ import numpy as np
 
 
 def GenEventsOnGrid(Grid, ev_spacing):
-    import numpy as np
     cmin = np.array(Grid.origin)
 
     cmax = cmin + np.array(Grid.shape) * Grid.spacing
@@ -53,7 +52,6 @@ def _createODS(origin=None, dimensions=None, spacing=None, val=0, **kwargs):
     :param val: constant value with which to fill the grid
     :rtype: ~microquake.core.data.grid.GridData
     """
-    import numpy as np
     data = np.ones(tuple(dimensions)) * val
     grid = GridData(data, spacing=spacing, origin=origin)
     return grid
@@ -72,7 +70,6 @@ def _createOCS(origin=None, corner=None, spacing=None, val=0, buf=0, **kwargs):
     :param buf: buffer around the grid in fraction of grid size
     :rtype: ~microquake.core.data.grid.GridData
     """
-    import numpy as np
     tmp = buf * (corner - origin)
     origin2 = origin - tmp
     corner2 = corner + tmp
@@ -99,27 +96,12 @@ def ones(shape, origin=(0, 0, 0), spacing=1, **kwargs):
     :rtype: ~microquake.core.data.grid.GridData
     """
 
-    import numpy as np
 
     data = np.ones(shape)
     return GridData(data, origin=origin, spacing=spacing)
     
-# def load(fle, format="NLL", **kwargs):
-#     if format == 'NLL':
-#         return _loadNLL(fle, **kwargs)
-
 
 def read_grid(filename, format='PICKLE', **kwargs):
-    """
-    read a grid
-    :param filename: the name of the file
-    :param format: format of the file
-    :return: GridData object
-    """
-    return readGrid(filename, format=format, **kwargs)
-
-
-def readGrid(filename, format='PICKLE', **kwargs):
     format = format.upper()
     if format not in ENTRY_POINTS['grid'].keys():
         logger.error('Grid format %s is not currently supported' % format)
@@ -133,7 +115,6 @@ def readGrid(filename, format='PICKLE', **kwargs):
 
 
 def readBufferOffsets(self, point):
-    import numpy as np
 
     ev_offset_grid = [[0, 0, 0], [0, 0, 1], [0, 1, 0], [0, 1, 1],
                       [1, 0, 0], [1, 0, 1], [1, 1, 0], [1, 1, 1]]
@@ -171,7 +152,6 @@ def readBufferOffsets(self, point):
 
 
 def readBuffer(self, xi, points, offsets, interp_needed, grid_file):
-    import numpy as np
 
     values = []  # array of the values of the grid defined at the 8 points
     for o in offsets:
@@ -230,7 +210,6 @@ class GridData(object):
 
     def __init__(self, data, spacing=1, origin=None,
                  seed_label=None, seed=None, grid_type='VELOCITY'):
-        import numpy as np
         self.data = []
         data, np.ndarray
         origin = np.array(origin)
@@ -348,7 +327,6 @@ class GridData(object):
     def generate_points(self, pt_spacing=None):
         """
         """
-        import numpy as np
         # if pt_spacing is None:
         ev_spacing = self.spacing
 
@@ -395,7 +373,6 @@ class GridData(object):
         :type grid_coordinate: bool
         :rtype: numpy.array
         """
-        import numpy as np
 
         coord = np.array(coord)
 
