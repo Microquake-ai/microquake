@@ -790,10 +790,10 @@ class NLL(object):
         calculate and save take off angle grid
         """
         from microquake.simul.eik import angles
-        from microquake.core import readGrid
+        from microquake.core import read_grid
         # reading the travel time grid
         ifile = time_file
-        ttg = readGrid(ifile, format='NLLOC')
+        ttg = read_grid(ifile, format='NLLOC')
         az, toa = angles(ttg)
         tmp = ifile.split('/')
         tmp[-1] = tmp[-1].replace('time', 'take_off')
@@ -910,7 +910,7 @@ class NLL(object):
         :type hypfile: str
         :rtype: ~microquake.core.event.Catalog
         """
-        from microquake.core import readGrid
+        from microquake.core import read_grid
         from numpy import pi
 
         origin = read_nlloc_hypocenter_file(hypfile, event.picks,
@@ -923,10 +923,10 @@ class NLL(object):
         return Catalog(events=[event])
 
     def take_off_angle(self, station):
-        from microquake.core.data.grid import readGrid
+        from microquake.core.data.grid import read_grid
         fname = '%s/time/%s.P.%s.time' % (self.base_folder, self.base_name,
                                           station)
-        gd = readGrid(fname, format='NLLOC')
+        gd = read_grid(fname, format='NLLOC')
 
 
 class NLLHeader(AttribDict):
