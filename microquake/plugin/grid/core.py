@@ -17,6 +17,7 @@ plugin for reading and writing GridData object into various format
     (http://www.gnu.org/copyleft/lesser.html)
 """
 
+
 def read_nll(filename, **kwargs):
     """
     read NLLoc grid file into a GridData object

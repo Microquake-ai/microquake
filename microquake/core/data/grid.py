@@ -35,7 +35,7 @@ def GenEventsOnGrid(Grid, ev_spacing):
 
 def create(method, **kwargs):
     if method == 'ODS':
-        return _createODS(**kwargs) 
+        return _createODS(**kwargs)
     elif method == 'OCS':
         return _createOCS(**kwargs)
 

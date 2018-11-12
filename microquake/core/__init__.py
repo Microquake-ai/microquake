@@ -8,7 +8,7 @@ from .util.base import proc
 from .stream import Stream, read
 from .trace import Trace
 from .data import GridData, station
-from .data.grid import readGrid, read_grid
+from .data.grid import read_grid
 from .event import read_events
 from .data import station
 from .data.station import read_stations
