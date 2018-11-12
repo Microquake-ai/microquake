@@ -59,7 +59,7 @@ def read_csv(filename, site_code='', **kwargs):
 
         channels = []
         for comp in orients:
-            if comp[0] is None:
+            if not comp[0]:
                 continue
             xyz = comp[1:4].astype(float)
             channel = Channel(code=comp[0])

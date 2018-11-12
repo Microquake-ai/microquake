@@ -57,10 +57,6 @@ class Site:
             self.__i += 1
             return network
 
-    def dump_for_phil(self):
-        for st in self.stations():
-            print(st.long_name, st.loc, len(st.channels))
-
     def write(self, filename, format='PICKLE', **kwargs):
         """
         write the site object to disk
@@ -81,7 +77,6 @@ class Site:
 
         write_format(self, filename, **kwargs)
 
-
     def copy(self):
         return deepcopy(self)
 
@@ -96,7 +91,7 @@ class Site:
         if network:
             for net in self.networks:
                 if net == network:
-                    nets.append(net_tmp)
+                    nets.append(net)
 
             site_tmp.networks = nets
 
