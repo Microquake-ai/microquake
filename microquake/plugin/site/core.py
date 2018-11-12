@@ -18,7 +18,8 @@ plugin for reading and writing Site object into various format
 """
 from microquake.core import logger
 
-def read_csv(filename, site_code='', has_header=False, **kwargs):
+
+def read_csv(filename, site_code='', **kwargs):
     """
     read a csv file containing sensor information
     The first line of the csv file should contain the site name
@@ -45,58 +46,36 @@ def read_csv(filename, site_code='', has_header=False, **kwargs):
     """
 
     from microquake.core.data.station import Site, Network, Station, Channel
+    from numpy import loadtxt
 
-    with open(filename) as ifile:
-        networks = []
-        stations = []
-        for i, line in enumerate(ifile.readlines()):
-            if has_header and (i == 0):
+    data = loadtxt(filename, delimiter=',', skiprows=1, dtype=object)
+    stations = []
+
+    for i, tmp in enumerate(data):
+
+        nc, long_name, sc, st, smt, gain, sensitivity = tmp[:7]
+        staloc = tmp[7:9]
+        orients = tmp[10:22].reshape(3, 4)
+
+        channels = []
+        for comp in orients:
+            if comp[0] is None:
                 continue
-            tmp = line.split(',')
-            nc = tmp[0]
-            long_name = tmp[1]
-            sc = tmp[2]
-            st = tmp[3]
-            smt = tmp[4]
-            gain = tmp[5]
-            sensitivity = tmp[6]
-            sx = float(tmp[7])
-            sy = float(tmp[8])
-            sz = float(tmp[9])
+            xyz = comp[1:4].astype(float)
+            channel = Channel(code=comp[0])
+            channel.orientation = xyz
+            channels.append(channel)
 
-            channels = []
-            for c in range(0, 3):
-                cc = tmp[4 * c + 10]
-                if not cc:
-                    continue
-                x = float(tmp[4 * c + 10 + 1])
-                y = float(tmp[4 * c + 10 + 2])
-                z = float(tmp[4 * c + 10 + 3])
-                # az = float(tmp[3 * c + 10 + 1])
-                # dip = float(tmp[3 * c + 10 + 2])
-                channel = Channel(code=cc)
-                channel.orientation = [x, y, z]
-                # channel.dip_azimuth = (dip, az)
-                channels.append(channel)
+        station = Station(long_name=long_name, code=sc, sensor_type=st,
+                          motion_type=smt, gain=gain,
+                          sensitivity=sensitivity, loc=staloc,
+                          channels=channels)
 
-            station = Station(long_name=long_name, code=sc, sensor_type=st,
-                              motion_type=smt, gain=gain,
-                              sensitivity=sensitivity, loc=[sx, sy, sz],
-                              channels=channels)
+        stations.append(station)
 
-            index = None
-            for j, net in enumerate(networks):
-                if net.code == nc:
-                    index = j
-
-            if index == None:
-                network = Network(code=nc, stations=[])
-                networks.append(network)
-                index = -1
-
-            networks[index].stations.append(station)
-
+    networks = [Network(code=nc, stations=stations)]
     site = Site(code=site_code, networks=networks)
+
     return site
 
 

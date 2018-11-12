@@ -8,10 +8,6 @@ from pkg_resources import load_entry_point
 
 
 def read_stations(fname, format='CSV', **kwargs):
-    return readStations(fname, format=format, **kwargs)
-
-
-def readStations(fname, format='CSV', **kwargs):
     """
     Read a site object using plugin
     :param fname: filename
