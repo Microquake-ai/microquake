@@ -5,33 +5,31 @@ import matplotlib.pyplot as plt
 from datetime import datetime, timedelta
 
 
-
-
 def datetime_to_epoch_sec(dtime):
-	return (dtime - datetime(1970, 1, 1)) / timedelta(seconds=1)
+    return (dtime - datetime(1970, 1, 1)) / timedelta(seconds=1)
 
 
 def make_picks(stcomp, pick_times_utc, phase, pick_params):
-	snr_wlens = np.array(pick_params.snr_wlens)
-	wlen_search = pick_params.wlen_search
-	stepsize = pick_params.stepsize
+    snr_wlens = np.array(pick_params.snr_wlens)
+    wlen_search = pick_params.wlen_search
+    stepsize = pick_params.stepsize
 
-	picks = []
-	for tr, ptime in zip(stcomp, pick_times_utc):
-		picks.append(tr.make_pick(ptime, wlen_search,
-					stepsize, snr_wlens, phase_hint=phase))
+    picks = []
+    for tr, ptime in zip(stcomp, pick_times_utc):
+        picks.append(tr.make_pick(ptime, wlen_search,
+                    stepsize, snr_wlens, phase_hint=phase))
 
-	return picks
+    return picks
 
 
 def picks_to_dict(picks):
-	pd = {}
-	for p in picks:
-		key = p.waveform_id.get_seed_string()
-		if key not in pd:
-			pd[key] = []
-		pd[key].append(p.time)
-	return pd
+    pd = {}
+    for p in picks:
+        key = p.waveform_id.get_seed_string()
+        if key not in pd:
+            pd[key] = []
+        pd[key].append(p.time)
+    return pd
 
 
 def repick_using_snr(sig, ipick, wlen_search, stepsize, snr_wlens):
