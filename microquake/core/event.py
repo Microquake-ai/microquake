@@ -78,7 +78,7 @@ class Event(obsevent.Event):
 
 class Origin(obsevent.Origin):
     __doc__ = obsevent.Origin.__doc__.replace('obspy', 'microquake')
-    extra_keys = ['x', 'y', 'z', 'x_error', 'y_error', 'z_error']
+    extra_keys = ['x', 'y', 'z', 'x_error', 'y_error', 'z_error', 'scatter']
 
     def __init__(self, obspy_obj=None, **kwargs):
         _init_handler(self, obspy_obj, **kwargs)

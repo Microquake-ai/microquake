@@ -1,15 +1,13 @@
 import numpy as np
-from datetime import timedelta
 from numpy.fft import fft
 from scipy.optimize import curve_fit
 from microquake.core import logger
 from scipy.ndimage.interpolation import map_coordinates
 from microquake.core.trace import Stats
 from microquake.core import Trace, Stream
-#import microquake.core.event as obspyevent
+from microquake.core.event import Catalog
 from microquake.core.data import GridData
-from microquake.core.util.attribdict import AttribDict
-import sys
+
 from microquake.core import event
 
 from microquake.core.util.cli import ProgressBar
@@ -1046,7 +1044,8 @@ def moment_magnitude(stream, evt, site, vp, vs, ttpath=None,
 
         evloc = np.array([origin.x, origin.y, origin.z])
 
-        if not ((type(vp) == np.float) or (type(vp) == np.int)) :
+        if not ((type(vp) == np.float) or (type(vp) == np.int) or
+                (type(vp) == np.float64)):
             vpsrc = vp.interpolate(evloc, grid_coordinate=False)
             vssrc = vs.interpolate(evloc, grid_coordinate=False)
         else:
@@ -1092,7 +1091,11 @@ def moment_magnitude(stream, evt, site, vp, vs, ttpath=None,
             signal = sttrs.copy()
 
             # creating displacement pulse
-            signal.detrend('demean').detrend('linear')
+            from IPython.core.debugger import Tracer
+            try:
+                signal.detrend('demean').detrend('linear')
+            except:
+                continue
             signal.taper(max_percentage=0.05, type='cosine')
             csignal = np.mean([tr.data ** 2 for tr in signal], axis=0)
 
@@ -1113,8 +1116,7 @@ def moment_magnitude(stream, evt, site, vp, vs, ttpath=None,
             #logger.debug('%s.%s: ct[0].get_id()=%s' % (__name__, fname, ct[0].get_id()))
 
             ct = ct.detrend('demean').detrend('demean')
-# MTH:
-            #ct = ct.filter('highpass', freq=freq)
+            ct = ct.filter('highpass', freq=freq)
 
             trim_beg = at -.01
             trim_end = at + 2*win_length
@@ -1139,8 +1141,8 @@ def moment_magnitude(stream, evt, site, vp, vs, ttpath=None,
             # displacement = displacement.taper(type='cosine', max_percentage=0.5, max_length=win_length, side='right')
             R = np.linalg.norm(stloc - evloc)
 
-            logger.debug("moment_mag: sta:%s pha:%s R:%.2f st:%s et:%s  trim window:st:%s et:%s" % \
-                    (sta_code, phase, R, ct[0].stats.starttime, ct[0].stats.endtime, at-.01, at + 2*win_length))
+            # logger.debug("moment_mag: sta:%s pha:%s R:%.2f st:%s et:%s  trim window:st:%s et:%s" % \
+            #         (sta_code, phase, R, ct[0].stats.starttime, ct[0].stats.endtime, at-.01, at + 2*win_length))
 # MTH
             displacement = displacement.taper(type='cosine', max_percentage=0.5,
                           max_length=win_length, side='right')
@@ -1164,19 +1166,18 @@ def moment_magnitude(stream, evt, site, vp, vs, ttpath=None,
             # only need to divide the spectrum by sr rather then len_spectrum
             # to get the spectral density
 
-            spectrum = np.sqrt(np.mean([np.abs(fft(tr.data, len_spectrum))\
-                                        ** 2 for tr in displacement], axis=0))
-            spectrum_norm = spectrum / radiation * R * 4 * \
-                            np.pi * density * vsrc ** 3 / sr
-            '''
+            # spectrum = np.sqrt(np.mean([np.abs(fft(tr.data, len_spectrum))\
+            #                             ** 2 for tr in displacement], axis=0))
+            # spectrum_norm = spectrum / radiation * R * 4 * \
+            #                 np.pi * density * vsrc ** 3 / sr
+
             signal_length = 2 * win_length + 0.01
             normalization = 2 / (signal_length * sr)
             spectrum = np.sqrt(np.mean([np.abs(fft(tr.data, len_spectrum))\
                                         ** 2 for tr in displacement], axis=0))
             spectrum_norm = spectrum / radiation * R * 4 * \
                             np.pi * density * vsrc ** 3 * normalization
-            '''
-            signal_length = 2 * win_length + 0.01
+
 
             f = np.fft.fftfreq(len_spectrum, 1 / sr)
             fi = np.nonzero((f >= .2) & (f <= 2000))[0]
@@ -1288,4 +1289,4 @@ def moment_magnitude(stream, evt, site, vp, vs, ttpath=None,
         if origin.resource_id == evt.preferred_origin().resource_id:
             evt.preferred_magnitude_id = mag.resource_id.id
 
-    return evt
+    return Catalog(events=[evt])

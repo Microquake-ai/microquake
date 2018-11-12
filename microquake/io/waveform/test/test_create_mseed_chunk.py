@@ -43,8 +43,7 @@ for name, group in df_grouped:
         data += g
     timestamp = int(name.timestamp() * 1e3)
     key = name.strftime('%Y-%d-%m %H:%M:%S.%f').encode('utf-8')
-    kafka_handler.send_to_kafka(kafka_topic, message=data, key=key,
-                                timestamp=int(timestamp))
+    kafka_handler.send_to_kafka(topic=data, key=key, message=data)
 kafka_handler.producer.flush()
 
 

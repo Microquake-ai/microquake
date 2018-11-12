@@ -25,7 +25,7 @@ import json
 from bson import ObjectId
 from obspy.core.utcdatetime import UTCDateTime
 from pymongo.bulk import BulkWriteError
-#from spp.utils import log_handler
+from microquake.core.util import logger
 
 #log = log_handler.get_logger("mongoDB", 'spp_api.log')
 
@@ -43,7 +43,6 @@ class MongoDBHandler:
 
     def __init__(self, uri='mongodb://localhost:27017/', db_name='test'):
         if self.db is None:
-            #log.info("MongoDBHandler ------------> Initiating new DB connection")
             print("MongoDBHandler ------------> Initiating new DB connection")
             self.db = self.connect(uri, db_name)
 
@@ -94,10 +93,9 @@ class MongoDBHandler:
                 print('Insertion Error:', we['errmsg'])
 
 
-
 class EventDB:
 
-    def __init__(self,mongodb_handler):
+    def __init__(self, mongodb_handler):
         self.DB_COLLECTION = "Events"
         self.DB_CONNECTION = mongodb_handler
 
@@ -219,12 +217,10 @@ class EventDB:
 
         return inserted_id
 
-
     # return json event object and contains its full encoded object
     def read_event(self, event_resource_id):
         filter_dict = {"event_resource_id": event_resource_id}
         return self.DB_CONNECTION.select(self.DB_COLLECTION, filter_dict)
-
 
     # return a microquake Event object after decoding it from DB
     def read_full_event(self, event_resource_id):
@@ -312,15 +308,27 @@ class StreamDB:
 
         return inserted_id
 
-
-    # return json waveform object and contains its full encoded object
     def read_waveform(self, event_resource_id):
+        """
+        return json waveform object and contains its full encoded object
+        Args:
+            event_resource_id:
+
+        Returns:
+
+        """
         filter_dict = {'event_resource_id': event_resource_id}
         return self.DB_CONNECTION.select(self.DB_COLLECTION, filter_dict)
 
-
-    # return a microquake waveform object after decoding it from DB
     def read_full_waveform(self, event_resource_id):
+        """
+        return a microquake waveform object after decoding it from DB
+        Args:
+            event_resource_id:
+
+        Returns:
+
+        """
         result = self.read_waveform(event_resource_id)
         if result and result["waveform"]:
             decoded_event = self.decode_stream(result["waveform"])
@@ -329,14 +337,19 @@ class StreamDB:
             return None
 
 
-###################################
-# To be checked if will be used
+def dict_2_attribdict(obj):
+    """
+    convert a dict to attribdict
+    Args:
+        obj: dict or list of dict
 
-def dict2Attribdict(obj):
+    Returns: attribdict
+
+    """
     if isinstance(obj, dict):
         out = AttribDict()
         for key in obj.keys():
-            out[key] = dict2Attribdict(obj[key])
+            out[key] = dict_2_attribdict(obj[key])
         try:
             return out
         except:
@@ -344,151 +357,30 @@ def dict2Attribdict(obj):
     elif isinstance(obj, list):
         out = []
         for item in obj:
-            out.append(dict2Attribdict(item))
+            out.append(dict_2_attribdict(item))
         return out
     else:
         return obj
 
 
-def AttribDict2dict(obj):
+def attribdict_2_dict(obj):
+    """
+    convert an attribdict to dict
+    Args:
+        obj: attribdict  or a list of attribdict
+
+    Returns: dict
+
+    """
     if isinstance(obj, AttribDict):
         out = dict()
         for key in obj.keys():
-            out[key] = AttribDict2dict(obj[key])
+            out[key] = attribdict_2_dict(obj[key])
             return out
     elif isinstance(obj, list):
         out = []
         for item in obj:
-            out.append(AttribDict2dict(item))
+            out.append(attribdict_2_dict(item))
             return out
     else:
         return obj
-
-
-
-# UNUSED FUNCTIONS #####
-
-# def insert(col, obj, default=None, **kwargs):
-#     """
-#     Convert and insert an object into a mongo db collection
-#     :param col: mongo db collection
-#     :type catalog: pymongo.collection.Collection
-#     :param obj: object to insert
-#     :type obj: list of object or object
-#     :param default: "default" function for JSONEncoder for ObsPy objects
-#     :type default: microquake.core.json.default.Default
-#     """
-#     if not isinstance(obj, list):
-#         obj = [obj]
-#
-#     tmp_list = []
-#     # noinspection PyTypeChecker
-#     for o in obj:
-#         s = dumps(o, default=default, **kwargs)
-#         tmp = loads(s)
-#         tmp_list.append(tmp)
-#
-#     inserted_ids = col.insert_many(tmp_list).inserted_ids
-#
-#     # return [(id, obj) for id, obj in zip(tmp_list, inserted_ids)]
-#     # return tmp_list, inserted_ids
-#     return inserted_ids
-#     # if not isinstance(obj, list):
-#     #     obj = [obj]
-#     #
-#     # tmp_list = []
-
-
-
-
-
-# def dump_event(event, db, mongo_col, data_path, base_file_name,
-#                **kwargs):
-#     """
-#     Write a microquake.core.event catalog into a mongo db
-#     :param event: event object
-#     :type event: microquake.core.event.Event
-#     :param db: mongodb database
-#     :type db: pymongo.database.Database
-#     :param mongo_col: collection name for events in db
-#     :type mongo_col: str
-#     :param data_path: path to raw data (seismogram and QuakeML catalog
-#     :type data_path: str
-#     :param base_file_name: base file name for the seismogram and the QuakeML
-#     file. Basically the file name without the extension.
-#     :type base_file_name: str
-#     :rtype: bool
-#     """
-#
-#     event_col = db[mongo_col]
-#     default = Default()
-#
-#     # Skip if event already in DB
-#     cursor = event_col.find_one({'base_file_name': base_file_name,
-#         'data_path': data_path})
-#     if cursor:
-#         return None
-#
-#     event.data_path = data_path
-#     event.base_file_name = base_file_name
-#     event = flatten_event(event)
-#
-#     insert(event_col, event, default=default, **kwargs)
-
-
-
-
-        # if tr.stats.segy:
-        #     del tr.stats.segy
-    #     trout['data'] = list(tr.data)
-    #     stats_dict = dict(tr.stats)
-    #     stats = dict()
-    #     for key in stats_dict.keys():
-    #         if key == 'starttime' or key == 'endtime':
-    #             stats[key] = stats_dict[key].strftime(
-    #         "%Y-%m-%d %H:%M%S.%f")
-    #         elif key == 'mseed':
-    #             mseed = dict()
-    #             for m_key in stats_dict[key].keys():
-    #                 mseed[m_key] = stats_dict[key][m_key]
-    #             stats[key] = mseed
-    #         else:
-    #             stats[key] = stats_dict[key]
-    #     trout['stats'] = stats
-    #     traces.append(trout)
-    #
-    # stout['traces'] = traces
-
-    # return b64encode(compress(dumps(stout).encode()))
-
-
-
-
-    # tr_list = loads(decompress(b64decode(encoded_stream)))['traces']
-    #
-    # traces = []
-    # for tr_dict in tr_list:
-    #     tr = Trace()
-    #     stats = Stats()
-    #
-    #     tr.data = array(tr_dict['data'])
-    #     stats_dict = tr_dict['stats']
-    #
-    #     for key2 in stats_dict.keys():
-    #         if (key2 == 'starttime'):
-    #             stats[key2] = UTCDateTime().strptime(stats_dict[key2],
-    #                                              "%Y-%m-%d %H:%M%S.%f")
-    #
-    #         elif (key2 == 'endtime'):
-    #             continue
-    #         else:
-    #             stats[key2] = stats_dict[key2]
-    #
-    #     tr.stats = stats
-    #
-    #     traces.append(tr)
-    #
-    # return Stream(traces=traces)
-
-
-
