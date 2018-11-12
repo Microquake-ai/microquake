@@ -3,7 +3,7 @@ import math
 from scipy.fftpack import fft, ifft, fftfreq
 from scipy.signal import sosfilt, zpk2sos, iirfilter
 import matplotlib.pyplot as plt
-
+from datetime import datetime, timedelta
 
 # def compute_snr(sig, origin_inds, wlen_pre, wlen_post):
 # 	snrs = np.zeros(len(origin_inds), dtype=np.float32)
@@ -12,6 +12,34 @@ import matplotlib.pyplot as plt
 # 		energy_sig = np.mean((sig[og:og + wlen_post]) ** 2)
 # 		snrs[i] = energy_sig / energy_noise
 # 	return np.log10(snrs)
+
+
+def datetime_to_epoch_sec(dtime):
+	return (dtime - datetime(1970, 1, 1)) / timedelta(seconds=1)
+
+
+def make_picks(stcomp, pick_times_utc, phase, pick_params):
+	snr_wlens = np.array(pick_params.snr_wlens)
+	wlen_search = pick_params.wlen_search
+	stepsize = pick_params.stepsize
+
+	picks = []
+	for tr, ptime in zip(stcomp, pick_times_utc):
+		picks.append(tr.make_pick(ptime, wlen_search,
+					stepsize, snr_wlens, phase_hint=phase))
+
+	return picks
+
+
+def picks_to_dict(picks):
+	pd = {}
+	for p in picks:
+		key = p.waveform_id.get_seed_string()
+		if key not in pd:
+			pd[key] = []
+		pd[key].append(p.time)
+	return pd
+
 
 def repick_using_snr(sig, ipick, wlen_search, stepsize, snr_wlens):
 	origin_inds, snrs = sliding_snr(sig, ipick, wlen_search, stepsize, snr_wlens)
