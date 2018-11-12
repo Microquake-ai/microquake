@@ -364,12 +364,12 @@ def read_NLL_grid(base_name):
         logger.error('error reading %s' % base_name + '.hdr')
 
     # Read binary buffer
-    gdata = np.fromfile(base_name + '.buf', dtype='f4')
+    gdata = np.fromfile(base_name + '.buf', dtype=np.float32)
     gdata = gdata.reshape(head.shape)
     if head.grid_type == 'SLOW_LEN':
         gdata = head.spacing / gdata
         head.grid_type = 'VELOCITY'
-    gdata = gdata.astype(np.double)
+        
     return GridData(gdata, spacing=head.spacing, origin=head.origin,
             seed=head.seed, seed_label=head.label, grid_type=head.grid_type)
 

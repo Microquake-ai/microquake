@@ -96,7 +96,6 @@ def ones(shape, origin=(0, 0, 0), spacing=1, **kwargs):
     :rtype: ~microquake.core.data.grid.GridData
     """
 
-
     data = np.ones(shape)
     return GridData(data, origin=origin, spacing=spacing)
     
@@ -237,7 +236,7 @@ class GridData(object):
         self.__dict__[attr] = value
 
     def __repr__(self):
-        repr_str =  """
+        repr_str = """
         spacing: %s
         origin : %s
         shape  : %s
@@ -250,12 +249,7 @@ class GridData(object):
         if isinstance(other, GridData):
             if self.check_compatibility(other):
                 return self.data * other.data
-        else:
-            try:
-                return self.data * other
-            except:
-                pass
-
+        
     def transform_to(self, values):
         """
         transform model space coordinates into grid space coordinates
@@ -263,8 +257,7 @@ class GridData(object):
         :type values: tuple
         :rtype: tuple
         """
-        from numpy import array
-        coords = (values - self.origin)/self.spacing
+        coords = (values - self.origin) / self.spacing
 
         return coords
 
@@ -282,10 +275,9 @@ class GridData(object):
         check if two grids are compatible, i.e., have the same shape, spacing
         and origin
         """
-        from numpy import all
         return (self.shape == other.shape) and \
                (self.spacing == other.spacing) and \
-                all(self.origin == other.origin)
+                np.all(self.origin == other.origin)
 
     def __get_shape__(self):
         """
@@ -311,11 +303,10 @@ class GridData(object):
         :returns: True if point is inside the grid
         :rtype: bool
         """
-        from numpy import array, all
         corner1 = self.origin
-        corner2 = self.origin + self.spacing * array(self.shape)
+        corner2 = self.origin + self.spacing * np.array(self.shape)
 
-        return all((point >= corner1) & (point <= corner2))
+        return np.all((point >= corner1) & (point <= corner2))
 
     def fill_homogeneous(self, value):
         """
