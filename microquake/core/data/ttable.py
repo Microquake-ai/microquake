@@ -19,8 +19,10 @@ class H5TTable(object):
             self.set_dataset(dset_key)
 
         self.stations = self.hf['stations'][:].astype('U4')
+        self._stadict = dict(zip(self.stations, np.arange(len(self.stations))))
+
         self.locations = self.hf['locations'][:]
-        # self.coords = self.hf['locations'][:]
+        self.coords = self.hf['grid_locs'][:]
 
     def set_dataset(self, key):
         if key in self.keys:
@@ -39,6 +41,24 @@ class H5TTable(object):
     @property
     def spacing(self):
         return self.hf.attrs['spacing']
+
+    def index_sta(self, station):
+        return self._stadict[station]
+
+    def icol_to_xyz(self, index):
+        nx, ny, nz = self.shape
+        iz = index % nz
+        iy = ((index - iz) // nz) % ny
+        ix = index // (nz * ny)
+        loc = np.array([ix, iy, iz], dtype=float) * self.spacing + self.origin
+        return loc
+
+    def xyz_to_icol(self, loc):
+        x, y, z = loc
+        ix, iy, iz = ((loc - self.origin) / self.spacing).astype(int)
+        nx, ny, nz = self.shape
+        # return (iz * nx * ny) + (iy * nx) + ix;
+        return int((ix * ny * nz) + (iy * nz) + iz)
 
     def close(self):
         self.hf.close()
