@@ -22,6 +22,59 @@ plugin for reading and writing various waveform format expending
 from microquake.core import logger
 from microquake.core.util.decorator import uncompress_file as uncompress
 import logging
+from struct import unpack
+from datetime import datetime
+from io import BytesIO
+import numpy as np
+
+
+def mseed_date_from_header(block4096):
+
+    vals = unpack('>HHBBBBH', block4096[20:30])
+    year, julday, hour, minute, sec, _, sec_frac = vals
+    tstamp = '%0.4d,%0.3d,%0.2d:%0.2d:%0.2d.%0.4d' % (year, julday, hour, minute, sec, sec_frac)
+    dt = datetime.strptime(tstamp, '%Y,%j,%H:%M:%S.%f')
+    return dt
+
+
+# def mseed_decomposer(stream):
+#     """
+#     Create an mseed files and breaks it 512 bytes mseeds
+#     :param stream: stream data
+#     :type stream: microquake.core.stream.Stream
+#     :return: Dictionary containing a list of keys and the mseed file chunks
+#     """
+
+#     obj = BytesIO()
+#     stream.write(obj, format='MSEED')
+
+#     mseed_byte_array = obj.getvalue()
+
+#     mseed_chunk_size = 4096
+#     keys = []
+#     blobs = []
+
+#     starts = arange(0, len(mseed_byte_array), mseed_chunk_size)
+
+#     for start in starts:
+#         end = start + mseed_chunk_size
+#         chunk = mseed_byte_array[start:end]
+
+#         y = unpack('>H',chunk[20:22])[0]
+#         DoY = unpack('>H', chunk[22:24])[0]
+#         H = unpack('>B', chunk[24:25])[0]
+#         M = unpack('>B', chunk[25:26])[0]
+#         S = unpack('>B', chunk[26:27])[0]
+#         r = unpack('>B', chunk[27:28])[0]
+#         ToMS = unpack('>H', chunk[28:30])[0]
+
+#         dt = datetime.strptime('%s/%0.3d %0.2d:%0.2d:%0.2d.%0.3d'
+#                                % (y, DoY, H, M, S, ToMS),
+#                                '%Y/%j %H:%M:%S.%f')
+#         keys.append(dt)
+#         blobs.append(chunk)
+
+#     return {'key': keys, 'blob': blobs}
 
 
 def read_IMS_ASCII(path, net='', **kwargs):
@@ -571,52 +624,4 @@ def read_TEXCEL_CSV(filename, **kwargs):
         tr_z = Trace(data=z / 1000.0, header=stats)
 
     return Stream(traces=[tr_x, tr_y, tr_z])
-
-
-def mseed_decomposer(stream):
-    """
-    Create an mseed files and breaks it 512 bytes mseeds
-    :param stream: stream data
-    :type stream: microquake.core.stream.Stream
-    :return: Dictionary containing a list of keys and the mseed file chunks
-    """
-
-    from struct import unpack, pack
-    from datetime import datetime
-    from io import BytesIO
-    from numpy import arange
-
-    obj = BytesIO()
-    stream.write(obj, format='MSEED')
-
-    mseed_byte_array = obj.getvalue()
-
-    mseed_chunk_size = 4096
-    keys = []
-    blobs = []
-
-    starts = arange(0, len(mseed_byte_array), mseed_chunk_size)
-
-    for start in starts:
-        end = start + mseed_chunk_size
-        chunk = mseed_byte_array[start:end]
-
-        y = unpack('>H',chunk[20:22])[0]
-        DoY = unpack('>H', chunk[22:24])[0]
-        H = unpack('>B', chunk[24:25])[0]
-        M = unpack('>B', chunk[25:26])[0]
-        S = unpack('>B', chunk[26:27])[0]
-        r = unpack('>B', chunk[27:28])[0]
-        ToMS = unpack('>H', chunk[28:30])[0]
-
-        dt = datetime.strptime('%s/%0.3d %0.2d:%0.2d:%0.2d.%0.3d'
-                               % (y, DoY, H, M, S, ToMS),
-                               '%Y/%j %H:%M:%S.%f')
-        keys.append(dt)
-        blobs.append(chunk)
-
-    return {'key': keys, 'blob': blobs}
-
-
-
 

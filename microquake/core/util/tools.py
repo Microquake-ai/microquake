@@ -412,3 +412,63 @@ def envelope(data):
     FFT[1: slen // 2] *= 2
     FFT[slen // 2:] = 0
     return np.abs(ifft(FFT))
+
+
+def read_csv(filename, site_code='', **kwargs):
+    """
+    read a csv file containing sensor information
+    The first line of the csv file should contain the site name
+    The expected file structure is as follows and should contain one header line
+    <network>, <sensor name>, <sensor type>, <no component>, x, y, z
+    where x, y and z represents the location of the sensors expressed in a local
+    coordinate system. Note that the <sensor name> is limited to four character
+    because of NonLinLoc limitations.
+
+    example of file strucuture
+
+    1. <Network>, <sensor long name>, <sensor code>, <sensor type>, <gain>,
+    <sensitivity>, <sx>, <sy>, <sz>, <channel 1 code>, <azimuth>, <dip>,
+    <channel 2 code>, <azimuth>, <dip>, <channel 3 code>, <azimuth>, <dip>
+
+    :param filename: path to a csv file
+    :type filename: string
+    :param site_code: site code
+    :type site_code: string
+    :param has_header: whether or not the input file has an header
+    :type has_header: bool
+    :rparam: site object
+    :rtype: ~microquake.core.station.Site
+    """
+
+    from microquake.core.data.station import Site, Network, Station, Channel
+    from numpy import loadtxt
+
+    data = loadtxt(filename, delimiter=',', skiprows=1, dtype=object)
+    stations = []
+
+    for i, tmp in enumerate(data):
+
+        nc, long_name, sc, st, smt, gain, sensitivity = tmp[:7]
+        staloc = tmp[7:10].astype(float)
+        orients = tmp[10:22].reshape(3, 4)
+
+        channels = []
+        for comp in orients:
+            if not comp[0]:
+                continue
+            xyz = comp[1:4].astype(float)
+            channel = Channel(code=comp[0])
+            channel.orientation = xyz
+            channels.append(channel)
+
+        station = Station(long_name=long_name, code=sc, sensor_type=st,
+                          motion_type=smt, gain=float(gain),
+                          sensitivity=float(sensitivity), loc=staloc,
+                          channels=channels)
+
+        stations.append(station)
+
+    networks = [Network(code=nc, stations=stations)]
+    site = Site(code=site_code, networks=networks)
+
+    return site
