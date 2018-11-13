@@ -18,7 +18,7 @@ plugin for reading and writing Site object into various format
 """
 from microquake.core import logger
 
-def read_csv(filename, site_code='', has_header=False, **kwargs):
+def read_csv(filename, site_code='', has_header=True, **kwargs):
     """
     read a csv file containing sensor information
     The first line of the csv file should contain the site name

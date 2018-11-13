@@ -1009,9 +1009,9 @@ def moment_magnitude(stream, evt, site, vp, vs, ttpath=None,
     :param site: network information (contains stations information)
     :type site: microquake.station.Site
     :param vp: P-wave velocity
-    :type vp: float or microquake.core.data.GridData
-    :param vs: S-wave velocity
-    :type vs: float or microquake.core.data.GridData
+    :type vp: float
+    :param vs: S-wave velocity at the source
+    :type vs: float
     :param ttpath: path to traveltime data (optional)
     :type ttpath: string
     :param magType: type of magnitude (optional)
@@ -1044,13 +1044,8 @@ def moment_magnitude(stream, evt, site, vp, vs, ttpath=None,
 
         evloc = np.array([origin.x, origin.y, origin.z])
 
-        if not ((type(vp) == np.float) or (type(vp) == np.int) or
-                (type(vp) == np.float64)):
-            vpsrc = vp.interpolate(evloc, grid_coordinate=False)
-            vssrc = vs.interpolate(evloc, grid_coordinate=False)
-        else:
-            vpsrc = vp
-            vssrc = vs
+        vpsrc = vp
+        vssrc = vs
 
         Mw = []
         Mw_P = []
