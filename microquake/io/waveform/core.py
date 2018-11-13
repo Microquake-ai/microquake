@@ -32,7 +32,8 @@ def mseed_date_from_header(block4096):
 
     vals = unpack('>HHBBBBH', block4096[20:30])
     year, julday, hour, minute, sec, _, sec_frac = vals
-    tstamp = '%0.4d,%0.3d,%0.2d:%0.2d:%0.2d.%0.4d' % (year, julday, hour, minute, sec, sec_frac)
+    tstamp = '%0.4d,%0.3d,%0.2d:%0.2d:%0.2d.%0.4d' \
+             % (year, julday, hour, minute, sec, sec_frac)
     dt = datetime.strptime(tstamp, '%Y,%j,%H:%M:%S.%f')
     return dt
 
@@ -512,7 +513,7 @@ def read_hsf(filename, **kwargs):
 
 
 @uncompress
-def read_TEXCEL_CSV(filename, **kwargs):
+def read_texcel_csv(filename, **kwargs):
     """
     Reads a texcel csv file and returns a microquake Stream object.
 
