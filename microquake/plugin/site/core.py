@@ -54,7 +54,7 @@ def read_csv(filename, site_code='', **kwargs):
     for i, tmp in enumerate(data):
 
         nc, long_name, sc, st, smt, gain, sensitivity = tmp[:7]
-        staloc = tmp[7:9]
+        staloc = tmp[7:10]
         orients = tmp[10:22].reshape(3, 4)
 
         channels = []
