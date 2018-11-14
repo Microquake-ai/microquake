@@ -13,11 +13,15 @@ def make_picks(stcomp, pick_times_utc, phase, pick_params):
     snr_wlens = np.array(pick_params.snr_wlens)
     wlen_search = pick_params.wlen_search
     stepsize = pick_params.stepsize
+    edge_time = wlen_search / 2 + np.max(snr_wlens)
 
     picks = []
     for tr, ptime in zip(stcomp, pick_times_utc):
-        picks.append(tr.make_pick(ptime, wlen_search,
-                    stepsize, snr_wlens, phase_hint=phase))
+
+        if tr.time_within(ptime, edge_time) is True:
+
+            picks.append(tr.make_pick(ptime, wlen_search,
+                        stepsize, snr_wlens, phase_hint=phase))
 
     return picks
 

@@ -71,4 +71,11 @@ class Trace(obstrace.Trace):
 
         return pick
 
+    def time_within(self, utime, edge_buf=0.0):
+        within = True
+        if (utime - edge_buf) < self.stats.starttime:
+            within = False
+        elif (utime + edge_buf) > self.stats.endtime:
+            within = False
+        return within
 
