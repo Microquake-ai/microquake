@@ -55,7 +55,7 @@ class Stream(obsstream.Stream):
 
         """
         groups = self.chan_groups()
-        dat, t0 = self.as_array()
+        dat, sr, t0 = self.as_array()
         comp = tools.create_composite(dat, groups)
 
         stnew = Stream()
