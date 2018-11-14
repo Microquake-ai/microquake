@@ -21,7 +21,6 @@ import obspy.core.trace as obstrace
 from obspy.core.trace import Stats
 from microquake.core.util import tools
 from microquake.core.event import Pick, WaveformStreamID
-
 import numpy as np
 
 
@@ -71,3 +70,5 @@ class Trace(obstrace.Trace):
         pick = Pick(time=self.index_to_time(newpick), waveform_id=waveform_id, phase_hint=phase_hint, evaluation_mode='automatic', evaluation_status='preliminary', method='snr', snr=snr)
 
         return pick
+
+
