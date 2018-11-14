@@ -16,16 +16,15 @@ Expansion of the obspy.core.stream module
     GNU Lesser General Public License, Version 3
     (http://www.gnu.org/copyleft/lesser.html)
 """
-
+import numpy as np
+from io import BytesIO
 import obspy.core.stream as obsstream
 from microquake.core.trace import Trace
-from microquake.core.util.decorator import uncompress_file as uncompress
-import numpy as np
 from microquake.core.util import ENTRY_POINTS
 from microquake.core.util import tools
 from pkg_resources import load_entry_point
-
-from obspy.core.utcdatetime import UTCDateTime
+# from obspy.core.utcdatetime import UTCDateTime
+# from microquake.core.util.decorator import uncompress_file as uncompress
 
 
 class Stream(obsstream.Stream):
@@ -112,6 +111,11 @@ class Stream(obsstream.Stream):
 
     write.__doc__ = obsstream.Stream.write.__doc__.replace('obspy',
                                                          'microquake')
+
+    def write_bytes(self):
+        buf = BytesIO()
+        self.write(buf, format='MSEED')
+        return buf.getvalue()
 
     def valid(self, **kwargs):
         return is_valid(self, return_stream=True)
