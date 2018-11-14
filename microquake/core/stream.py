@@ -70,13 +70,13 @@ class Stream(obsstream.Stream):
 
     def as_array(self, wlen_sec=None, taplen=0.05):
         t0 = np.min([tr.stats.starttime for tr in self])
+        sr = self[0].stats.sampling_rate
         if wlen_sec is not None:
-            sr = self[0].stats.sampling_rate
             npts_fix = int(wlen_sec * sr)
         else:
             npts_fix = int(np.max([len(tr.data) for tr in self]))
 
-        return tools.stream_to_array(self, t0, npts_fix, taplen=taplen), t0
+        return tools.stream_to_array(self, t0, npts_fix, taplen=taplen), sr, t0
 
     def chan_groups(self):
         chanmap = self.chanmap()
@@ -139,10 +139,14 @@ class Stream(obsstream.Stream):
 
         return np.unique([tr.stats.station for tr in self])
 
-    def zpad_sta_names(self):
+    def zpad_names(self):
         for tr in self.traces:
             tr.stats.station = tr.stats.station.zfill(3)
         self.sort()
+
+    def zstrip_names(self):
+        for tr in self.traces:
+            tr.stats.station = tr.stats.station.lstrip('0')
 
     def plot(self, *args, **kwargs):
         """
