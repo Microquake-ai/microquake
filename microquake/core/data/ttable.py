@@ -42,8 +42,11 @@ class H5TTable(object):
     def spacing(self):
         return self.hf.attrs['spacing']
 
-    def index_sta(self, station):
-        return self._stadict[station]
+    def index_sta(self, stations):
+        if isinstance(stations, (list, np.ndarray)):
+            return np.array([self._stadict[sta] for sta in stations])
+        else:
+            return self._stadict[stations]
 
     def icol_to_xyz(self, index):
         nx, ny, nz = self.shape

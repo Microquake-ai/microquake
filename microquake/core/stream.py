@@ -139,6 +139,11 @@ class Stream(obsstream.Stream):
 
         return np.unique([tr.stats.station for tr in self])
 
+    def zpad_sta_names(self):
+        for tr in self.traces:
+            tr.stats.station = tr.stats.station.zfill(3)
+        self.sort()
+
     def plot(self, *args, **kwargs):
         """
         see Obspy stream.plot()
