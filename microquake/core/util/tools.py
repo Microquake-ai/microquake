@@ -1,7 +1,6 @@
 import numpy as np
 from scipy.fftpack import fft, ifft, fftfreq
 from scipy.signal import sosfilt, zpk2sos, iirfilter
-import matplotlib.pyplot as plt
 from datetime import datetime, timedelta
 
 
@@ -13,11 +12,15 @@ def make_picks(stcomp, pick_times_utc, phase, pick_params):
     snr_wlens = np.array(pick_params.snr_wlens)
     wlen_search = pick_params.wlen_search
     stepsize = pick_params.stepsize
+    edge_time = wlen_search / 2 + np.max(snr_wlens)
 
     picks = []
     for tr, ptime in zip(stcomp, pick_times_utc):
-        picks.append(tr.make_pick(ptime, wlen_search,
-                    stepsize, snr_wlens, phase_hint=phase))
+
+        if tr.time_within(ptime, edge_time) is True:
+
+            picks.append(tr.make_pick(ptime, wlen_search,
+                        stepsize, snr_wlens, phase_hint=phase))
 
     return picks
 
@@ -55,6 +58,7 @@ def sliding_snr(sig, ipick, wlen_search, stepsize, snr_wlens, plot=False):
     snrs = 10 * np.log10(snrs)
 
     if plot:
+        import matplotlib.pyplot as plt
         plt.plot(sig / np.max(sig))
         plt.plot(origin_inds, snrs)
         plt.axvline(ipick, color='green', label='pick_old')

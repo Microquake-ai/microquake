@@ -21,61 +21,50 @@ plugin for reading and writing various waveform format expending
 
 from microquake.core import logger
 from microquake.core.util.decorator import uncompress_file as uncompress
-import logging
+# import logging
 from struct import unpack
 from datetime import datetime
-from io import BytesIO
+# from io import BytesIO
 import numpy as np
+from microquake.core.util.tools import datetime_to_epoch_sec
+
+
+def decompose_mseed(mseed_bytes, mseed_reclen=4096):
+    """
+    Return dict with key as epoch starttime and val
+    as concatenated mseed blocks which share that
+    starttime.
+    """
+    starts = np.arange(0, len(mseed_bytes), mseed_reclen)
+    dchunks = {}
+
+    for start in starts:
+        end = start + mseed_reclen
+        chunk = mseed_bytes[start:end]
+        dt = mseed_date_from_header(chunk)
+        key = int(datetime_to_epoch_sec(dt) * 1000)
+        
+        if key not in dchunks:
+            dchunks[key] = b''
+        dchunks[key] += chunk
+        
+    return dchunks
 
 
 def mseed_date_from_header(block4096):
+    # mseed bytes 20 to 30 are date in header
+    # YYYY The year with the century (e.g., 1987)
+    # DDD  The julian day of the year (January 1 is 001)
+    # HH   The hour of the day UTC (00—23)
+    # MM   The minute of the day (00—59)
+    # SS   The seconds (00—60; use 60 only to note leap seconds)
+    # FFFF The fraction of a second (to .0001 seconds resolution)
 
     vals = unpack('>HHBBBBH', block4096[20:30])
     year, julday, hour, minute, sec, _, sec_frac = vals
-    tstamp = '%0.4d,%0.3d,%0.2d:%0.2d:%0.2d.%0.4d' \
-             % (year, julday, hour, minute, sec, sec_frac)
+    tstamp = '%0.4d,%0.3d,%0.2d:%0.2d:%0.2d.%0.4d' % (year, julday, hour, minute, sec, sec_frac)
     dt = datetime.strptime(tstamp, '%Y,%j,%H:%M:%S.%f')
     return dt
-
-
-# def mseed_decomposer(stream):
-#     """
-#     Create an mseed files and breaks it 512 bytes mseeds
-#     :param stream: stream data
-#     :type stream: microquake.core.stream.Stream
-#     :return: Dictionary containing a list of keys and the mseed file chunks
-#     """
-
-#     obj = BytesIO()
-#     stream.write(obj, format='MSEED')
-
-#     mseed_byte_array = obj.getvalue()
-
-#     mseed_chunk_size = 4096
-#     keys = []
-#     blobs = []
-
-#     starts = arange(0, len(mseed_byte_array), mseed_chunk_size)
-
-#     for start in starts:
-#         end = start + mseed_chunk_size
-#         chunk = mseed_byte_array[start:end]
-
-#         y = unpack('>H',chunk[20:22])[0]
-#         DoY = unpack('>H', chunk[22:24])[0]
-#         H = unpack('>B', chunk[24:25])[0]
-#         M = unpack('>B', chunk[25:26])[0]
-#         S = unpack('>B', chunk[26:27])[0]
-#         r = unpack('>B', chunk[27:28])[0]
-#         ToMS = unpack('>H', chunk[28:30])[0]
-
-#         dt = datetime.strptime('%s/%0.3d %0.2d:%0.2d:%0.2d.%0.3d'
-#                                % (y, DoY, H, M, S, ToMS),
-#                                '%Y/%j %H:%M:%S.%f')
-#         keys.append(dt)
-#         blobs.append(chunk)
-
-#     return {'key': keys, 'blob': blobs}
 
 
 def read_IMS_ASCII(path, net='', **kwargs):

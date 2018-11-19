@@ -16,16 +16,15 @@ Expansion of the obspy.core.stream module
     GNU Lesser General Public License, Version 3
     (http://www.gnu.org/copyleft/lesser.html)
 """
-
+import numpy as np
+from io import BytesIO
 import obspy.core.stream as obsstream
 from microquake.core.trace import Trace
-from microquake.core.util.decorator import uncompress_file as uncompress
-import numpy as np
 from microquake.core.util import ENTRY_POINTS
 from microquake.core.util import tools
 from pkg_resources import load_entry_point
-
-from obspy.core.utcdatetime import UTCDateTime
+# from obspy.core.utcdatetime import UTCDateTime
+# from microquake.core.util.decorator import uncompress_file as uncompress
 
 
 class Stream(obsstream.Stream):
@@ -56,7 +55,7 @@ class Stream(obsstream.Stream):
 
         """
         groups = self.chan_groups()
-        dat, t0 = self.as_array()
+        dat, sr, t0 = self.as_array()
         comp = tools.create_composite(dat, groups)
 
         stnew = Stream()
@@ -71,13 +70,13 @@ class Stream(obsstream.Stream):
 
     def as_array(self, wlen_sec=None, taplen=0.05):
         t0 = np.min([tr.stats.starttime for tr in self])
+        sr = self[0].stats.sampling_rate
         if wlen_sec is not None:
-            sr = self[0].stats.sampling_rate
             npts_fix = int(wlen_sec * sr)
         else:
             npts_fix = int(np.max([len(tr.data) for tr in self]))
 
-        return tools.stream_to_array(self, t0, npts_fix, taplen=taplen), t0
+        return tools.stream_to_array(self, t0, npts_fix, taplen=taplen), sr, t0
 
     def chan_groups(self):
         chanmap = self.chanmap()
@@ -113,6 +112,11 @@ class Stream(obsstream.Stream):
     write.__doc__ = obsstream.Stream.write.__doc__.replace('obspy',
                                                          'microquake')
 
+    def write_bytes(self):
+        buf = BytesIO()
+        self.write(buf, format='MSEED')
+        return buf.getvalue()
+
     def valid(self, **kwargs):
         return is_valid(self, return_stream=True)
 
@@ -134,6 +138,15 @@ class Stream(obsstream.Stream):
     def unique_stations(self):
 
         return np.unique([tr.stats.station for tr in self])
+
+    def zpad_names(self):
+        for tr in self.traces:
+            tr.stats.station = tr.stats.station.zfill(3)
+        self.sort()
+
+    def zstrip_names(self):
+        for tr in self.traces:
+            tr.stats.station = tr.stats.station.lstrip('0')
 
     def plot(self, *args, **kwargs):
         """
