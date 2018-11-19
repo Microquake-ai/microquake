@@ -128,11 +128,7 @@ class EventDB:
             ev['y'] = origin.y
             ev['z'] = origin.z
             ev['time'] = int(np.float64(UTCDateTime(origin.time.datetime).timestamp) * 1e9)
-            if origin.origin_uncertainty:
-                if origin.origin_uncertainty.confidence_ellipsoid:
-                    confidence_ellipsoid = \
-                        origin.origin_uncertainty.confidence_ellipsoid
-                    ev['uncertainty'] = confidence_ellipsoid.semi_major_axis_length
+            ev['uncertainty'] = origin.uncertainty
             ev['evaluation_mode'] = origin.evaluation_mode
             ev['status'] = getattr(origin, 'evaluation_status', 'not_picked')
             ev['event_type'] = getattr(event, 'event_type', 'not_reported')
