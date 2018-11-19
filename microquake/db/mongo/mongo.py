@@ -126,7 +126,9 @@ class EventDB:
             ev['x'] = origin.x
             ev['y'] = origin.y
             ev['z'] = origin.z
-            ev['time'] = int(np.float64(UTCDateTime(origin.time.datetime).timestamp) * 1e9)
+            ev['Time_UTC'] = origin.time
+            ev['time_epoch'] = int(np.float64(UTCDateTime(
+                origin.time.datetime).timestamp) * 1e9)
             ev['uncertainty'] = origin.uncertainty
             ev['evaluation_mode'] = origin.evaluation_mode
             ev['status'] = getattr(origin, 'evaluation_status', 'not_picked')
@@ -139,10 +141,12 @@ class EventDB:
                 if not arrival:
                     continue
                 ct += 1
-# MTH: not every arrival has a time_residual!
-                #sqr += arrival.time_residual ** 2
-            #rms = np.sqrt(np.mean(sqr))
-            rms = -9.
+                sqr += arrival.time_residual ** 2
+
+            if sqr != 0:
+                rms = np.sqrt(np.mean(sqr))
+            else:
+                rms = None
 
             ev['time_residual'] = rms
             ev['npick'] = len(origin.arrivals)
@@ -153,7 +157,7 @@ class EventDB:
         else:
             ev['magnitude'] = None
 
-        #ev['encoded_quakeml'] = EventDB.encode_event(event)
+        # ev['encoded_quakeml'] = EventDB.encode_event(event)
 
         return ev
 
