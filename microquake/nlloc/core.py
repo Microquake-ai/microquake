@@ -201,7 +201,7 @@ def read_nlloc_hypocenter_file(filename, picks=None,
         points = read_scatter_file(filename.replace('.hyp','.scat'))
 
         origin.arrivals = [arr for arr in arrivals]
-        origin.scatter = str(points)
+        origin.scatter = points
 
         oq.associated_station_count = len(np.unique(stations))
 
