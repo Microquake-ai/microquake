@@ -1,7 +1,6 @@
 import numpy as np
 from scipy.fftpack import fft, ifft, fftfreq
 from scipy.signal import sosfilt, zpk2sos, iirfilter
-import matplotlib.pyplot as plt
 from datetime import datetime, timedelta
 
 
@@ -59,6 +58,7 @@ def sliding_snr(sig, ipick, wlen_search, stepsize, snr_wlens, plot=False):
     snrs = 10 * np.log10(snrs)
 
     if plot:
+        import matplotlib.pyplot as plt
         plt.plot(sig / np.max(sig))
         plt.plot(origin_inds, snrs)
         plt.axvline(ipick, color='green', label='pick_old')

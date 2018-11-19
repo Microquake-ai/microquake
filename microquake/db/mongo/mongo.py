@@ -25,9 +25,8 @@ import json
 from bson import ObjectId
 from obspy.core.utcdatetime import UTCDateTime
 from pymongo.bulk import BulkWriteError
-#from microquake.core.util import logger
 
-#log = log_handler.get_logger("mongoDB", 'spp_api.log')
+# log = log_handler.get_logger("mongoDB", 'spp_api.log')
 
 
 class MongoJSONEncoder(json.JSONEncoder):

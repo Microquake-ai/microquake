@@ -379,3 +379,16 @@ class GridData(object):
             return map_coordinates(self.data, coord.T, mode=mode, *args,
                                    **kwargs)
 
+    def fill_from_z_gradient(self, vals, zvals):
+        data = self.data
+        origin = self.origin
+        zinds = [int(self.transform_to([origin[0], origin[1], z_])[2]) for z_ in zvals]
+        # print(zinds, origin)
+
+        data[:, :, zinds[0]:] = vals[0]
+        data[:, :, :zinds[-1]] = vals[-1]
+
+        for i in range(len(zinds) - 1):
+            # print(i)
+            fill = np.linspace(vals[i + 1], vals[i], zinds[i] - zinds[i + 1])
+            data[:, :, zinds[i + 1]:zinds[i]] = fill
