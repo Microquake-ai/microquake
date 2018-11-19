@@ -535,7 +535,6 @@ class NLL(object):
         :type base_folder: str
         """
         self.project_code = project_code
-        self.project_folder = os.getcwd()
         self.base_folder = base_folder
 
         self.ctrlfile = NLLControl()
@@ -577,7 +576,6 @@ class NLL(object):
 
     def _prepare_project_folder(self):
 
-        self.project_folder = os.getcwd()
         self.worker_folder = tempfile.mkdtemp(dir=self.base_folder).split('/')[-1]
 
         os.mkdir(os.path.join(self.base_folder, self.worker_folder, 'loc'))
@@ -597,7 +595,7 @@ class NLL(object):
         self._clean_outputs()
         tmp = '%s/%s' % (self.base_folder, self.worker_folder)
         shutil.rmtree(tmp)
-        # os.chdir(self.project_folder)
+        
 
     def init_header_file(self):
         """
@@ -698,7 +696,6 @@ class NLL(object):
 
         logger.debug(os.getcwd())
         self._make_base_folder()
-        self.project_folder = os.getcwd()
         logger.debug(os.getcwd())
 
         self.hdrfile.write('%s/run/%s.hdr' % (self.base_folder, self.base_name))
