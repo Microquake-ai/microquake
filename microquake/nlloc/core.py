@@ -45,6 +45,8 @@ def read_nlloc_hypocenter_file(filename, picks=None,
     :rtype: ~microquake.core.event.Catalog
     """
     from microquake.core import event
+    from microquake.simul.eik import ray_tracer
+    from microquake.core.data.grid import read_grid
     from glob import glob
     cat = event.Catalog()
 
@@ -70,34 +72,19 @@ def read_nlloc_hypocenter_file(filename, picks=None,
         tme = UTCDateTime(tme)
 
         if 'REJECTED' in all_lines[0]:
-            # origin.evaluation_status = 'rejected'
             evaluation_status = 'rejected'
             logger.warning('Event located on grid boundary')
         else:
             evaluation_status = evaluation_status
-            # origin.evaluation_status = evaluation_status
 
         hyp_x = float(hyp[2]) * 1000
         hyp_y = float(hyp[4]) * 1000
         hyp_z = float(hyp[6]) * 1000
 
-        # adding a new origin
-        #method = '%s %s' % (sign[3], search[1])
         method = '%s %s' % ("NLLOC", search[1])
 
-        # origin.x = hyp_x
-        # origin.y = hyp_y
-        # origin.z = hyp_z
-        # origin.time = tme
-        # origin.evaluation_mode = evaluation_mode # why automatic here
-        # origin.epicenter_fixed = int(0)
-        # origin.method = method
-        # creation_info = event.CreationInfo()
         creation_info = event.CreationInfo(author='microquake',
                                            creation_time=UTCDateTime.now())
-
-        # origin.creation_info.author = 'microquake'
-        # origin.creation_info.creation_time = UTCDateTime.now()
 
         origin = event.Origin(x=hyp_x, y=hyp_y, z=hyp_z, time=tme,
                               evaluation_mode=evaluation_mode,
@@ -110,7 +97,6 @@ def read_nlloc_hypocenter_file(filename, picks=None,
         yminor = np.cos(float(stat[22]) * np.pi / 180) * np.cos(float(stat[20])
                                                                 * np.pi / 180)
         zminor = np.sin(float(stat[22]) * np.pi / 180)
-
         xinter = np.cos(float(stat[28]) * np.pi / 180) * np.sin(float(stat[26])
                                                                 * np.pi / 180)
         yinter = np.cos(float(stat[28]) * np.pi / 180) * np.cos(float(stat[26])
@@ -126,12 +112,11 @@ def read_nlloc_hypocenter_file(filename, picks=None,
         major_dip = np.arctan(major[2] / np.linalg.norm(major[0:2]))
         # MTH: obspy will raise error if you try to set float attr to nan below
         if np.isnan(major_az):
-            major_az = -9. 
+            major_az = None
         if np.isnan(major_dip):
-            major_dip = -9. 
+            major_dip = None
 
         ou = event.OriginUncertainty()
-
         el = event.ConfidenceEllipsoid()
         el.semi_minor_axis_length = float(stat[24]) * 1000
         el.semi_intermediate_axis_length = float(stat[30]) * 1000
@@ -167,7 +152,6 @@ def read_nlloc_hypocenter_file(filename, picks=None,
                 sx = float(tmp[18])
                 sy = float(tmp[19])
                 sz = float(tmp[20])
-                sdist = float(tmp[21])
                 azi = float(tmp[23])
                 toa = float(tmp[24])
 
@@ -196,7 +180,6 @@ def read_nlloc_hypocenter_file(filename, picks=None,
                 oq.associated_phase_count += 1
 
         stations = np.array(stations)
-        # phases = np.array(phases)
 
         points = read_scatter_file(filename.replace('.hyp','.scat'))
 
@@ -683,7 +666,8 @@ class NLL(object):
             self.ctrlfile.vgout = '%s/model/%s.S.mod.hdr' % (self.base_folder,
                                                              self.base_name)
 
-    def prepare(self, create_time_grids=True, tar_files=False):
+    def prepare(self, create_time_grids=True, create_angle_grids=True,
+                create_distance_grids=False, tar_files=False):
         """
         Creates the NLL folder and prepare the NLL configuration files based on the
         given configuration
@@ -705,34 +689,14 @@ class NLL(object):
         if create_time_grids:
             self._create_time_grids()
 
+        if create_angle_grids:
+            self._create_angle_grids()
+
+        if create_distance_grids:
+            self._create_distance_grids()
+
         if tar_files:
             self.tar_files()
-
-    def _save_time_grid(self, station, velocity, phase='P'):
-        """
-        calculate and save a travel time grid in the <time> directory
-        :param station: a station to use as a seed to calculate the travel time
-        grid
-        :type station: ~microquake.core.data.station.Station
-        :param velocity: velocity grid
-        :type velocity: ~microquake.core.data.grid.GridData
-        :param phase: the phase associated with the velocity 'P' or 'S' (not
-        case sensitive)
-        :type phase: str
-        """
-
-        from microquake.simul import eik
-        stloc = station.loc
-        phase = phase.upper()
-        tt_grid = eik.eikonal_solver(velocity, stloc)
-        tt_grid.write('%s/time/%s.%s.%s.time' % (self.base_folder,
-            self.base_name, phase, station.code), format='NLLOC')
-
-        # calculating the azimuth and take off angles
-        az, toa = eik.angles(tt_grid)
-        toa.write('%s/time/%s.%s.%s.angle' % (self.base_folder,
-            self.base_name, phase, station.code), format='NLLOC')
-        return
 
     def _create_time_grids(self):
         self.ctrlfile.phase = 'P'
@@ -765,22 +729,17 @@ class NLL(object):
             cmd = 'Grid2Time %s/run/%s.in' % (self.base_folder, self.base_name)
             os.system(cmd)
 
-            # overriding angle grids
-            # the angle grids generated by NLLoc need to be overriden as angle
-            # are always 0
-            from glob import glob
-            time_files = glob('%s/time/*time*.hdr' % self.base_folder)
-            self._create_angle_grid(time_files)
-
-    def _create_angle_grid(self, time_files):
+    def _create_angle_grids(self):
         """
         calculate and write angle grids from travel time grids
-        :param time_files: list of files containing travel time information
-        :type time_files: iterable of travel time file paths
-        :param SparkContext: spark context to run operation in parallel
-        :type SparkContext: pyspark.SparkContext
         """
-        map(self._save_angle_grid, time_files)
+
+        from glob import glob
+        time_files = glob('%s/time/*time*.hdr' % self.base_folder)
+
+        for time_file in time_files:
+            self._save_angle_grid(time_file)
+        # map(self._save_angle_grid, time_files)
 
     def _save_angle_grid(self, time_file):
         """
@@ -788,15 +747,61 @@ class NLL(object):
         """
         from microquake.simul.eik import angles
         from microquake.core import read_grid
+        from IPython.core.debugger import Tracer
         # reading the travel time grid
         ifile = time_file
         ttg = read_grid(ifile, format='NLLOC')
         az, toa = angles(ttg)
         tmp = ifile.split('/')
         tmp[-1] = tmp[-1].replace('time', 'take_off')
+        # Tracer()()
         ofname = '/'.join(tmp)
         toa.write(ofname, format='NLLOC')
         az.write(ofname.replace('take_off', 'azimuth'), format='NLLOC')
+
+    def _create_distance_grids(self):
+        """
+        create distance grids using the ray tracer. Will take long time...
+        Returns:
+
+        """
+        from glob import glob
+        from microquake.core.data.grid import read_grid
+        from numpy import arange, meshgrid, zeros_like
+        from microquake.simul.eik import ray_tracer
+        from time import time
+        time_files = glob('%s/time/*time*.hdr' % self.base_folder)
+
+        ttg = read_grid(time_files[0], format='NLLOC')
+        x = arange(0, ttg.shape[0])
+        y = arange(0, ttg.shape[1])
+        z = arange(0, ttg.shape[2])
+
+        X, Y, Z = meshgrid(x, y, z)
+        X = X.reshape(np.product(ttg.shape))
+        Y = Y.reshape(np.product(ttg.shape))
+        Z = Z.reshape(np.product(ttg.shape))
+
+        out_array = zeros_like(ttg.data)
+
+        for time_file in time_files:
+            ttg = read_grid(time_file, format='NLLOC')
+            for coord in zip(X, Y, Z):
+                st = time()
+                ray = ray_tracer(ttg, coord, grid_coordinates=True,
+                                 max_iter=100)
+                et = time()
+                print(et - st)
+                out_array[coord[0], coord[1], coord[2]] = ray.length()
+
+            tmp = time_file.split('/')
+            tmp[-1] = tmp[-1].replace('time', 'distance')
+            ofname = '/'.join(tmp)
+
+            ttg.type = 'DISTANCE'
+            ttg.write(ofname, format='NLLOC')
+
+            retur
 
     def tar_files(self):
         # Create tar.gz from the NLL folder
@@ -835,7 +840,6 @@ class NLL(object):
         logger.debug('%s.%s: scan hypo from filename = %s' % (__name__,fname,filename))
 
         if not glob(filename):
-            #self._finishNLL()
             logger.error("%s.%s: location failed" % (__name__,fname))
             return Catalog(events=[evt])
 
@@ -898,21 +902,51 @@ class NLL(object):
                                   pick_error))
         return event
 
-    def read_hyp_loc(self, hypfile, event=None, evaluation_mode='automatic',
-                     evaluation_status='preliminary'):
+    def read_hyp_loc(self, hypfile, event, evaluation_mode='automatic',
+                     evaluation_status='preliminary', use_ray_tracer=True):
         """
         read the hypocenter file generate by the location run
         :param hypfile: path to hypocenter file generated by the NLLoc location
         run
         :type hypfile: str
+        :param event: an event object with picks
+        :type event: microquake.core.Event.event
+        :param evaluation_mode: evaluation mode
+        :type evaluation_mode: str
+        :param evaluation_status: evaluation status
+        :type evaluation_status: str
+        :param use_ray_tracer: if true use ray tracer to measure
+        event-station distance (default: True)
+        :type use_ray_tracer: bool
         :rtype: ~microquake.core.event.Catalog
         """
         from microquake.core import read_grid
-        from numpy import pi
+        from microquake.simul.eik import ray_tracer
+        from time import time
 
         origin = read_nlloc_hypocenter_file(hypfile, event.picks,
                                             evaluation_mode=evaluation_mode,
                                             evaluation_status=evaluation_status)
+
+        logger.info('ray tracing')
+        st = time()
+        if use_ray_tracer:
+            for arrival in origin.arrivals:
+                sensor_id = arrival.get_pick().waveform_id.station_code
+                phase = arrival.phase
+
+                fname = '%s.%s.%s.time' % (self.base_name, phase, sensor_id)
+
+                fpath = os.path.join(self.base_folder, 'time', fname)
+
+                ttg = read_grid(fpath, format='NLLOC')
+                ray = ray_tracer(ttg, origin.loc, grid_coordinates=False)
+
+                arrival.distance = ray.length()
+                arrival.ray = ray.nodes
+        et = time()
+        logger.info('completed ray tracing in %0.3f' % (et - st))
+
 
         event.origins.append(origin)
         event.preferred_origin_id = origin.resource_id
@@ -921,9 +955,9 @@ class NLL(object):
 
     def take_off_angle(self, station):
         from microquake.core.data.grid import read_grid
-        fname = '%s/time/%s.P.%s.time' % (self.base_folder, self.base_name,
+        fname = '%s/time/%s.P.%s.take_off' % (self.base_folder, self.base_name,
                                           station)
-        gd = read_grid(fname, format='NLLOC')
+        return read_grid(fname, format='NLLOC')
 
 
 class NLLHeader(AttribDict):

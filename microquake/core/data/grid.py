@@ -113,7 +113,7 @@ def read_grid(filename, format='PICKLE', **kwargs):
     return read_format(filename, **kwargs)
 
 
-def readBufferOffsets(self, point):
+def read_buffer_offsets(self, point):
 
     ev_offset_grid = [[0, 0, 0], [0, 0, 1], [0, 1, 0], [0, 1, 1],
                       [1, 0, 0], [1, 0, 1], [1, 1, 0], [1, 1, 1]]
@@ -150,7 +150,7 @@ def readBufferOffsets(self, point):
     return points, offsets, interp_needed
 
 
-def readBuffer(self, xi, points, offsets, interp_needed, grid_file):
+def read_buffer(self, xi, points, offsets, interp_needed, grid_file):
 
     values = []  # array of the values of the grid defined at the 8 points
     for o in offsets:
@@ -166,7 +166,7 @@ def readBuffer(self, xi, points, offsets, interp_needed, grid_file):
     return data
 
 
-def homogenous_like(grid_data, value=1):
+def homogeneous_like(grid_data, value=1):
     """
     create an homogeneous grid from a GridData object (grid_data) with the same
     shape, spacing and origin
@@ -354,13 +354,16 @@ class GridData(object):
 
         write_format(self, filename, **kwargs)
 
-    def interpolate(self, coord, grid_coordinate=True, mode='nearest', *args,
+    def interpolate(self, coord, grid_coordinate=True, mode='nearest', order=1,
                     **kwargs):
         """
-        This function interpolate the values at a given point expressed either in grid or absolute coordinates
-        :param coord: Coordinate of the point(s) at which to interpolate either in grid or absolute coordinates
+        This function interpolate the values at a given point expressed
+        either in grid or absolute coordinates
+        :param coord: Coordinate of the point(s) at which to interpolate
+        either in grid or absolute coordinates
         :type coord: list, tuple, numpy.array
-        :param grid_coordinate: whether the coordinates are provided in grid coordinates or not
+        :param grid_coordinate: whether the coordinates are provided in grid
+        coordinates or not
         :type grid_coordinate: bool
         :rtype: numpy.array
         """
@@ -374,15 +377,17 @@ class GridData(object):
             coord = coord[:,np.newaxis]
 
         try:
-            return map_coordinates(self.data, coord, mode=mode, *args, **kwargs)
+            return map_coordinates(self.data, coord, mode=mode, order=order,
+                                   **kwargs)
         except:
-            return map_coordinates(self.data, coord.T, mode=mode, *args,
+            return map_coordinates(self.data, coord.T, mode=mode, order=order,
                                    **kwargs)
 
     def fill_from_z_gradient(self, vals, zvals):
         data = self.data
         origin = self.origin
-        zinds = [int(self.transform_to([origin[0], origin[1], z_])[2]) for z_ in zvals]
+        zinds = [int(self.transform_to([origin[0], origin[1], z_])[2]) for z_
+                 in zvals]
         # print(zinds, origin)
 
         data[:, :, zinds[0]:] = vals[0]

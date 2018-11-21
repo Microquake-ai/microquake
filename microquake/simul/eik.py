@@ -49,13 +49,6 @@ def angles(travel_time):
         return azimuth
 
 
-def RayTracer(*args, **kwargs):
-    """
-    name binding for the ray_tracer function
-    """
-    return ray_tracer(*args, **kwargs)
-
-
 def ray_tracer(travel_time, start, grid_coordinates=False, max_iter=1000):
     """
     This function calculates the ray between a starting point (start) and an end
@@ -78,6 +71,8 @@ def ray_tracer(travel_time, start, grid_coordinates=False, max_iter=1000):
     import numpy as np
     from microquake.core import GridData
     from microquake.core.event import Ray
+    from IPython.core.debugger import Tracer
+    from time import time
 
     if grid_coordinates:
         start = np.array(start)
@@ -88,7 +83,7 @@ def ray_tracer(travel_time, start, grid_coordinates=False, max_iter=1000):
     end = np.array(travel_time.seed)
     start = np.array(start)
 
-    # calculating the gradient at every grid points
+    # calculating the gradient in every dimension at every grid points
     gds_tmp = np.gradient(travel_time.data)
     gds = [GridData(gd, origin=origin, spacing=spacing,) for gd in gds_tmp]
 
@@ -99,8 +94,8 @@ def ray_tracer(travel_time, start, grid_coordinates=False, max_iter=1000):
                          # processing time.
     nodes = [start]
     while dist > spacing / 2:
-        gvect = np.array([gd.interpolate(cloc, grid_coordinate=False)[0] \
-                          for gd in gds])
+        gvect = np.array([gd.interpolate(cloc, grid_coordinate=False)[0] for
+                          gd in gds])
 
         cloc = cloc - gamma * gvect / np.linalg.norm(gvect)
         nodes.append(cloc)
@@ -110,13 +105,6 @@ def ray_tracer(travel_time, start, grid_coordinates=False, max_iter=1000):
 
     ray = Ray(nodes=nodes)
     return ray
-
-
-def EikonalSolver(*args, **kwargs):
-    """
-    same as eikonal_solver, please use eikonal_solver instead
-    """
-    return eikonal_solver(*args, **kwargs)
 
 
 def eikonal_solver(velocity, seed, seed_label, *args, **kwargs):
@@ -190,7 +178,7 @@ def sensitivity_location(velocity, seed, location, perturbation=0.1, h=1):
 
     vel.data = map_coordinates(velocity.data, coords, mode='nearest').reshape(X.shape)
 
-    traveltime = EikonalSolver(vel, seed)
+    traveltime = eikonal_solver(vel, seed)
 
     h = float(h)
 

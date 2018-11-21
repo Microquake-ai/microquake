@@ -152,7 +152,9 @@ class Pick(obsevent.Pick):
  evaluation_status: %s
        resource_id: %s
         """ \
-            % (self.trace_id, self.time.strftime("%Y/%m/%d %H:%M:%S.%f"), self.method, self.snr, self.evaluation_mode, self.evaluation_status, self.resource_id)
+            % (self.trace_id, self.time.strftime("%Y/%m/%d %H:%M:%S.%f"),
+               self.method, self.snr, self.evaluation_mode,
+               self.evaluation_status, self.resource_id)
         return string
 
 
