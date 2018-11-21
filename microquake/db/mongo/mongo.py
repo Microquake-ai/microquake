@@ -138,7 +138,8 @@ class EventDB:
             sqr = 0
             ct = 0
             for arrival in origin.arrivals:
-                if not arrival:
+                # modified the condition as it was failing when time_residual is None
+                if not arrival.time_residual:
                     continue
                 ct += 1
                 sqr += arrival.time_residual ** 2
