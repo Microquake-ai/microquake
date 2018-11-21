@@ -397,33 +397,34 @@ def break_down(event):
     return
 
 
+def make_pick(time, phase='P', wave_data=None, SNR=None, mode='automatic', status='preliminary', \
+              method_string=None, resource_id=None):
 
-# def make_pick(time, phase='P', wave_data=None, SNR=None, mode='automatic', status='preliminary', \
-#               method_string=None, resource_id=None):
+    this_pick = Pick()
+    this_pick.time = time
+    this_pick.phase_hint = phase
+    this_pick.evaluation_mode = mode
+    this_pick.evaluation_status = status
+    if wave_data is not None:
+        this_pick.waveform_id = WaveformStreamID(
+            network_code=wave_data.stats.network,
+            station_code=wave_data.stats.station,
+            location_code=wave_data.stats.location,
+            channel_code=wave_data.stats.channel)
+    if SNR is not None:
+        #this_pick.comments = [Comment(text="SNR=%.3f" % SNR)]
+        if resource_id is not None:
+            this_pick.comments = [Comment(text="SNR=%.3f" % SNR,
+                                          resource_id=resource_id)]
+        else:
+            this_pick.comments = [Comment(text="SNR=%.3f" % SNR,
+                                          force_resource_id=False)]
 
-#     this_pick = Pick()
-#     this_pick.time = time
-#     this_pick.phase_hint = phase
-#     this_pick.evaluation_mode = mode
-#     this_pick.evaluation_status = status
-#     if wave_data is not None:
-#         this_pick.waveform_id = WaveformStreamID(
-#             network_code=wave_data.stats.network,
-#             station_code=wave_data.stats.station,
-#             location_code=wave_data.stats.location,
-#             channel_code=wave_data.stats.channel)
-#     if SNR is not None:
-#         #this_pick.comments = [Comment(text="SNR=%.3f" % SNR)]
-#         if resource_id is not None:
-#             this_pick.comments = [Comment(text="SNR=%.3f" % SNR, resource_id=resource_id)]
-#         else:
-#             this_pick.comments = [Comment(text="SNR=%.3f" % SNR, force_resource_id=False)]
+    if method_string is not None:
+        method = AttribDict()
+        method['namespace'] = 'MICROQUAKE'
+        method['value'] = method_string
+        this_pick['extra'] = AttribDict()
+        this_pick['extra']['method'] = method
 
-#     if method_string is not None:
-#         method = AttribDict()
-#         method['namespace'] = 'MICROQUAKE'
-#         method['value'] = method_string
-#         this_pick['extra'] = AttribDict()
-#         this_pick['extra']['method'] = method
-
-#     return this_pick
+    return this_pick

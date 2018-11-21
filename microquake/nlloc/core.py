@@ -203,13 +203,14 @@ def calculate_uncertainty(event, base_directory, base_name, perturbation=5,
         :param cat: event
         :type cat: microquake.core.event.Event
         :param base_directory: base directory
-        :param project: the name of the project
+        :param base_name: base name for grids
         :param perturbation:
         :return: microquake.core.event.Event
         """
 
         from microquake.core.data.grid import read_grid
-        import numpy as np
+        from numpy import linalg, argsort, arcsin, sqrt
+        from microquake.core.event import ConfidenceEllipsoid, OriginUncertainty
 
         narr = len(event.preferred_origin().arrivals)
 
@@ -223,14 +224,14 @@ def calculate_uncertainty(event, base_directory, base_name, perturbation=5,
             station_code = pick.waveform_id.station_code
             phase = arrival.phase
 
-            # loading the traveltime grid
+            # loading the travel time grid
             filename = '%s/time/%s.%s.%s.time' % (base_directory,
             base_name, phase, station_code)
 
             tt = read_grid(filename, format='NLLOC')
             spc = tt.spacing
 
-            #calculate the frechet derivative
+            # build the Frechet derivative
             for dim in range(0,3):
                 loc_p1 = event_loc.copy()
                 loc_p2 = event_loc.copy()
@@ -240,10 +241,27 @@ def calculate_uncertainty(event, base_directory, base_name, perturbation=5,
                 tt_p2 = tt.interpolate(loc_p2, grid_coordinate=False)
                 Frechet[i, dim] = (tt_p1 - tt_p2) / (2 * perturbation)
 
-        hessian = np.linalg.inv(np.dot(Frechet.T, Frechet))
+        hessian = linalg.inv(np.dot(Frechet.T, Frechet))
         tmp = hessian * pick_uncertainty ** 2
-        w, v = np.linalg.eig(tmp)
-        return w, v
+        w, v = linalg.eig(tmp)
+        i = argsort(w)[-1::-1]
+        # for the angle calculation see
+        # https://en.wikipedia.org/wiki/Euler_angles#Tait-Bryan_angles
+        X = v[:, i[0]]
+        Y = v[:, i[1]]
+        Z = v[:, i[2]]
+        major_axis_plunge = arcsin(Y[1] / sqrt(1 - X[2] ** 2))
+        major_axis_azimuth = arcsin(X[1] / sqrt(1 - X[2] ** 2))
+        major_axis_rotation = arcsin(-X[2])
+        ce = ConfidenceEllipsoid(semi_major_axis_length=w[i[0]],
+                                 semi_intermediate_axis_length=w[i[1]],
+                                 semi_minor_axis_length=w[i[2]],
+                                 major_axis_plunge=major_axis_plunge,
+                                 major_axis_azimuth=major_axis_azimuth,
+                                 major_axis_rotation=major_axis_rotation)
+        ou = OriginUncertainty(confidence_ellipsoid=ce)
+
+        return ou
 
 
 def read_scatter_file(filename):

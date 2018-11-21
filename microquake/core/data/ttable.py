@@ -94,6 +94,7 @@ def read_nll_header(fle):
     return sloc, shape, origin, spacing
 
 
+
 # f_tt = os.path.join(common_dir, nll_dir, 'time', 'OT.%s.%s.time.buf'
 #                             % (phase.upper(), sta_code))
 
@@ -106,7 +107,8 @@ def array_from_nll_grids(path, phase, prefix='OT'):
     fles = np.sort(glob(bufs))
     hfles = np.sort(glob(headers))
     assert(len(fles) == len(hfles))
-    stations = np.array([f.split('.')[-3].zfill(3) for f in fles], dtype='U4')
+    # stations = np.array([f.split('.')[-3].zfill(3) for f in fles], dtype='U4')
+    stations = np.array([f.split('.')[-3] for f in fles])
     # stations = np.array([f.split('.')[-3] for f in fles], dtype='S4')
     isort = np.argsort(stations)
     fles = fles[isort]

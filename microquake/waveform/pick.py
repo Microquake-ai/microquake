@@ -19,9 +19,9 @@
 
 import numpy as np
 from microquake.core import Stream, Trace, event
-from microquake.signal.trigger import recursive_sta_lta, pk_baer, \
+from obspy.signal.trigger import recursive_sta_lta, pk_baer, \
     classic_sta_lta, coincidence_trigger
-from microquake.realtime.signal import kurtosis
+from obspy.realtime.signal import kurtosis
 from scipy.signal import detrend
 from scipy.ndimage.filters import gaussian_filter1d
 from microquake.core import event
@@ -149,8 +149,7 @@ def pick_uncertainty(tr, pick_time, snr_window=10):
     # tr is obspy tr, pick_time same, window window from pick over wich signal frequencies are calculated
     st = Stream(traces=[tr])
     snr = calculate_snr(st, pick_time, snr_window)
-    return 1 / (fm * np.log(1 + SNR**2) / np.log(2))
-
+    return 1 / (fm * np.log(1 + snr ** 2) / np.log(2))
 
 # noinspection PyProtectedMember
 def STALTA_picker_refraction(st, nsta=1e-3, nlta=4e-2, fc=50, nc=2,
@@ -427,7 +426,7 @@ def kurtosis_picker(st, picks, freqmin=100, freqmax=1000, pick_freqs=None,
     return opicks
 
 
-def SNR_picker(st, picks, SNR_dt=None, SNR_window=(1e-3, 20e-3), filter=None):
+def snr_picker(st, picks, SNR_dt=None, SNR_window=(1e-3, 20e-3), filter=None):
 #def SNR_picker(st, cat, SNR_dt=None, SNR_window=(1e-3, 20e-3)):
     """Function to improve the picks based on the SNR.
 
@@ -500,7 +499,8 @@ def SNR_picker(st, picks, SNR_dt=None, SNR_window=(1e-3, 20e-3), filter=None):
         trs = st.select(station=station)
 
         if station not in prevPicks:
-            logger.warn('SNR_detect: station:[%s] has no previous picks' % station)
+            logger.warn('SNR_detect: station:[%s] has no previous picks'
+                        % station)
             continue
 
         for phase in prevPicks[station]:
@@ -519,7 +519,8 @@ def SNR_picker(st, picks, SNR_dt=None, SNR_window=(1e-3, 20e-3), filter=None):
                 # To account for near stations, with small S-P time, make the 
                 #  earliest_time exactly 1/2 way between the absolute P and S times:
                 #earliest_time = 1/2 * (prevPicks[station]['P'].time + prevPicks[station]['S'].time)
-                delta = 1/2 * (prevPicks[station]['S'].time - prevPicks[station]['P'].time)
+                delta = 1/2 * (prevPicks[station]['S'].time -
+                               prevPicks[station]['P'].time)
                 earliest_time = prevPicks[station]['S'].time - delta 
                 #logger.info("sta:%s S_time=%s earliest_time=%s" % (station, prevPicks[station]['S'].time, earliest_time))
 
@@ -539,7 +540,8 @@ def SNR_picker(st, picks, SNR_dt=None, SNR_window=(1e-3, 20e-3), filter=None):
                   #latest_time, trs[0].stats.endtime))
 
             logger.debug("%s: sta:%s [%s] pick:%s tr:%s-%s" % \
-                 (fname, station, phase, oldPick.time, trs[0].stats.starttime, trs[0].stats.endtime))
+                 (fname, station, phase, oldPick.time, trs[0].stats.starttime,
+                  trs[0].stats.endtime))
 
             if earliest_time is None or earliest_time < trs[0].stats.starttime + .03:
                 earliest_time = trs[0].stats.starttime + .03
@@ -565,6 +567,8 @@ def SNR_picker(st, picks, SNR_dt=None, SNR_window=(1e-3, 20e-3), filter=None):
                 if taut >= earliest_time and taut <= latest_time:
                     tau.append(taut)
 
+            if not tau:
+                continue
             if tau[0] <= trs[0].stats.starttime:
                 logger.error("Too early! tau[0]=%s <= tr.st=%s" % (tau[0], trs[0].stats.starttime))
                 logger.error("earliest_time:%s latest_time:%s" % (earliest_time, latest_time))
@@ -574,7 +578,9 @@ def SNR_picker(st, picks, SNR_dt=None, SNR_window=(1e-3, 20e-3), filter=None):
                 exit()
 
             tau = np.array(tau)
-            tmp = np.array([(taut, calculate_snr(trs, taut, preWl=preWl, postWl=postWl)) for taut in tau])
+            tmp = np.array([(taut, calculate_snr(trs, taut, preWl=preWl,
+                                                 postWl=postWl))
+                            for taut in tau])
 
             '''
             tmp = np.array([(oldPick['time'] + dt,
@@ -1068,6 +1074,7 @@ def compute_picks(st2, trg, tolerance=20e-3, clip_stream=True, filter_stream=Tru
         picks.append(this_pick)
 
     return picks
+
 
 def automatic_picking(st_in, site, params):
     """
