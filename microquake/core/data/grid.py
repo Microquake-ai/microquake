@@ -208,11 +208,18 @@ class GridData(object):
     """
 
     def __init__(self, data, spacing=1, origin=None,
-                 seed_label=None, seed=None, grid_type='VELOCITY'):
+                 seed_label=None, seed=None, grid_type='VELOCITY',
+                 resource_id=None):
+        from microquake.core.event import ResourceIdentifier
         self.data = []
         data, np.ndarray
         origin = np.array(origin)
         self.data = data
+        if resource_id is None:
+            self.resource_id = ResourceIdentifier()
+        else:
+            self.resource_id = resource_id
+
         if origin is None:
             self.origin = np.zeros(len(data.shape))
         else:

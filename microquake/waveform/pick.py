@@ -38,7 +38,8 @@ from microquake.core.util.pick_formaters import copy_picks_to_dict
 import matplotlib.pyplot as plt
 
 
-def measure_polarity(st, catalog, site, average_time_window=1e-3, hp_filter_freq=100):
+def measure_polarity(st, catalog, site, average_time_window=1e-3,
+                     hp_filter_freq=100):
     """
     Measure the P- and S-wave polarities
     :param st: seismograms
@@ -64,22 +65,27 @@ def measure_polarity(st, catalog, site, average_time_window=1e-3, hp_filter_freq
             if not sta.networks[0].stations:
                 continue
             if (len(sta.networks) > 1) or (len(sta.networks[0].stations) > 1):
-                logger.warning("MeasurePolarity: multiple station selected from site. Only the first will be used")
+                logger.warning("MeasurePolarity: multiple station selected "
+                               "from site. Only the first will be used")
             sta = sta.networks[0].stations[0]
             motion_type = sta.motion_type
             if motion_type == 'acceleration':
-                trs = trs.integrate().detrend('linear').detrend('demean').integrate()
+                trs = trs.integrate().detrend('linear').detrend(
+                    'demean').integrate()
             elif motion_type == 'velocity':
                 trs.integrate()
             elif motion_type == 'displacement':
                 pass
             else:
-                logger.warning("MeasurePolarity: motion_type not set for sensor %s... Displacement will be assumed" %stname)
+                logger.warning("MeasurePolarity: motion_type not set for "
+                               "sensor %s... Displacement will be assumed"
+                               %stname)
 
             trs.filter('highpass', freq=hp_filter_freq)
             if len(trs) > 1:
-                logger.warning("number of trace for station %s and channel %s" + \
-                 "is greater than 1. Only the first trace will be used" % (sta_code, ch_code))
+                logger.warning("number of trace for station %s and channel %s"
+                 "is greater than 1. Only the first trace will be used" % (
+                                   sta_code, ch_code))
             tr = trs.traces[0]
 
             sp_s = int((pick.time - tr.stats.starttime) * tr.stats.sampling_rate)
@@ -122,7 +128,9 @@ def _measure_pick_polarity_tr(tr, pick_time, signal_type='Acceleration', nsamp_a
     sampling_rate = tr.stats.sampling_rate
     sample_pick = int(pick_time - starttime * sampling_rate)
 
-    polarity = np.sign(np.mean(tr.data[sample_pick + 1:sample_pick + nsamp_avg + 2] - tr.data[sample_pick]))
+    polarity = np.sign(np.mean(tr.data[sample_pick + 1:sample_pick +
+                                                       nsamp_avg + 2] -
+                               tr.data[sample_pick]))
 
     return polarity
 
@@ -136,7 +144,8 @@ def pick_uncertainty(tr, pick_time, snr_window=10):
     :type tr: obspy Trace
     :param pick_time: pick time
     :type pick_time: obspy UTCDateTime
-    :param snr_window: length of window in ms centered on pick_time to calculate SNR.
+    :param snr_window: length of window in ms centered on pick_time to
+    calculate SNR.
         Noise and signal energy are calculated over the first and second half of
         the pick window, respectively.
     :type snr_window: float
@@ -146,7 +155,8 @@ def pick_uncertainty(tr, pick_time, snr_window=10):
 
     fm = 100  # central frequency in Hz
     # fm = centralfrequency(tr, pick_time, window)
-    # tr is obspy tr, pick_time same, window window from pick over wich signal frequencies are calculated
+    # tr is obspy tr, pick_time same, window window from pick over wich
+    # signal frequencies are calculated
     st = Stream(traces=[tr])
     snr = calculate_snr(st, pick_time, snr_window)
     return 1 / (fm * np.log(1 + snr ** 2) / np.log(2))
@@ -160,18 +170,23 @@ def STALTA_picker_refraction(st, nsta=1e-3, nlta=4e-2, fc=50, nc=2,
 
     :param st: seismogram containing a seismic event
     :type st: :py:class:`obspy.core.stream.Stream`
-    :param nsta: Length of the short term average (STA) window in seconds. The value
+    :param nsta: Length of the short term average (STA) window in seconds.
+    The value
         must be smaller than the minimum separation between the P- and S-
         wave arrival (explanation to be improved).
     :param nlta: Length of the long term average (LTA) window in seconds. The value
-        must be long enough to capture well the noise but not too long (description to be improved)
-    :param fc: Corner frequency of the Gaussian kernel used to smooth the LTA/STA
+        must be long enough to capture well the noise but not too long (
+        description to be improved)
+    :param fc: Corner frequency of the Gaussian kernel used to smooth the
+    LTA/STA
         function in Hz. This parameter must be chosen to limit the number of
         peaks in the STA/LTA function.
     :param nc: Number of desired onset. *** PARAMETER NOT USED ***
     :param noise_mag: Amplitude of the noise that is add to the original signal
-    :param SNR_window: Length of window in seconds in which the SNR is calculated before and after the pick
-    :returns:  :py:class:`obspy.core.event.Catalog` -- a new catalog containing a single event with a list of picks
+    :param SNR_window: Length of window in seconds in which the SNR is
+    calculated before and after the pick
+    :returns:  :py:class:`obspy.core.event.Catalog` -- a new catalog
+    containing a single event with a list of picks
     """
 
     # nphase = 1
@@ -213,20 +228,18 @@ def STALTA_picker_refraction(st, nsta=1e-3, nlta=4e-2, fc=50, nc=2,
         StaLtaf = gaussian_filter1d(StaLta, sigma=sigma, mode='reflect')
 
         picks = _Pick_STALTA_refraction(trs, StaLtaf)
-        SNRs = [calculate_snr(trs, p, SNR_window) for p in picks]
-
-        # print picks[0], (picks - trs[0].stats.starttime) * trs[0].stats.sampling_rate, SNRs
+        snrs = [calculate_snr(trs, p, SNR_window) for p in picks]
 
         cfs.append(StaLtaf)
-        snrs.append(SNRs)
+        snrs.append(snrs)
 
         for k, p in enumerate(picks):
             if k == 0:
-                opicks.append(make_pick(p, 'P', trs.traces[0], SNRs[k]))
+                opicks.append(make_pick(p, 'P', trs.traces[0], snrs[k]))
             elif k == 1:
-                opicks.append(make_pick(p, 'S', trs.traces[0], SNRs[k]))
+                opicks.append(make_pick(p, 'S', trs.traces[0], snrs[k]))
             else:
-                opicks.append(make_pick(p, '?', trs.traces[0], SNRs[k]))
+                opicks.append(make_pick(p, '?', trs.traces[0], snrs[k]))
 
     catalog = event.Catalog()
     catalog.events.append(event.Event(picks=opicks))
@@ -242,21 +255,24 @@ def STALTA_picker(st, nphase=2, nsta=1e-3, nlta=4e-2, fc=50, nc=2,
 
     :param st: seismogram containing a seismic event
     :type st: :py:class:`obspy.core.stream.Stream`
-    :param nphase: Number of phases to pick. The number of phase should represent the
-        number of phase present in the signal. This parameter will be set-up to
-        two for picking the P- and S-wave onset times.
+    :param nphase: Number of phases to pick. The number of phase should
+    represent the number of phase present in the signal. This parameter will
+    be set-up to two for picking the P- and S-wave onset times.
     :param nsta: Length of the short term average (STA) window in seconds. The value
         must be smaller than the minimum separation between the P- and S-
         wave arrival (explanation to be improved).
     :param nlta: Length of the long term average (LTA) window in seconds. The value
-        must be long enough to capture well the noise but not too long (description to be improved)
+        must be long enough to capture well the noise but not too long (
+        description to be improved)
     :param fc: Corner frequency of the Gaussian kernel used to smooth the LTA/STA
         function in Hz. This parameter must be chosen to limit the number of
         peaks in the STA/LTA function (default 50 Hz).
     :param nc: Number of desired onset. *** PARAMETER NOT USED ***
     :param noise_mag: Amplitude of the noise to be added to the original signal
-    :param SNR_window: Length of window in seconds in which the SNR is calculated before and after the pick
-    :returns:  :py:class:`obspy.core.event.Catalog` -- a new catalog containing a single event with a list of picks
+    :param SNR_window: Length of window in seconds in which the SNR is
+    calculated before and after the pick
+    :returns:  :py:class:`obspy.core.event.Catalog` -- a new catalog
+    containing a single event with a list of picks
     """
 
     st.detrend('demean')
@@ -319,7 +335,6 @@ def STALTA_picker(st, nphase=2, nsta=1e-3, nlta=4e-2, fc=50, nc=2,
     return catalog, cfs, snrs
 
 
-#def kurtosis_picker(st, cat, freqmin=100, freqmax=1000, pick_freqs=None,
 def kurtosis_picker(st, picks, freqmin=100, freqmax=1000, pick_freqs=None,
     kurtosis_window=None, CF3_tol=10e-3, SNR_window=5e-3):
     """Kurtosis picker adapted for microseismic event processing
@@ -426,64 +441,35 @@ def kurtosis_picker(st, picks, freqmin=100, freqmax=1000, pick_freqs=None,
     return opicks
 
 
-def snr_picker(st, picks, SNR_dt=None, SNR_window=(1e-3, 20e-3), filter=None):
-#def SNR_picker(st, cat, SNR_dt=None, SNR_window=(1e-3, 20e-3)):
-    """Function to improve the picks based on the SNR.
-
+def snr_picker(st, picks, snr_dt=None, snr_window=(1e-3, 20e-3), filter=None):
+    """
+    Function to improve the picks based on the SNR.
     :param st: seismogram containing a seismic event
     :type st: :py:class:`obspy.core.stream.Stream`
-    :param cat: catalog containing the event with previous picks
-    :type cat: obspy.core.event.Catalog
-    :param SNR_dt: Window in which the picks will be improved.
-    :param SNR_window: Length of window in seconds in which the SNR is calculated before and after the pick
-    :type SNR_window: (tuple)
-    :returns:  Tuple comprising 1) a :py:class:`obspy.core.event.Catalog` -- a
-    new catalog containing a single event with a list of picks and 2) the SNR
+    :param picks: list of microquake.core.event.Pick object
+    picks
+    :type picks: microquake.core.event.Catalog
+    :param snr_dt: Window in which the picks will be improved.
+    :param snr_window: Length of window in seconds in which the SNR is calculated
+    before and after the pick
+    :type snr_window: (tuple)
+    :returns:  Tuple comprising 1) a :py:class:`microquake.core.event.Catalog`
+    a new catalog containing a single event with a list of picks and 2) the SNR
     """
 
-    fname = 'SNR_picker'
+    function_name = 'snr_picker'
 
-    #if not cat.events:
-        #return None
+    filter_p = False
+    filter_s = False
+    if filter == 'S':
+        filter_p = True
+    elif filter == 'P':
+        filter_s = True
 
-    #evt = cat.events[0]
+    previous_picks = copy_picks_to_dict(picks)
 
-    #if not evt['picks']:
-        #return None
-
-    #prevPicks = copy_picks_to_dict(evt['picks'])
-
-    # e.g., pass in S & P picks for S-P time but don't repick P
-    filter_P = False
-    filter_S = False
-    if filter=='S':
-        filter_P=True
-    elif filter=='P':
-        filter_S=True
-
-    #if filter:
-        #old_P_picks = [picks[station]['P'] for station in picks]
-        #old_S_picks = [picks[station]['S'] for station in picks]
-
-    prevPicks = copy_picks_to_dict(picks)
-
-    # clip the signal to the existing picks
-    # if prevPicks:
-    #   p_early = UTCDateTime(2100, 1, 1)
-    #   p_late = UTCDateTime(1970, 1, 1)
-
-    #   for picks in prevPicks:
-    #       if picks['time'] < p_early:
-    #           p_early = picks['time']
-    #       if picks['time'] > p_late:
-    #           p_late = picks['time']
-
-    #   p_early -= 25e-3
-    #   p_late += 25e-3
-    #   st.trim(starttime=p_early, endtime=p_late)
-
-    if SNR_dt is None:
-        SNR_dt = np.linspace(-5e-3, 5e-3, 20)
+    if snr_dt is None:
+        snr_dt = np.linspace(-5e-3, 5e-3, 20)
 
     st.detrend('demean')
     stations = np.unique([tr.stats.station for tr in st])
@@ -491,78 +477,60 @@ def snr_picker(st, picks, SNR_dt=None, SNR_window=(1e-3, 20e-3), filter=None):
     opicks = []
     snrs = []
 
-    preWl=SNR_window[0]
-    postWl=SNR_window[1]
+    pre_window_length=snr_window[0]
+    post_window_length=snr_window[1]
 
     for station in stations:
 
         trs = st.select(station=station)
 
-        if station not in prevPicks:
+        if station not in previous_picks:
             logger.warn('SNR_detect: station:[%s] has no previous picks'
                         % station)
             continue
 
-        for phase in prevPicks[station]:
-            #logger.info("SNR Eval: sta:%s phase:%s" % (station, phase))
-            if filter_P and phase=='P':
-                #logger.info("  -->phase=P and filter_P=True --> Skip")
+        for phase in previous_picks[station]:
+            if filter_p and phase=='P':
                 continue
-            elif filter_S and phase=='S':
-                #logger.info("  -->phase=S and filter_S=True --> Skip")
+            elif filter_s and phase=='S':
                 continue
 
             earliest_time = latest_time = None
-            if phase == 'S' and 'P' in prevPicks[station]:
-                #logger.info("sta:%s phase = S and P exists" % station)
-                earliest_time = prevPicks[station]['P'].time + .05 #MTH: try it out
-                # To account for near stations, with small S-P time, make the 
-                #  earliest_time exactly 1/2 way between the absolute P and S times:
-                #earliest_time = 1/2 * (prevPicks[station]['P'].time + prevPicks[station]['S'].time)
-                delta = 1/2 * (prevPicks[station]['S'].time -
-                               prevPicks[station]['P'].time)
-                earliest_time = prevPicks[station]['S'].time - delta 
-                #logger.info("sta:%s S_time=%s earliest_time=%s" % (station, prevPicks[station]['S'].time, earliest_time))
+            if phase == 'S' and 'P' in previous_picks[station]:
+                delta = 1 / 2 * (previous_picks[station]['S'].time -
+                                 previous_picks[station]['P'].time)
+                earliest_time = previous_picks[station]['S'].time - delta
 
-            elif phase == 'S' and 'P' not in prevPicks[station]:
-                earliest_time = prevPicks[station]['S'].time - .1
-            elif phase == 'P' and 'S' in prevPicks[station]:
-                #latest_time   = prevPicks[station]['S'].time - .05
-                delta = 1/2 * (prevPicks[station]['S'].time - prevPicks[station]['P'].time)
-                latest_time = prevPicks[station]['P'].time + delta 
-            elif phase == 'P' and 'S' not in prevPicks[station]:
-                latest_time   = prevPicks[station]['P'].time + .05
-                #latest_time   = prevPicks[station]['S'].time - preWl
+            elif phase == 'S' and 'P' not in previous_picks[station]:
+                earliest_time = previous_picks[station]['S'].time - \
+                                pre_window_length
+            elif phase == 'P' and 'S' in previous_picks[station]:
+                delta = 1 / 2 * (previous_picks[station]['S'].time -
+                                 previous_picks[station]['P'].time)
+                latest_time = previous_picks[station]['P'].time + delta
+            elif phase == 'P' and 'S' not in previous_picks[station]:
+                latest_time   = previous_picks[station]['P'].time + \
+                                post_window_length
     
-            oldPick = prevPicks[station][phase]
-            #logger.error("SNR: sta:%s phase:%s time:%s earliest:%s [v. st=%s] latest:%s [v. et=%s]" % \
-                 #(station, phase, oldPick.time, earliest_time, trs[0].stats.starttime, \
-                  #latest_time, trs[0].stats.endtime))
+            old_pick = previous_picks[station][phase]
 
             logger.debug("%s: sta:%s [%s] pick:%s tr:%s-%s" % \
-                 (fname, station, phase, oldPick.time, trs[0].stats.starttime,
-                  trs[0].stats.endtime))
+                 (function_name, station, phase, old_pick.time,
+                  trs[0].stats.starttime, trs[0].stats.endtime))
 
             if earliest_time is None or earliest_time < trs[0].stats.starttime + .03:
                 earliest_time = trs[0].stats.starttime + .03
                 logger.debug("%s: sta:%s [%s] Fix earliest_time to:%s" % \
-                            (fname, station, phase, earliest_time))
+                             (function_name, station, phase, earliest_time))
 
             if latest_time is None or latest_time > trs[0].stats.endtime - .06:
                 logger.debug("%s: sta:%s [%s] Fix latest_time to:%s" % \
-                            (fname, station, phase, latest_time))
+                             (function_name, station, phase, latest_time))
                 latest_time = trs[0].stats.endtime - .06
 
             tau = []
-            for dt in SNR_dt:
-                taut = oldPick.time + dt
-                #taut = oldPick['time'] + dt
-                #print('sta:%2s [%s] earliest:%s latest:%s taut:%s' % (station, phase, earliest_time, latest_time, taut))
-                '''
-                if latest_time and taut < latest_time: 
-                    tau.append(taut)
-                if earliest_time and taut > earliest_time and taut < latest_time:
-                '''
+            for dt in snr_dt:
+                taut = old_pick.time + dt
 
                 if taut >= earliest_time and taut <= latest_time:
                     tau.append(taut)
@@ -570,65 +538,60 @@ def snr_picker(st, picks, SNR_dt=None, SNR_window=(1e-3, 20e-3), filter=None):
             if not tau:
                 continue
             if tau[0] <= trs[0].stats.starttime:
-                logger.error("Too early! tau[0]=%s <= tr.st=%s" % (tau[0], trs[0].stats.starttime))
-                logger.error("earliest_time:%s latest_time:%s" % (earliest_time, latest_time))
+                logger.error("Too early! tau[0]=%s <= tr.st=%s"
+                             % (tau[0], trs[0].stats.starttime))
+                logger.error("earliest_time:%s latest_time:%s"
+                             % (earliest_time, latest_time))
                 exit()
             if tau[-1] >= trs[0].stats.endtime:
-                logger.error("Too late! tau[-1]=%s >= tr.et=%s" % (tau[-1], trs[0].stats.endtime))
+                logger.error("Too late! tau[-1]=%s >= tr.et=%s"
+                             % (tau[-1], trs[0].stats.endtime))
                 exit()
 
             tau = np.array(tau)
-            tmp = np.array([(taut, calculate_snr(trs, taut, preWl=preWl,
-                                                 postWl=postWl))
+            tmp = np.array([(taut, calculate_snr(trs, taut,
+                                                 pre_wl=pre_window_length,
+                                                 post_wl=post_window_length))
                             for taut in tau])
 
-            '''
-            tmp = np.array([(oldPick['time'] + dt,
-                calculate_snr(trs, oldPick['time'] + dt,
-                              preWl=SNR_window[0], postWl=SNR_window[1]))
-                              for dt in SNR_dt])
-            #index = np.argmax(tmp[:,1]) - 1
-
-            dt = np.abs(tmp[:,0] - oldPick['time'])
-            print(dt.dtype)
-            tmp[:1] *= np.exp(-alpha * dt.astype(float))
-            #tmp[:1] *= np.exp(-alpha * np.abs(tmp[:,0] - oldPick['time']))
-            '''
     
         # MTH: this is a hack to try to force the solution close to the oldPick
             alpha = 10.
             for i, foo in enumerate(tmp):
                 time = foo[0]
                 snr = foo[1]
-                dt = np.abs(oldPick.time - foo[0])
+                dt = np.abs(old_pick.time - foo[0])
                 #dt = np.abs(oldPick['time'] - foo[0])
                 scale = np.exp(-alpha * dt)
                 tmp[i,1] *= np.exp(-alpha * dt) 
                 #print(time, dt, snr, scale, snr*scale, tmp[i,1])
 
             index = np.argmax(tmp[:,1])
-            pick_time = tmp[index, 0] #- 1 / trs.traces[0].stats.sampling_rate
-            # SNR = tmp[index, 1]
+            pick_time = tmp[index, 0]
 
-            #SNR = calculate_snr(trs, pick_time, preWl=SNR_window[0], postWl=SNR_window[1])
-            SNR = calculate_snr(trs, pick_time, preWl=preWl, postWl=postWl)
-            logger.debug("%s: sta:%s [%s] old_pick:%s new_pick:%s SNR:%.2f" % \
-                 (fname, station, phase, oldPick.time, pick_time, SNR))
 
-            method_string = 'SNR_picker preWl=%.3g postWl=%.3g alpha=%.1f' % (preWl, postWl, alpha)
-            opicks.append(make_pick(pick_time, phase=oldPick.phase_hint, wave_data=trs.traces[0], \
-                                    SNR=SNR, method_string=method_string, resource_id=oldPick.resource_id))
-            #opicks.append(make_pick(pick_time, oldPick['phase_hint'], trs.traces[0], SNR))
-            snrs.append(SNR)
+            snr = calculate_snr(trs, pick_time, pre_wl=pre_window_length,
+                                post_wl=post_window_length)
+            logger.debug("%s: sta:%s [%s] old_pick:%s new_pick:%s SNR:%.2f" %
+                         (function_name, station, phase, old_pick.time,
+                          pick_time, snr))
+
+            method_string = 'snr_picker preWl=%.3g postWl=%.3g alpha=%.1f' % \
+                            (pre_window_length, post_window_length, alpha)
+            opicks.append(make_pick(pick_time, phase=old_pick.phase_hint,
+                                    wave_data=trs.traces[0], snr=snr,
+                                    method_string=method_string,
+                                    resource_id=old_pick.resource_id))
+            snrs.append(snr)
 
     catalog = event.Catalog()
     catalog.events.append(event.Event(picks=opicks))
 
     #return catalog, snrs
-    return opicks
+    return (snrs, opicks)
 
 
-def calculate_snr(St, Pick, preWl=1e-3, postWl=10e-3):
+def calculate_snr(stream, pick, pre_wl=1e-3, post_wl=10e-3):
     """
     input :
     trs - Obspy stream
@@ -640,47 +603,29 @@ def calculate_snr(St, Pick, preWl=1e-3, postWl=10e-3):
     SNR - Signal to noise ratio
     """
     try:
-        sr = St.traces[0].stats['sampling_rate']
-        st = St.traces[0].stats['starttime']
-        et = St.traces[0].stats['endtime']
-        Ps = int((Pick - st) * sr)
-        N_pre = int(preWl * sr)
-        N_post = int(postWl * sr)
+        sr = stream.traces[0].stats['sampling_rate']
+        st = stream.traces[0].stats['starttime']
+        et = stream.traces[0].stats['endtime']
+        Ps = int((pick - st) * sr)
+        N_pre = int(pre_wl * sr)
+        N_post = int(post_wl * sr)
 
         #print("calc_snr: st:%s et:%s Ps:%d N_pre:%d N_post:%d" % (st, et, Ps, N_pre, N_post))
 
-        '''
-        for tr in St:
-           plt.clf()
-           plt.subplot(311)
-           plt.plot(tr.data)
-           plt.axvline(Ps)
-           plt.subplot(312)
-           plt.plot(tr.data[Ps:Ps + Nb])
-           plt.subplot(313)
-           plt.plot(tr.data[Ps - Nb:Ps])
 
-        plt.show()
-
-        print('Pick=%s starttime=%s srate=%f' % (Pick, st, sr))
-        print('preWl=%f postWl=%f' % (preWl, postWl))
-        print('Ps=%d N_pre=%d N_post=%d' % (Ps, N_pre, N_post))
-        '''
-
-
-        if Pick + postWl > et:
+        if pick + post_wl > et:
             #EnergyS = np.sum([np.var(tr.data[Ps:]) for tr in St])
-            EnergyS = np.sum([np.var(tr.data[Ps:], dtype=np.float64) for tr in St])
+            EnergyS = np.sum([np.var(tr.data[Ps:], dtype=np.float64) for tr in stream])
         else:
             #EnergyS = np.sum([np.var(tr.data[Ps:Ps + N_post]) for tr in St])
-            EnergyS = np.sum([np.var(tr.data[Ps:Ps + N_post], dtype=np.float64) for tr in St])
+            EnergyS = np.sum([np.var(tr.data[Ps:Ps + N_post], dtype=np.float64) for tr in stream])
 
-        if Pick - preWl < st:
+        if pick - pre_wl < st:
             #EnergyN = np.sum([np.var(tr.data[:Ps]) for tr in St])
-            EnergyN = np.sum([np.var(tr.data[:Ps]) for tr in St], dtype=np.float64)
+            EnergyN = np.sum([np.var(tr.data[:Ps]) for tr in stream], dtype=np.float64)
         else:
             #EnergyN = np.sum([np.var(tr.data[Ps - N_pre:Ps]) for tr in St])
-            EnergyN = np.sum([np.var(tr.data[Ps - N_pre:Ps], dtype=np.float64) for tr in St])
+            EnergyN = np.sum([np.var(tr.data[Ps - N_pre:Ps], dtype=np.float64) for tr in stream])
 
         if (EnergyN == 0) | (EnergyS == 0):
             return 0
@@ -693,13 +638,13 @@ def calculate_snr(St, Pick, preWl=1e-3, postWl=10e-3):
         return 0
 
 
-def calculate_energy(St, Pick, Wl=5e-3):
-    sr = St.traces[0].stats['sampling_rate']
-    st = St.traces[0].stats['starttime']
-    Ps = int((Pick - st) * sr)
+def calculate_energy(stream, pick, Wl=5e-3):
+    sr = stream.traces[0].stats['sampling_rate']
+    st = stream.traces[0].stats['starttime']
+    Ps = int((pick - st) * sr)
     Nb = int(Wl * sr)
 
-    EnergyS = np.sum([np.var(tr.data[Ps - Nb/4:Ps + 3*Nb/2]) for tr in St])
+    EnergyS = np.sum([np.var(tr.data[Ps-Nb/4:Ps+3*Nb/2]) for tr in stream])
 
     return EnergyS
 

@@ -353,6 +353,7 @@ def read_NLL_grid(base_name):
     """
 
     from microquake.core import GridData
+    from glob import glob
     # Testing the presence of the .buf or .hdr extension at the end of base_name
     if ('.buf' == base_name[-4:]) or ('.hdr' == base_name[-4:]):
         # removing the extension
@@ -371,8 +372,10 @@ def read_NLL_grid(base_name):
         gdata = head.spacing / gdata
         head.grid_type = 'VELOCITY'
 
+
     return GridData(gdata, spacing=head.spacing, origin=head.origin,
-            seed=head.seed, seed_label=head.label, grid_type=head.grid_type)
+                    seed=head.seed, seed_label=head.label,
+                    grid_type=head.grid_type)
 
 
 def _write_grid_data(base_name, data):
@@ -430,8 +433,8 @@ def _write_grid_header(base_name, shape, origin, spacing, grid_type,
     return
 
 
-def write_nll_grid(base_name, data, origin, spacing, grid_type,
-        seed=None, label=None, velocity_to_slow_len=True):
+def write_nll_grid(base_name, data, origin, spacing, grid_type, seed=None,
+                   label=None, velocity_to_slow_len=True):
     """
     Write write structure data grid to NLLoc grid format
     :param base_name: output file name and path without extension
@@ -487,7 +490,9 @@ def write_nll_grid(base_name, data, origin, spacing, grid_type,
     shape = data.shape
 
     _write_grid_header(base_name, shape, origin, spacing,
-                    grid_type, label, seed)
+                       grid_type, label, seed)
+
+
 
 
 # def prepare_nll(ctl_filename='input.xml', nll_base='NLL'):

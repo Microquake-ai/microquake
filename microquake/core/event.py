@@ -75,6 +75,8 @@ class Event(obsevent.Event):
                                    magnitude.magnitude_type)
         return out
 
+        self.picks += picks
+
 
 class Origin(obsevent.Origin):
     __doc__ = obsevent.Origin.__doc__.replace('obspy', 'microquake')
@@ -361,29 +363,6 @@ class Ray:
         return self.length()
 
 
-def update_arrivals(origin, site):
-    """
-    This function calculates the distance, take off angle and azimuth for a
-    set of arrivals
-    :param site: a ~microquake.core.site object
-    """
-    import numpy as np
-
-    oloc = origin.loc
-    arrivals = origin.arrivals
-    for k, arrival in enumerate(arrivals):
-        pick = arrival.pick_id.get_referred_object()
-        site_code = pick.waveform_id.station_code
-        sloc = site.select(station=site_code).stations()[0].loc
-        v_evt_sta = sloc - oloc
-        arrivals[k].distance = np.linalg.norm(v_evt_sta)
-        arrivals[k].azimuth = np.arctan2(v_evt_sta[0], v_evt_sta[1])\
-                                   * 180 / np.pi
-        hor = np.linalg.norm(v_evt_sta[0:2])
-        arrivals[k].takeoff_angle = np.arctan2(hor, -v_evt_sta[2]) *\
-                                         180 / np.pi
-
-
 def break_down(event):
     origin = event.origins[0]
     print("break_down: Here's what obspy reads:")
@@ -397,8 +376,8 @@ def break_down(event):
     return
 
 
-def make_pick(time, phase='P', wave_data=None, SNR=None, mode='automatic', status='preliminary', \
-              method_string=None, resource_id=None):
+def make_pick(time, phase='P', wave_data=None, snr=None, mode='automatic',
+              status='preliminary', method_string=None, resource_id=None):
 
     this_pick = Pick()
     this_pick.time = time
@@ -411,13 +390,13 @@ def make_pick(time, phase='P', wave_data=None, SNR=None, mode='automatic', statu
             station_code=wave_data.stats.station,
             location_code=wave_data.stats.location,
             channel_code=wave_data.stats.channel)
-    if SNR is not None:
+    if snr is not None:
         #this_pick.comments = [Comment(text="SNR=%.3f" % SNR)]
         if resource_id is not None:
-            this_pick.comments = [Comment(text="SNR=%.3f" % SNR,
+            this_pick.comments = [Comment(text="SNR=%.3f" % snr,
                                           resource_id=resource_id)]
         else:
-            this_pick.comments = [Comment(text="SNR=%.3f" % SNR,
+            this_pick.comments = [Comment(text="SNR=%.3f" % snr,
                                           force_resource_id=False)]
 
     if method_string is not None:
