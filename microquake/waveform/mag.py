@@ -1000,8 +1000,7 @@ def moment_magnitude(stream, evt, site, vp, vs, ttpath=None,
     only_triaxial=True, density=2700,
     min_dist=20, win_length=0.02, len_spectrum=2 ** 14, freq=100):
     """
-    WARNING
-    Calculate the moment magnitude for an event.
+    Calculate the moment magnitude for the preferred origin of an event.
     :param stream: seismogram
     :type stream: microquake.Stream # does not exist yet
     :param evt: event object
@@ -1016,7 +1015,8 @@ def moment_magnitude(stream, evt, site, vp, vs, ttpath=None,
     :type ttpath: string
     :param magType: type of magnitude (optional)
     :type magType: currently not implemented only Moment magnitude available
-    :param onlyTriaxial: whether only triaxial sensor are used in the magnitude calculation (optional) (not yet implemented)
+    :param onlyTriaxial: whether only triaxial sensor are used in the
+    magnitude calculation (optional) (not yet implemented)
     :type onlyTriaxial: bool
     :param density: density in kg / m**3 (assuming homogeneous for now)
     :type density: float
@@ -1035,253 +1035,242 @@ def moment_magnitude(stream, evt, site, vp, vs, ttpath=None,
     if only_triaxial:
         logger.debug('only triaxial sensor will be used in magnitude calculation')
 
-    #fcs = []
-    # Not clear why you would iterate over origins ??
-    # for origin in evt.origins:
-    #for origin in evt.origins:
-    for iorigin,origin in enumerate(evt.origins):
-        fcs = []
 
-        evloc = np.array([origin.x, origin.y, origin.z])
+    origin = evt.preferred_origin()
+    fcs = []
 
-        vpsrc = vp
-        vssrc = vs
+    evloc = np.array([origin.x, origin.y, origin.z])
 
-        Mw = []
-        Mw_P = []
-        Mw_S = []
-        stations = []
+    vpsrc = vp
+    vssrc = vs
 
-        if len(origin.arrivals) == 0:
+    Mw = []
+    Mw_P = []
+    Mw_S = []
+    stations = []
+
+    if len(origin.arrivals) == 0:
+        return
+
+    for k, arr in enumerate(origin.arrivals):
+        pick = arr.pick_id.get_referred_object()
+        # ensuring backward compatibility
+        if not pick:
+            pick = evt.picks[k]
+        try:
+            at = pick.time
+        except:
+            logger.info("moment_magnitude: error reading pick.time for "
+                        "sta:%s pick:%s" %
+                        (pick.waveform_id.station_code, pick))
+            raise
+        phase = pick.phase_hint
+
+        sta_code = pick.waveform_id.station_code
+        station = site.stations(station=sta_code)
+        if not station:
             continue
 
-        for k, arr in enumerate(origin.arrivals):
-            pick = arr.pick_id.get_referred_object()
-            # ensuring backward compatibility
-            if not pick:
-                pick = evt.picks[k]
-            try:
-                at = pick.time
-            except:
-                logger.info("moment_magnitude: error reading pick.time for sta:%s pick:%s" \
-                            (pick.waveform_id.station_code, pick))
-                raise
-            phase = pick.phase_hint
+        station = station[0]
+        stloc = station.loc
+        sttrs = stream.select(station=sta_code)
 
-            sta_code = pick.waveform_id.station_code
-            station = site.stations(station=sta_code)
-            if not station:
-                continue
+        if len(sttrs) == 0:
+            continue
 
-            station = station[0]
-            stloc = station.loc
-            sttrs = stream.select(station=sta_code)
+        if only_triaxial and (len(sttrs) < 3):
+            continue
 
-            if len(sttrs) == 0:
-                continue
+        signal = sttrs.copy()
 
-            if only_triaxial and (len(sttrs) < 3):
-                continue
+        # creating displacement pulse
+        from IPython.core.debugger import Tracer
+        try:
+            signal.detrend('demean').detrend('linear')
+        except:
+            continue
+        signal.taper(max_percentage=0.05, type='cosine')
+        csignal = np.mean([tr.data ** 2 for tr in signal], axis=0)
 
-            signal = sttrs.copy()
+        len_max = len(csignal[csignal == np.max(csignal)]) + \
+                          len(csignal[csignal == np.min(csignal)])
 
-            # creating displacement pulse
-            from IPython.core.debugger import Tracer
-            try:
-                signal.detrend('demean').detrend('linear')
-            except:
-                continue
-            signal.taper(max_percentage=0.05, type='cosine')
-            csignal = np.mean([tr.data ** 2 for tr in signal], axis=0)
+        # very basic clipping detection
+        if len_max > 0.1 * (len(csignal)):
+            logger.info('Clipped waveform detected: station %s '
+                         'will not be used for magnitude calculation' %
+                        station.code)
+            continue
 
-            len_max = len(csignal[csignal == np.max(csignal)]) + \
-                              len(csignal[csignal == np.min(csignal)])
+        ct = signal.copy().composite()
+        if ct[0] is None:
+            logger.debug('%s.%s: ct[0] is None!' % (__name__, fname))
+            continue
+        #logger.debug('%s.%s: type(ct[0])=%s' % (__name__, fname, type(ct[0])))
+        #logger.debug('%s.%s: ct[0].get_id()=%s' % (__name__, fname, ct[0].get_id()))
 
-            # very basic clipping detection
-            if len_max > 0.1 * (len(csignal)):
-                logger.info('Clipped waveform detected: station %s '
-                             'will not be used for magnitude calculation' % station.code)
-                continue
+        ct = ct.detrend('demean').detrend('demean')
+        ct = ct.filter('highpass', freq=freq)
 
-            ct = signal.copy().composite()
-            if ct[0] is None:
-                logger.debug('%s.%s: ct[0] is None!' % (__name__, fname))
-                continue
-            #logger.debug('%s.%s: type(ct[0])=%s' % (__name__, fname, type(ct[0])))
-            #logger.debug('%s.%s: ct[0].get_id()=%s' % (__name__, fname, ct[0].get_id()))
+        trim_beg = at -.01
+        trim_end = at + 2*win_length
+        stats = ct[0].stats
+        if trim_beg < stats.starttime or trim_end > stats.endtime:
+            logger.warn("moment_mag: Trim window exceeds trace start/end time !!!")
 
-            ct = ct.detrend('demean').detrend('demean')
-            ct = ct.filter('highpass', freq=freq)
+        ct = ct.trim(starttime=at - 0.01, endtime=at + 2 * win_length)
 
-            trim_beg = at -.01
-            trim_end = at + 2*win_length
-            stats = ct[0].stats
-            if trim_beg < stats.starttime or trim_end > stats.endtime:
-                logger.warn("moment_mag: Trim window exceeds trace start/end time !!!")
+        ct = ct.taper(type='cosine', max_percentage=0.5, max_length=0.08,
+                      side='left')
+        ct = ct.taper(type='cosine', max_percentage=0.5,
+                      max_length=win_length, side='right')
 
-            ct = ct.trim(starttime=at - 0.01, endtime=at + 2 * win_length)
-
-            ct = ct.taper(type='cosine', max_percentage=0.5, max_length=0.08,
-                          side='left')
-            ct = ct.taper(type='cosine', max_percentage=0.5,
-                          max_length=win_length, side='right')
-
-            if station.sensor_type.lower() == 'accelerometer':
-                displacement = ct.copy().integrate().integrate()
-            elif station.sensor_type.lower() == 'geophone':
-                displacement = ct.copy().integrate()
-
-            # displacement.trim(starttime=at - 0.01, endtime=at + 2 * win_length)
-            # displacement = displacement.taper(type='cosine', max_percentage=0.5, max_length=0.08, side='left')
-            # displacement = displacement.taper(type='cosine', max_percentage=0.5, max_length=win_length, side='right')
-            R = np.linalg.norm(stloc - evloc)
-
-            # logger.debug("moment_mag: sta:%s pha:%s R:%.2f st:%s et:%s  trim window:st:%s et:%s" % \
-            #         (sta_code, phase, R, ct[0].stats.starttime, ct[0].stats.endtime, at-.01, at + 2*win_length))
-# MTH
-            displacement = displacement.taper(type='cosine', max_percentage=0.5,
-                          max_length=win_length, side='right')
-
-            if R < min_dist:
-                continue
-
-            radiation = radiation_pattern_attenuation()
-# MTH:
-            #if phase.lower() == 'P':
-            if phase.upper() == 'P':
-                radiation = radiation[0]
-                vsrc = vpsrc
-            else:
-                radiation = radiation[1]
-                vsrc = vssrc
-
-            sr = ct[0].stats.sampling_rate
-            # to be checked
-            # np.abs(fft) already divides by N
-            # only need to divide the spectrum by sr rather then len_spectrum
-            # to get the spectral density
-
-            # spectrum = np.sqrt(np.mean([np.abs(fft(tr.data, len_spectrum))\
-            #                             ** 2 for tr in displacement], axis=0))
-            # spectrum_norm = spectrum / radiation * R * 4 * \
-            #                 np.pi * density * vsrc ** 3 / sr
-
-            signal_length = 2 * win_length + 0.01
-            normalization = 2 / (signal_length * sr)
-            spectrum = np.sqrt(np.mean([np.abs(fft(tr.data, len_spectrum))\
-                                        ** 2 for tr in displacement], axis=0))
-            spectrum_norm = spectrum / radiation * R * 4 * \
-                            np.pi * density * vsrc ** 3 * normalization
+        if station.sensor_type.lower() == 'accelerometer':
+            displacement = ct.copy().integrate().integrate()
+        elif station.sensor_type.lower() == 'geophone':
+            displacement = ct.copy().integrate()
 
 
-            f = np.fft.fftfreq(len_spectrum, 1 / sr)
-            fi = np.nonzero((f >= .2) & (f <= 2000))[0]
-            #fi = np.nonzero((f >= 20) & (f <= 1000))[0]
+        R = np.linalg.norm(stloc - evloc)
 
-            if not np.any(fi):
-                continue
-            try:
-                popt, pcov = curve_fit(SF, f[fi], np.log10(spectrum_norm[fi] + 1e-10), (1e6, 100))
-            except:
-                continue
 
-            M0 = np.power(10, popt[0])
+        displacement = displacement.taper(type='cosine', max_percentage=0.5,
+                      max_length=win_length, side='right')
 
-            #logger.debug("moment_mag: sta:%s phase:%s vsrc:%f density:%f sr:%f len_win:%d len_spec:%d" % \
-                    #(sta_code, phase, vsrc, density, sr, ct[0].stats.npts, len_spectrum))
-            if len(sttrs) == 1:
-                M0 = M0 * np.sqrt(3)  # uniaxial sensor
+        if R < min_dist:
+            continue
 
-            fc = popt[1]
+        radiation = radiation_pattern_attenuation()
 
-            Mw.append(2 / 3.0 * np.log10(M0) - 6.07)
+        if phase.upper() == 'P':
+            radiation = radiation[0]
+            vsrc = vpsrc
+        else:
+            radiation = radiation[1]
+            vsrc = vssrc
 
-            if phase == 'P':
-                Mw_P.append(2 / 3.0 * np.log10(M0) - 6.07)
-            elif phase == 'S':
-                Mw_S.append(2 / 3.0 * np.log10(M0) - 6.07)
+        sr = ct[0].stats.sampling_rate
+        # to be checked
+        # np.abs(fft) already divides by N
+        # only need to divide the spectrum by sr rather then len_spectrum
+        # to get the spectral density
 
-            fcs.append(fc)
+        # spectrum = np.sqrt(np.mean([np.abs(fft(tr.data, len_spectrum))\
+        #                             ** 2 for tr in displacement], axis=0))
+        # spectrum_norm = spectrum / radiation * R * 4 * \
+        #                 np.pi * density * vsrc ** 3 / sr
 
-            if station not in stations:
-                stations.append(station)
+        signal_length = 2 * win_length + 0.01
+        normalization = 2 / (signal_length * sr)
+        spectrum = np.sqrt(np.mean([np.abs(fft(tr.data, len_spectrum))\
+                                    ** 2 for tr in displacement], axis=0))
+        spectrum_norm = spectrum / radiation * R * 4 * \
+                        np.pi * density * vsrc ** 3 * normalization
 
+
+        f = np.fft.fftfreq(len_spectrum, 1 / sr)
+        fi = np.nonzero((f >= .2) & (f <= 2000))[0]
+        #fi = np.nonzero((f >= 20) & (f <= 1000))[0]
+
+        if not np.any(fi):
+            continue
+        try:
+            popt, pcov = curve_fit(SF, f[fi], np.log10(spectrum_norm[fi] + 1e-10), (1e6, 100))
+        except:
+            continue
+
+        M0 = np.power(10, popt[0])
+
+
+        if len(sttrs) == 1:
+            M0 = M0 * np.sqrt(3)  # uniaxial sensor
+
+        fc = popt[1]
+
+        Mw.append(2 / 3.0 * np.log10(M0) - 6.07)
+
+        if phase == 'P':
+            Mw_P.append(2 / 3.0 * np.log10(M0) - 6.07)
+        elif phase == 'S':
+            Mw_S.append(2 / 3.0 * np.log10(M0) - 6.07)
+
+        fcs.append(fc)
+
+        if station not in stations:
+            stations.append(station)
+
+        (m,b)= get_log_Omega0(f, spectrum_norm, .001, 2.)
+        M0_check = np.power(10, b)
+        Mw_check = 2./3.*b - 6.
+
+        logger.debug("moment_mag: sta:%s [%s] dist:%.2f M0=%g fc=%.2f Mw=%.2f [Mw_check: %.2f]" % \
+                (sta_code, phase, R, M0, fc, Mw[-1], Mw_check))
+        '''
+        delta = ct[0].stats.delta
+        spectrum_scale = spectrum * delta
+        (m,b)= get_log_Omega0(f, spectrum_scale, .001, 2.)
+        Omega0 = np.power(10, b)
+        logger.info("sta:%s [%s] peak_vel:%g omega=%.2f Omega0:%g " % \
+                (sta_code, phase, np.max(ct[0].data), 2.*np.pi*fc, Omega0))
+        '''
+
+        debug = False
+        #if phase == 'S':
+            #debug = True
+        if debug:
             (m,b)= get_log_Omega0(f, spectrum_norm, .001, 2.)
-            M0_check = np.power(10, b)
-            Mw_check = 2./3.*b - 6.
+            logger.debug("get_log_Omega0 returns m=%f b=%f --> M0=%g [Mw:%.2f]" % \
+                        (m, b, np.power(10, b), 2./3.*b - 6.))
 
-            logger.debug("moment_mag: sta:%s [%s] dist:%.2f M0=%g fc=%.2f Mw=%.2f [Mw_check: %.2f]" % \
-                    (sta_code, phase, R, M0, fc, Mw[-1], Mw_check))
-            '''
-            delta = ct[0].stats.delta
-            spectrum_scale = spectrum * delta
-            (m,b)= get_log_Omega0(f, spectrum_scale, .001, 2.)
-            Omega0 = np.power(10, b)
-            logger.info("sta:%s [%s] peak_vel:%g omega=%.2f Omega0:%g " % \
-                    (sta_code, phase, np.max(ct[0].data), 2.*np.pi*fc, Omega0))
-            '''
+            import matplotlib.pyplot as plt
+            plt.loglog(f, spectrum_norm)
+            plt.grid(True)
+            plt.show()
 
-            debug = False
-            #if phase == 'S':
-                #debug = True
-            if debug:
-                (m,b)= get_log_Omega0(f, spectrum_norm, .001, 2.)
-                logger.debug("get_log_Omega0 returns m=%f b=%f --> M0=%g [Mw:%.2f]" % \
-                            (m, b, np.power(10, b), 2./3.*b - 6.))
+    stcount = len(stations)
 
-                import matplotlib.pyplot as plt
-                plt.loglog(f, spectrum_norm)
-                #plt.loglog(f, foo)
-                #plt.semilogy(f, foo)
-                plt.grid(True)
-                #fig.savefig("test.png")
-                plt.show()
-                #exit()
+    Mw = np.array(Mw)
+    fcs = np.array(fcs)
 
-        stcount = len(stations)
+    Mw = Mw[~np.isnan(Mw)]
+    Mw = Mw[~np.isinf(Mw)]
 
-        Mw = np.array(Mw)
-        fcs = np.array(fcs)
-
-        Mw = Mw[~np.isnan(Mw)]
-        Mw = Mw[~np.isinf(Mw)]
-
-        fcs = fcs[~np.isnan(Mw)]
-        fcs = fcs[~np.isinf(Mw)]
+    fcs = fcs[~np.isnan(Mw)]
+    fcs = fcs[~np.isinf(Mw)]
 
 
+    import numpy.ma as ma
+    mask = ma.masked_where(fcs > 0, fcs)
+    fcs = fcs[mask.mask]
 
-# Drop -ve fcs!
-        import numpy.ma as ma
-        mask = ma.masked_where(fcs > 0, fcs)
-        fcs = fcs[mask.mask]
-        #for fc in np.nditer(fcs):
-            #print(fc)
+    Mw = -999 if not np.any(Mw) else Mw
 
-        Mw = -999 if not np.any(Mw) else Mw
+    fc = 0 if not np.any(fcs) else np.median(fcs)
 
-        fc = 0 if not np.any(fcs) else np.median(fcs)
+    logger.debug("fcs: n:%d med:%.2f std:%.2f" % (fcs.size, np.median(fcs),
+                                                  np.std(fcs)))
+    logger.debug("Mw:  n:%d med:%.2f std:%.2f" % (Mw.size, np.median(Mw),
+                                                  np.std(Mw)))
 
-        logger.debug("fcs: n:%d med:%.2f std:%.2f" % (fcs.size, np.median(fcs), np.std(fcs)))
-        logger.debug("Mw:  n:%d med:%.2f std:%.2f" % (Mw.size, np.median(Mw), np.std(Mw)))
+    x = np.array(Mw_P)
+    logger.debug("Mw_P:n:%d med:%.2f std:%.2f" % (x.size, np.median(x),
+                                                  np.std(x)))
+    x = np.array(Mw_S)
+    logger.debug("Mw_S:n:%d med:%.2f std:%.2f" % (x.size, np.median(x),
+                                                  np.std(x)))
 
-        x = np.array(Mw_P)
-        logger.debug("Mw_P:n:%d med:%.2f std:%.2f" % (x.size, np.median(x), np.std(x)))
-        x = np.array(Mw_S)
-        logger.debug("Mw_S:n:%d med:%.2f std:%.2f" % (x.size, np.median(x), np.std(x)))
+    mag = event.Magnitude(mag=np.median(Mw),
+                station_count=stcount, magnitude_type='Mw',
+                evaluation_mode=origin.evaluation_mode,
+                evaluation_status=origin.evaluation_status,
+                origin_id=origin.resource_id)
 
-        mag = event.Magnitude(mag=np.median(Mw),
-                    station_count=stcount, magnitude_type='Mw',
-                    evaluation_mode=origin.evaluation_mode,
-                    evaluation_status=origin.evaluation_status,
-                    origin_id=origin.resource_id)
+    mag.corner_frequency = fc
 
-        mag.corner_frequency = fc
-
-        from microquake.core.event import QuantityError
-        mag.mag_errors = QuantityError(uncertainty=np.std(Mw))
-        evt.magnitudes.append(mag)
-        if origin.resource_id == evt.preferred_origin().resource_id:
-            evt.preferred_magnitude_id = mag.resource_id.id
+    from microquake.core.event import QuantityError
+    mag.mag_errors = QuantityError(uncertainty=np.std(Mw))
+    evt.magnitudes.append(mag)
+    if origin.resource_id == evt.preferred_origin().resource_id:
+        evt.preferred_magnitude_id = mag.resource_id.id
 
     return Catalog(events=[evt])

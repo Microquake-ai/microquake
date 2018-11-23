@@ -23,8 +23,8 @@ from microquake.core.trace import Trace
 from microquake.core.util import ENTRY_POINTS
 from microquake.core.util import tools
 from pkg_resources import load_entry_point
-# from obspy.core.utcdatetime import UTCDateTime
 # from microquake.core.util.decorator import uncompress_file as uncompress
+# from obspy.core.utcdatetime import UTCDateTime
 
 
 class Stream(obsstream.Stream):
@@ -110,7 +110,7 @@ class Stream(obsstream.Stream):
         return obsstream.Stream.write(st_out, f, format, **kwargs)
 
     write.__doc__ = obsstream.Stream.write.__doc__.replace('obspy',
-                                                         'microquake')
+                                                           'microquake')
 
     def write_bytes(self):
         buf = BytesIO()
@@ -156,6 +156,91 @@ class Stream(obsstream.Stream):
         waveform = WaveformPlotting(stream=self, *args, **kwargs)
         return waveform.plotWaveform(*args, **kwargs)
 
+    def distance_time_plot(self, event, site, scale=100, freq_min=100,
+                           freq_max=1000):
+        """
+        plot traces that have
+        :param event: event object
+        :param site: site object
+        :param scale: vertical size of pick markers and waveform
+        :return: plot handler
+        """
+
+        from IPython.core.debugger import Tracer
+
+        st = self.copy()
+        st.detrend('demean')
+        st.taper(max_percentage=0.5)
+        st.filter('bandpass', freqmin=freq_min, freqmax=freq_max)
+
+        import matplotlib.pyplot as plt
+        import numpy as np
+
+        # initializing the plot
+
+        ax = plt.subplot(111)
+
+        if event.preferred_origin():
+            origin = event.preferred_origin()
+        elif event.origins:
+            origin = event.origins[0]
+        else:
+            return
+
+        event_location = origin.loc
+
+        # find the earliest start time and latest end time
+        start_time = None
+        end_time = None
+
+        for tr in st:
+            if not start_time:
+                start_time = tr.stats.starttime
+                end_time = tr.stats.endtime
+            if tr.stats.starttime < start_time:
+                start_time = tr.stats.starttime
+            if tr.stats.endtime > end_time:
+                end_time = tr.stats.endtime
+
+        for tr in st:
+            station_code = tr.stats.station
+            # search for arrival
+            station = site.select(station=station_code).stations()[0]
+            station_location = station.loc
+            distance = np.linalg.norm(event_location - station_location)
+            p_pick = None
+            s_pick = None
+            data = (tr.data / np.max(np.abs(tr.data))) * scale
+            time_delta = tr.stats.starttime - start_time
+            time = np.arange(0,len(data)) / tr.stats.sampling_rate + \
+                   time_delta
+            for arrival in origin.arrivals:
+                if arrival.get_pick().waveform_id.station_code == station_code:
+                    distance = arrival.distance
+                    if arrival.phase == 'P':
+                        p_pick = arrival.get_pick().time - start_time
+                    elif arrival.phase == 'S':
+                        s_pick = arrival.get_pick().time - start_time
+
+            # Tracer()()
+
+            ax.plot(time, data + distance, 'k')
+            if p_pick:
+                ax.vlines(p_pick, distance - scale, distance + scale, 'r')
+            if s_pick:
+                ax.vlines(s_pick, distance - scale, distance + scale, 'b')
+
+
+# from microquake.core import read, read_events
+# from spp.utils import application
+# app = application.Application()
+# site = app.get_stations()
+# st = read('2018-11-08T10:21:49.898496Z.mseed', format='mseed')
+# cat = read_events('test.xml')
+# evt = cat[0]
+# st = st.composite()
+
+
 
 def is_valid(st_in, return_stream=False, STA=0.005, LTA=0.1, min_num_valid=5):
     """
@@ -176,7 +261,7 @@ def is_valid(st_in, return_stream=False, STA=0.005, LTA=0.1, min_num_valid=5):
     """
 
     from scipy.ndimage.filters import gaussian_filter1d
-    from microquake.signal.trigger import recursive_sta_lta
+    from obspy.signal.trigger import recursive_sta_lta
 
     st = st_in.copy()
     st.detrend('demean').detrend('linear')
@@ -293,25 +378,11 @@ def composite_traces(st):
     return Stream(traces=trsout)
 
 
-
-
-
-# @uncompress
-# def read(fname, format='MSEED', **kwargs):
-#     if format in ENTRY_POINTS['mq-waveform'].keys():
-#         format_ep = ENTRY_POINTS['mq-waveform'][format]
-#         read_format = load_entry_point(format_ep.dist.key,
-#                                    'microquake.plugin.waveform.%s' %
-#                                        format_ep.name, 'readFormat')
-#         return read_format(fname, **kwargs)
-#     else:
-#         return Stream(stream=obsstream.read(fname, format=format, **kwargs))
-
-
 def read(fname, format='MSEED', **kwargs):
     if format in ENTRY_POINTS['waveform'].keys():
         format_ep = ENTRY_POINTS['waveform'][format]
-        read_format = load_entry_point(format_ep.dist.key,'obspy.plugin.waveform.%s' %
+        read_format = load_entry_point(format_ep.dist.key,
+                                       'obspy.plugin.waveform.%s' %
                                        format_ep.name, 'readFormat')
         return Stream(stream=read_format(fname, **kwargs))
     else:

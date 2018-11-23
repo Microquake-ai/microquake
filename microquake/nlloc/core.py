@@ -211,6 +211,7 @@ def calculate_uncertainty(event, base_directory, base_name, perturbation=5,
         from microquake.core.data.grid import read_grid
         from numpy import linalg, argsort, arcsin, sqrt
         from microquake.core.event import ConfidenceEllipsoid, OriginUncertainty
+        # from IPython.core.debugger import Tracer
 
         narr = len(event.preferred_origin().arrivals)
 
@@ -250,7 +251,8 @@ def calculate_uncertainty(event, base_directory, base_name, perturbation=5,
         X = v[:, i[0]]
         Y = v[:, i[1]]
         Z = v[:, i[2]]
-        major_axis_plunge = arcsin(Y[1] / sqrt(1 - X[2] ** 2))
+        # Tracer()()
+        major_axis_plunge = arcsin(Y[2] / sqrt(1 - X[2] ** 2))
         major_axis_azimuth = arcsin(X[1] / sqrt(1 - X[2] ** 2))
         major_axis_rotation = arcsin(-X[2])
         ce = ConfidenceEllipsoid(semi_major_axis_length=w[i[0]],
