@@ -126,7 +126,7 @@ class EventDB:
             ev['x'] = origin.x
             ev['y'] = origin.y
             ev['z'] = origin.z
-            ev['Time_UTC'] = origin.time
+            ev['time_utc'] = origin.time.isoformat()
             ev['time_epoch'] = int(np.float64(UTCDateTime(
                 origin.time.datetime).timestamp) * 1e9)
             ev['uncertainty'] = origin.uncertainty
