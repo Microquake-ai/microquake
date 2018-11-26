@@ -39,11 +39,11 @@ class Stream(obsstream.Stream):
 
             self.traces = traces
 
-    def composite_old(self):
+    def composite(self):
 
         return composite_traces(self)
 
-    def composite(self):
+    def composite_broken(self):
         """
         returns a new stream object containing composite trace for all station.
         The amplitude of the composite traces are the norm of the amplitude of
