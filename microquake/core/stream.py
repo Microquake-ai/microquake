@@ -40,10 +40,6 @@ class Stream(obsstream.Stream):
             self.traces = traces
 
     def composite(self):
-
-        return composite_traces(self)
-
-    def composite_broken(self):
         """
         returns a new stream object containing composite trace for all station.
         The amplitude of the composite traces are the norm of the amplitude of
@@ -54,19 +50,8 @@ class Stream(obsstream.Stream):
         :rtype: ~microquake.core.stream.Stream
 
         """
-        groups = self.chan_groups()
-        dat, sr, t0 = self.as_array()
-        comp = tools.create_composite(dat, groups)
 
-        stnew = Stream()
-        for i, sig in enumerate(comp):
-            stats = self[groups[i][0]].stats.copy()
-            stats.starttime = t0
-            stats.channel = 'C'
-            tr = Trace(data=sig, header=stats)
-            stnew.append(tr)
-
-        return stnew
+        return composite_traces(self)
 
     def as_array(self, wlen_sec=None, taplen=0.05):
         t0 = np.min([tr.stats.starttime for tr in self])
