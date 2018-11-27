@@ -41,7 +41,7 @@ requirements = [
     # 'py4j',  # for spark
     'scikit-fmm',  # for the eikonal solver
     # 'mplstereonet', # to plot the station
-    # 'pandas'
+    'pandas',
     # 'libcomcat' # for manipulating error ellipsoid
 ]
 

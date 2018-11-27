@@ -256,6 +256,7 @@ def get_catalogue(base_url, start_datetime, end_datetime, site,
     :type end_datetime: datetime.datetype
     :param site: a site object containing system information
     :type site: microquake.core.data.station.Site
+    :params timezone: time zone
     :param blast: if True return blasts (default True)
     :type blast: bool
     :param event: if True return events (default True)
