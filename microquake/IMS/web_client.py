@@ -180,7 +180,7 @@ def get_continuous(base_url, start_datetime, end_datetime,
             tr.stats.station = str(site)
             # it seems that the time returned by IMS is local time...
             starttime_local = datetime.fromtimestamp(time[0]/1e9)
-            starttime_local.replace(tzinfo=tz)
+            starttime_local.replace(tzinfo=time_zone)
             tr.stats.starttime = UTCDateTime(starttime_local)
             tr.stats.channel = chans[i]
             stream.append(tr)
