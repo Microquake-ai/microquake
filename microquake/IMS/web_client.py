@@ -25,7 +25,7 @@ logger.level = INFO
 
 
 def get_continuous(base_url, start_datetime, end_datetime,
-                   site_ids, format='binary-gz', network='',
+                   site_ids, time_zone, format='binary-gz', network='',
                    sampling_rate=6000., nan_limit=10):
     """
     :param base_url: base url of the IMS server
@@ -180,7 +180,7 @@ def get_continuous(base_url, start_datetime, end_datetime,
             tr.stats.station = str(site)
             # it seems that the time returned by IMS is local time...
             starttime_local = datetime.fromtimestamp(time[0]/1e9)
-            starttime_local.replace(tzinfo=start_datetime.tzinfo)
+            starttime_local.replace(tzinfo=tz)
             tr.stats.starttime = UTCDateTime(starttime_local)
             tr.stats.channel = chans[i]
             stream.append(tr)
