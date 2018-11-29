@@ -219,6 +219,25 @@ class Stream(obsstream.Stream):
             plt.ylabel('distance from event (m)')
 
 
+    @staticmethod
+    def create_from_json_traces(traces_json_list):
+        from obspy.core.trace import UTCDateTime
+        traces = []
+        # for tr_json in traces_json_list:
+        for i, tr_json in enumerate(traces_json_list):
+            stats = tr_json['stats']
+            tr = Trace.create_from_json(tr_json)
+            traces.append(tr)
+        return Stream(traces=traces)
+
+    def to_traces_json(self):
+        traces = []
+        for tr in self:
+            trout = tr.to_json()
+            traces.append(trout)
+        return traces
+
+
 # from microquake.core import read, read_events
 # from spp.utils import application
 # app = application.Application()
