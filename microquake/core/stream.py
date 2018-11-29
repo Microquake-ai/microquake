@@ -141,7 +141,7 @@ class Stream(obsstream.Stream):
         waveform = WaveformPlotting(stream=self, *args, **kwargs)
         return waveform.plotWaveform(*args, **kwargs)
 
-    def distance_time_plot(self, event, site, scale=100, freq_min=100,
+    def distance_time_plot(self, event, site, scale=20, freq_min=100,
                            freq_max=1000):
         """
         plot traces that have
@@ -155,7 +155,7 @@ class Stream(obsstream.Stream):
 
         st = self.copy()
         st.detrend('demean')
-        st.taper(max_percentage=0.5)
+        st.taper(max_percentage=0.01)
         st.filter('bandpass', freqmin=freq_min, freqmax=freq_max)
 
         import matplotlib.pyplot as plt
@@ -214,6 +214,9 @@ class Stream(obsstream.Stream):
                 ax.vlines(p_pick, distance - scale, distance + scale, 'r')
             if s_pick:
                 ax.vlines(s_pick, distance - scale, distance + scale, 'b')
+
+            plt.xlabel('relative time (s)')
+            plt.ylabel('distance from event (m)')
 
 
 # from microquake.core import read, read_events
