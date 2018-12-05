@@ -79,3 +79,41 @@ class Trace(obstrace.Trace):
             within = False
         return within
 
+    @staticmethod
+    def create_from_data(stats, data_list):
+        from obspy.core.trace import AttribDict
+        trc = Trace()
+        trc.stats = AttribDict(stats)
+        # trc.data = np.array(data_list)
+        # MTH: set to float32:
+        trc.data = np.array(data_list, dtype='float32')
+        return trc
+
+    @staticmethod
+    def create_from_json(trace_json_object):
+        from obspy.core.trace import UTCDateTime
+        # trace_json_object['stats']['starttime'] = UTCDateTime(int(trace_json_object['stats']['starttime']) / 1e9)
+        # trace_json_object['stats']['endtime'] = UTCDateTime(int(trace_json_object['stats']['endtime']) / 1e9)
+
+        trace_json_object['stats']['starttime'] = UTCDateTime(trace_json_object['stats']['starttime'])
+        trace_json_object['stats']['endtime'] = UTCDateTime(trace_json_object['stats']['endtime'])
+
+        trc = Trace.create_from_data(stats=trace_json_object['stats'], data_list=trace_json_object['data'])
+        return trc
+
+    def to_json(self):
+        from obspy.core.trace import UTCDateTime,AttribDict
+        trace_dict = dict()
+        trace_dict['stats'] = dict()
+        for key in self.stats.keys():
+            if isinstance(self.stats[key], UTCDateTime):
+                #trace_dict['stats'][key] = int(np.float64(self.stats[key].timestamp) * 1e9)
+                trace_dict['stats'][key] = self.stats[key].isoformat()
+            elif isinstance(self.stats[key], AttribDict):
+                trace_dict['stats'][key] = self.stats[key].__dict__
+            else:
+                trace_dict['stats'][key] = self.stats[key]
+
+        trace_dict['data'] = self.data.tolist()
+        return trace_dict
+
