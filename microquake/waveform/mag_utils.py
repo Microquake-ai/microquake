@@ -12,8 +12,49 @@ import matplotlib.pyplot as plt
 """
 
 def parsevals(data, dt, nfft):
+    """
+        Scale a 2-sided fft by dt
+        Scale a 1-sided rft by dt x sqrt(2) 
+    """
     tsum = np.sum(np.square(data))*dt
-    print("Parseval's: [time] ndata=%d dt=%f sum=%f" % (data.size, dt, tsum))
+    print("Parseval's: [time] ndata=%d dt=%f sum=%12.10g" % (data.size, dt, tsum))
+
+
+    for n in [512, 1024, 2048, 4096]:
+        nfft = n
+        tsum2 = np.sum(np.square(data))
+        G=fft(data,nfft)
+        G2 = np.abs(G)*np.abs(G)
+        #G2 /= dt  # Same as G2/(N*df)
+        fsum = np.sum(G2)/float(nfft)
+        print("Gerald's Parseval's: nfft=%d tsum=%12.10g fsum=%12.10g" % (nfft, tsum2, fsum))
+
+    '''
+        Note: We scale the forward fft by dt, then in Parseval's we scale it by df,
+              So we'd get the same result if we don't scale the forward fft & just scale Parseval's by df*dt = 1/N
+    '''
+    X=fft(data,nfft)*dt
+
+    df = 1./(dt * float(X.size))
+    #fsum = np.sum(X*np.conj(X))*df
+    # Do it this way so it doesn't spit a ComplexWarning about throwing away imag part
+    fsum = np.sum(np.abs(X)*np.abs(X))*df
+    print("Parseval's: [freq] nfft=%d df=%f sum=%12.10g" % (X.size, df, fsum))
+
+
+    df = 1./(dt * float(nfft))
+    Y,freqs = unpack_rfft(rfft(data, n=nfft), df)
+    Y *= dt
+    '''
+        Note: We only have the +ve freq half, so we need to double all these values *except* for DC & Nyquist,
+              which are purely real and don't have a -ve freq.
+              So either scale the fsum by 2, or scale Y (minus DC/Nyq) by sqrt(2) here
+    '''
+    Y[1:-1] *= np.sqrt(2.)
+    #fsum = np.sum(Y*np.conj(Y))*df
+    fsum = np.sum(np.abs(X)*np.abs(X))*df
+    print("Parseval's: [freq] nfft=%d df=%f sum=%12.10g" % (Y.size, df, fsum))
+
     exit()
 
 def check2():
@@ -48,6 +89,7 @@ def check2():
         #cmod = 2. * np.abs(shat*T)
         peak_f = freqs[np.argmax(cmod)]
         print("n=%d (cmod.size=%d) f:%.2f mean_shat=%f max_shat=%f" % (n, cmod.size, peak_f, np.mean(cmod), np.amax(cmod)))
+        parsevals(np.array(s), T, n)
 
 
 
@@ -125,8 +167,8 @@ def peak_freq(spec_array, freqs, fmin=0., fmax=None):
 def stack_spectra(sta_dict):
     """ stack the pre-calculated spectra (fft) of each channel
 
-        :param sta_dict: dictionary of pre-calculated P & S channel spectra at each station
-        :return: normalized_spectrum_stack, freqs
+        :param sta_dict: dictionary of pre-calculated P & S channel spectra (complex values) at each station
+        :return: normalized_spectrum_stack (real modulus), freqs
         :rtype: (np.array, np.array)
     """
 
@@ -268,7 +310,7 @@ def get_spectra(st, event, stations, calc_displacement=False, S_win_len=.1, P_or
         sta_dict[sta_code] = d
 
 
-# 2. Calc/save signal/noise fft spectra at all channels that have P arrivals:
+# 2. Calc/save signal/noise fft spectra at all channels that have P(S) arrivals:
     for sta_code,sta in sta_dict.items():
 
         if P_or_S == 'P':
@@ -330,8 +372,8 @@ def get_spectra(st, event, stations, calc_displacement=False, S_win_len=.1, P_or
 
             # np/scipy ffts are not scaled by dt
             # Do it here so we don't forget 
-                signal_fft *= dt
-                noise_fft  *= dt
+                signal_fft *= (dt * np.sqrt(2))
+                noise_fft  *= (dt * np.sqrt(2))
 
                 #plot_signal(signal, noise)
 
@@ -341,6 +383,7 @@ def get_spectra(st, event, stations, calc_displacement=False, S_win_len=.1, P_or
                 ch['freqs'] = freqs
                 ch['signal_fft'] = signal_fft
                 ch['noise_fft']  = noise_fft
+                ch['P_or_S'] = P_or_S
                 if calc_displacement:
                     ch['disp_or_vel'] = 'DISPLACEMENT'
                 else:
@@ -439,7 +482,10 @@ def getresidfit3(data_spec, model_func, freqs: list, Lnorm='L1', weight_fr=False
     return inner
 
 
-def calc_fit3(spec, freqs, fmin=1., fmax=1000., Lnorm='L2', weight_fr=False, fit_displacement=False):
+def calc_fit1(spec, freqs, fmin=1., fmax=1000., Lnorm='L2', weight_fr=False, fit_displacement=False):
+    # spec = speac_amp
+    print("calc_fit1: type(spec)=%s freqs.size=%d fmin=%f fmax=%f fit_disp=%s" % \
+          (type(spec), freqs.size, fmin,fmax, fit_displacement))
 
     model_func = brune_vel_spec
     if fit_displacement:
@@ -453,6 +499,7 @@ def calc_fit3(spec, freqs, fmin=1., fmax=1000., Lnorm='L2', weight_fr=False, fit
     pp = [1., .001, 100]
     (sol,fit,*rest)= optimize.fmin(residfit, np.array(pp),xtol=10**-12,ftol=10**-6,disp=False, full_output=1)
     mom, ts, fc = sol[0], sol[1], sol[2]
+    #print(fc)
     if sol[0] < 0. :
         print("Ummm smom < 0 !!!")
 
@@ -462,8 +509,9 @@ def calc_fit3(spec, freqs, fmin=1., fmax=1000., Lnorm='L2', weight_fr=False, fit
         model_spec = np.array( np.zeros(freqs.size), dtype=np.float_)
         for i,f in enumerate(freqs):
             model_spec[i] = model_func(fc, mom, ts, f)
-        plot_spec2(freqs, spec, model_spec, title="Fit to spec stack fc=%f" % fc)
-    return fit
+        plot_spec2(freqs, spec, model_spec, title="Fit to spec stack fc=%.2f" % fc)
+
+    return fit, fc
 
 def calc_fit2(spec, freqs, fmin=10., fmax=1000., Lnorm='L2', weight_fr=False):
 
@@ -536,18 +584,20 @@ def calc_fit(sta_dict, fc, fmin=20., fmax=1000., Lnorm='L2', weight_fr=False):
 
             ch_dict['smom'] = sol[0]
             ch_dict['fit'] = fopt
+            ch_dict['P_or_S'] = cha['P_or_S']
             #print("    cha:%s smom:%12.10g" % (cha_code, sol[0]))
 
             #print("calc_fit: sta:%s cha:%s smom:%12.10g fit:%.2f" % (sta_code, cha_code, sol[0], fopt))
             plot_fit = 1
-            plot_fit = 0
-            if plot_fit:
+            #plot_fit = 0
+            if plot_fit and sta_code == '15':
                 model_spec = np.array( np.zeros(freqs.size), dtype=np.float_)
                 for i,f in enumerate(freqs):
                     model_spec[i] = model_func(fc, sol[0], sol[1], f)
                 #plot_spec(freqs, np.abs(signal_fft),  model_spec, title="sta:%s ch:%s spec fit" % \
-                plot_spec3(freqs, np.abs(signal_fft),  np.abs(noise_fft), model_spec, title="sta:%s ch:%s spec fit" % \
-                          (sta_code, cha_code))
+                plot_spec3(freqs, np.abs(signal_fft),  np.abs(noise_fft), model_spec, \
+                           title="sta:%s ch:%s spec fit phase:%s [lambda=%12.10g]" % \
+                           (sta_code, cha_code, ch_dict['P_or_S'], sol[0]))
 
             dd[cha_code] = ch_dict
         smom_dict[sta_code] = dd
@@ -561,7 +611,8 @@ def plot_spec3(freqs, signal_fft, noise_fft, model_spec, title=None):
     plt.loglog(freqs, model_spec,  color='green')
     plt.legend(['signal', 'noise', 'model'])
     plt.xlim(1e0, 3e3)
-    plt.ylim(1e-12, 1e-6)
+    #plt.ylim(1e-12, 1e-6)
+    plt.ylim(1e-15, 1e-9)
     if title:
         plt.title(title)
     plt.grid()

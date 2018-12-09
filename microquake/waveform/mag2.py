@@ -5,7 +5,7 @@ from obspy.core.event.base import Comment, WaveformStreamID
 
 import matplotlib.pyplot as plt
 
-from microquake.waveform.mag_utils import get_spectra, stack_spectra, calc_fit, calc_fit2, calc_fit3, peak_freq
+from microquake.waveform.mag_utils import get_spectra, stack_spectra, calc_fit, calc_fit2, calc_fit1, peak_freq
 
 """ This module's docstring summary line.
     This is a multi-line docstring. Paragraphs are separated with blank lines.
@@ -24,24 +24,35 @@ def moment_magnitude(st, event, stations, vp=5300, vs=3500, ttpath=None, only_tr
 
     origin_id = event.preferred_origin().resource_id
 
+    calc_displacement = False
+
 # Get P spectra at all stations/channels that have a P arrival:
-    sta_dict_P = get_spectra(st, event, stations, calc_displacement=False, S_win_len=.1, P_or_S='P')
+    sta_dict_P = get_spectra(st, event, stations, calc_displacement=calc_displacement, S_win_len=.1, P_or_S='P')
 # Get S spectra at all stations/channels that have an S arrival:
-    sta_dict_S = get_spectra(st, event, stations, calc_displacement=False, S_win_len=.1, P_or_S='S')
+    sta_dict_S = get_spectra(st, event, stations, calc_displacement=calc_displacement, S_win_len=.1, P_or_S='S')
 
 # Stack vel spectra to get fc ~ peak_f
     stacked_spec_P, freqs = stack_spectra(sta_dict_P)
     stacked_spec_S, freqs_S = stack_spectra(sta_dict_S)
 
-# Locate frequency of stack max above f=25 Hz
     peak_f = peak_freq(stacked_spec_P, freqs, fmin=25.)
-    title='Stack P spec peak_f=%.1f' % peak_f
-    #plot_spec(stacked_spec_P, freqs, title='Stack P spec peak_f=%.1f' % peak_f)
+    peak_f_S = peak_freq(stacked_spec_S, freqs, fmin=35.)
 
-    peak_f_S = peak_freq(stacked_spec_S, freqs_S, fmin=35.)
-    #plot_spec(stacked_spec_S, freqs_S, title='Stack S spec peak_f=%.1f' % peak_f_S)
+    plot_spec(stacked_spec_P, freqs, title='Stack P Vel spec peak_f=%.1f' % peak_f)
+    #plot_spec(stacked_spec_S, freqs_S, title='Stack S Vel spec peak_f=%.1f' % peak_f_S)
 
-    print("P_df=%8.6f S_df=%8.6f" % (freqs[1], freqs_S[1]))
+# Now recalculate the spectra as Displacment spectra:
+    calc_displacement = True
+
+# Get P spectra at all stations/channels that have a P arrival:
+    sta_dict_P = get_spectra(st, event, stations, calc_displacement=calc_displacement, S_win_len=.1, P_or_S='P')
+# Get S spectra at all stations/channels that have an S arrival:
+    sta_dict_S = get_spectra(st, event, stations, calc_displacement=calc_displacement, S_win_len=.1, P_or_S='S')
+
+    stacked_spec_P, freqs = stack_spectra(sta_dict_P)
+    fit, fc_stack = calc_fit1(stacked_spec_P, freqs, fmin=1, fmax=fmax, fit_displacement=calc_displacement)
+    stacked_spec_S, freqs_S = stack_spectra(sta_dict_S)
+    #fit, fc_stack = calc_fit1(stacked_spec_S, freqs_S, fmin=1, fmax=fmax, fit_displacement=calc_displacement)
 
     rad_P = 0.52
     rad_S = 0.63
@@ -50,78 +61,71 @@ def moment_magnitude(st, event, stations, vp=5300, vs=3500, ttpath=None, only_tr
     t1 = time()
     print("Call calc_filt: t1=", t1)
 
-    fit,smom_dict = calc_fit(sta_dict_P, fc=peak_f, fmin=fmin, fmax=fmax)
+    fit,smom_dict = calc_fit(sta_dict_P, fc=peak_f, fmin=30, fmax=600)
+    #fit,smom_dict = calc_fit(sta_dict_P, fc=peak_f, fmin=fmin, fmax=fmax)
+    print("******** P smom done, now calc S smom ********")
+    fit,smom_dict_S = calc_fit(sta_dict_S, fc=peak_f_S, fmin=30, fmax=600)
+
     t2 = time()
-    print("Call calc_filt DONE: t2=", t2)
     print(t2-t1)
 
     station_mags = []
 
-    Mw_P = []
-    Mw_P_wt_avg = 0.
-    wts = 0.
-    for sta_code, sta in smom_dict.items():
+    Mw_P = Mw_S = []
+    Mw_P_wt_avg = Mw_S_wt_avg = 0.
+    wts_P = wts_S = 0.
+
+    for sta_code, sta in smom_dict.items() + smom_dict_S.items():
         #for cha_code, smom in sta.items():
         for cha_code, cha_dict in sta.items():
-            #print("sta:%s cha:%s R:%.1f smom:%12.10g" % (sta_code, cha_code, sta_dict_P[sta_code]['R'],smom))
+
+            P_or_S = cha_dict['P_or_S']
             smom = cha_dict['smom']
             fit  = cha_dict['fit']
+            print("sta:%s cha:%s R:%.1f [pha:%s] smom:%12.10g" % \
+                  (sta_code, cha_code, sta_dict_P[sta_code]['R'], P_or_S, smom))
 
             lambda_i = smom * sta_dict_P[sta_code]['R']
-            scale = 4. * np.pi * density * vp**3 / rad_P
+
+            if P_or_S == 'P':
+                v = vp
+                rad = rad_P
+            elif P_or_S == 'S':
+                v = vs
+                rad = rad_S
+            else:
+                print("Ooooops: P_or_S is neither P nor S!")
+                exit()
+
+            scale = 4. * np.pi * density * v**3 / rad
             M0 = lambda_i*scale
             Mw = 2./3. * np.log10(M0) - 6.0333
-            print("sta:%s cha:%s smom:%12.10g fit:%.2f [P] Mw:%.2f" % (sta_code, cha_code, smom, fit, Mw))
-            Mw_P.append(Mw)
-            Mw_P_wt_avg += Mw/fit
-            wts += 1./fit
+            print("sta:%s cha:%s smom:%12.10g fit:%.2f [pha:%s] Mw:%.2f" % (sta_code, cha_code, smom, fit, P_or_S, Mw))
+
+            if P_or_S == 'P':
+                Mw_P.append(Mw)
+                Mw_P_wt_avg += Mw/fit
+                wts_P += 1./fit
+            else:
+                Mw_S.append(Mw)
+                Mw_S_wt_avg += Mw/fit
+                wts_S += 1./fit
+
+            mag_type = "Mw_%s" % P_or_S
 
             station_mag = StationMagnitude(origin_id=origin_id, mag=Mw,
-                                           station_magnitude_type="Mw_P",
+                                           station_magnitude_type=mag_type,
                                            comments=[Comment(text="spectral moment_magnitude")],
                                            waveform_id=WaveformStreamID(network_code="OT",
                                                        station_code=sta_code, channel_code=cha_code,),
                                            )
             station_mags.append(station_mag)
 
-    Mw_P_wt_avg /= wts
+    Mw_P_wt_avg /= wts_P
+    Mw_S_wt_avg /= wts_S
     print("Mw_P mean:%.2f Mw_P_weighted: %.2f" % (np.mean(Mw_P), Mw_P_wt_avg))
-
-# Use peak_f from P stack or S here ?
-    #fit,smom_dict = calc_fit(sta_dict_S, fc=peak_f_S, fmin=fmin, fmax=fmax)
-    fit,smom_dict = calc_fit(sta_dict_S, fc=peak_f_S, fmin=1., fmax=fmax)
-
-    Mw_S = []
-    Mw_S_wt_avg = 0.
-    wts = 0.
-    for sta_code, sta in smom_dict.items():
-        for cha_code, cha_dict in sta.items():
-            #print("sta:%s cha:%s R:%.1f smom:%12.10g" % (sta_code, cha_code, sta_dict_S[sta_code]['R'],smom))
-            smom = cha_dict['smom']
-            fit  = cha_dict['fit']
-
-            lambda_i = smom * sta_dict_S[sta_code]['R']
-            scale = 4. * np.pi * density * vs**3 / (rad_S * 2.)
-            M0 = lambda_i*scale
-            Mw = 2./3. * np.log10(M0) - 6.0333
-            print("sta:%s cha:%s smom:%12.10g [S] Mw:%.2f" % (sta_code, cha_code, smom, Mw))
-            Mw_S.append(Mw)
-            Mw_S_wt_avg += Mw/fit
-            wts += 1./fit
-
-            station_mag = StationMagnitude(origin_id=origin_id,
-                                           mag=Mw,
-                                           station_magnitude_type="Mw_S",
-                                           comments=[Comment(text="spectral moment_magnitude")],
-                                           waveform_id=WaveformStreamID(network_code="OT",
-                                                       station_code=sta_code, channel_code=cha_code,),
-                                           )
-            station_mags.append(station_mag)
-    Mw_S_wt_avg /= wts
     print("Mw_S mean:%.2f Mw_S_weighted: %.2f" % (np.mean(Mw_S), Mw_S_wt_avg))
 
-    #sta_mag_contributions = [ station_mag ]
-    #station_count = 1
 
     mag = 0.5 * (Mw_P_wt_avg + Mw_S_wt_avg)
     count = len(station_mags)
