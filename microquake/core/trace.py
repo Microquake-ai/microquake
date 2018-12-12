@@ -79,15 +79,6 @@ class Trace(obstrace.Trace):
             within = False
         return within
 
-    @staticmethod
-    def create_from_data(stats, data_list):
-        from obspy.core.trace import AttribDict
-        trc = Trace()
-        trc.stats = AttribDict(stats)
-        # trc.data = np.array(data_list)
-        # MTH: set to float32:
-        trc.data = np.array(data_list, dtype='float32')
-        return trc
 
     @staticmethod
     def create_from_json(trace_json_object):
@@ -98,7 +89,7 @@ class Trace(obstrace.Trace):
         trace_json_object['stats']['starttime'] = UTCDateTime(trace_json_object['stats']['starttime'])
         trace_json_object['stats']['endtime'] = UTCDateTime(trace_json_object['stats']['endtime'])
 
-        trc = Trace.create_from_data(stats=trace_json_object['stats'], data_list=trace_json_object['data'])
+        trc = Trace(header=trace_json_object['stats'], data=np.array(trace_json_object['data'], dtype='float32'))
         return trc
 
     def to_json(self):

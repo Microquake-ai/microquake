@@ -22,7 +22,7 @@ plugin for reading and writing various waveform format expending
 from microquake.core import logger
 from microquake.core.util.decorator import uncompress_file as uncompress
 from microquake.core import UTCDateTime
-s
+
 # import logging
 from struct import unpack
 from datetime import datetime
