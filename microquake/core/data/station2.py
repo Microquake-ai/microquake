@@ -278,6 +278,37 @@ class Channel(obspy.core.inventory.channel.Channel):
         else:
             raise AttributeError
 
+    @property
+    def x(self):
+        if self.extra:
+            if self.extra.get('x', None):
+               return float(self.extra.x.value)
+            else:
+                raise AttributeError
+        else:
+            raise AttributeError
+
+    @property
+    def y(self):
+        if self.extra:
+            if self.extra.get('y', None):
+               return float(self.extra.y.value)
+            else:
+                raise AttributeError
+        else:
+            raise AttributeError
+
+    @property
+    def z(self):
+        if self.extra:
+            if self.extra.get('z', None):
+               return float(self.extra.z.value)
+            else:
+                raise AttributeError
+        else:
+            raise AttributeError
+
+
 def test_read_stationxml(xmlfile_in: str, xmlfile_out: str):
     """
         Read stationXML with or without namespace extras, wrap obspy Station/Channel in this class,

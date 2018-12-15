@@ -144,13 +144,44 @@ def check(tr=None):
     exit()
     #print(shat)
 
+def damped_response(freqs, fn, eta=.18):
+    mag = np.array( np.zeros(freqs.size, dtype=np.float_))
+    pha = np.array( np.zeros(freqs.size, dtype=np.float_))
+    for i,f in enumerate(freqs):
+        r = f/fn
+        x = 1 - r*r
+        y = 2*eta*r
+        pha[i] = np.arctan2(y, x)
+        mag[i] = (r*r)/np.sqrt(x*x + y*y)
+        #print("%3d %8.6f %8.6f %5.2f" % (i, f, mag[i], pha[i]))
+
+    return mag
+
+
+    #exit()
+    plt.loglog(freqs, mag, color='blue')
+    # plt.xlim(1e0, 3e3)
+    # plt.ylim(1e-8, 1.2e-4)
+    # #plt.ylim(1e-12, 1e-4)
+    # if title:
+    #     plt.title(title)
+    plt.grid()
+    plt.show()
+    plt.semilogx(freqs, pha, color='red')
+    plt.grid()
+    plt.show()
+
+
 def main():
     '''
     for v in [1.5, 2.0, 2.5, 3.0, 3.5, 4.0]:
         print(v, 2.*np.log10(v))
     exit()
     '''
-    check2()
+    freqs = np.logspace(0, 3, num=500, endpoint=True, base=10.0, dtype=np.float_)
+    #print(freqs)
+    damped_response(freqs, 14)
+    #check2()
 
 def peak_freq(spec_array, freqs, fmin=0., fmax=None):
     """ Return peak_f of spec_array within bounds: fmin <= freqs <= fmax
@@ -197,16 +228,22 @@ def inv_station_list_to_dict(station_list):
 
         :param station_list: list of
         :return: dict
-        :rtype: something
+        :rtype: dict
     """
-
     sta_meta_dict = {}
-    for sta in station_list:
-        chans_dict = {}
-        for cha in sta:
-            chans_dict[cha.code] = cha
 
-        sta_meta_dict[sta.code] = chans_dict
+    for station in station_list:
+        dd={}
+        dd['station'] = station.copy()
+        dd['loc'] = station.loc
+
+        chans_dict = {}
+        for channel in station.channels:
+            chans_dict[channel.code] = channel
+        dd['chans'] = chans_dict
+        dd['nchans'] = len(station.channels)
+
+        sta_meta_dict[station.code] = dd
 
     return sta_meta_dict
 
@@ -332,6 +369,9 @@ def get_spectra(st, event, stations, calc_displacement=False, S_win_len=.1, P_or
             for tr in trs:
                 ch = {}
 
+                cha_code = tr.stats.channel
+                sensor_type = sta_meta_dict[sta_code]['chans'][cha_code].sensor_type
+
                 tt_s = sta['stime'] - tr.stats.starttime
                 tr.detrend('demean').detrend('linear').taper(type='cosine', max_percentage=0.05, side='both')
 
@@ -341,7 +381,8 @@ def get_spectra(st, event, stations, calc_displacement=False, S_win_len=.1, P_or
                 signal.taper(type='cosine', max_percentage=0.05, side='both')
 
                 # If this trace sensor_type='ACCELEROMETER' --> integrate to velocity
-                if sta_meta_dict[tr.stats.station][tr.stats.channel].sensor_type == 'ACCELEROMETER':
+
+                if sensor_type == 'ACCELEROMETER':
                     signal.integrate().taper(type='cosine', max_percentage=0.05, side='both')
 
                 if calc_displacement:
@@ -354,24 +395,36 @@ def get_spectra(st, event, stations, calc_displacement=False, S_win_len=.1, P_or
                 noise.taper(type='cosine', max_percentage=0.05, side='both')
 
                 # If this trace sensor_type='ACCELEROMETER' --> integrate to velocity
-                if sta_meta_dict[tr.stats.station][tr.stats.channel].sensor_type == 'ACCELEROMETER':
+                if sensor_type == 'ACCELEROMETER':
                     signal.integrate().taper(type='cosine', max_percentage=0.05, side='both')
 
                 if calc_displacement:
                     noise.integrate().taper(type='cosine', max_percentage=0.05, side='both')
 
+                #if calc_displacement:
+                    #disp_area = np.trapz(signal.data, dx=dt)
+                    #print("sta:%s cha:%s pha:%s t1:%s t2:%s disp_area:%12.10g" % 
+                          #(sta_code, tr.stats.channel, P_or_S, signal_start, signal_end, disp_area))
+
+
                 #check(signal)
-                parsevals(signal.data, dt, nfft)
+                #parsevals(signal.data, dt, nfft)
 
                 (signal_fft, freqs) = unpack_rfft( rfft(signal.data, n=nfft), df)
                 (noise_fft, freqs)  = unpack_rfft( rfft(noise.data, n=nfft), df)
+
+                #signal_fft /= damped_response(freqs, fn=14, eta=0.18)
+                resp = damped_response(freqs, fn=14, eta=0.18)
+                #signal_fft[1:] /= resp[1:]
+                #for i,f in enumerate(freqs):
+                    #print("%4d %6.2f %12.10g %8.6f" % (i, f, np.abs(signal_fft[i]), resp[i]))
+                #exit()
 
                 #plot_signal(signal, noise)
                 #plot_spec(freqs, signal_fft, noise_fft, title=None)
                 #exit()
 
             # np/scipy ffts are not scaled by dt
-            # Do it here so we don't forget 
                 signal_fft *= (dt * np.sqrt(2))
                 noise_fft  *= (dt * np.sqrt(2))
 
@@ -484,8 +537,6 @@ def getresidfit3(data_spec, model_func, freqs: list, Lnorm='L1', weight_fr=False
 
 def calc_fit1(spec, freqs, fmin=1., fmax=1000., Lnorm='L2', weight_fr=False, fit_displacement=False):
     # spec = speac_amp
-    print("calc_fit1: type(spec)=%s freqs.size=%d fmin=%f fmax=%f fit_disp=%s" % \
-          (type(spec), freqs.size, fmin,fmax, fit_displacement))
 
     model_func = brune_vel_spec
     if fit_displacement:
@@ -503,8 +554,8 @@ def calc_fit1(spec, freqs, fmin=1., fmax=1000., Lnorm='L2', weight_fr=False, fit
     if sol[0] < 0. :
         print("Ummm smom < 0 !!!")
 
-    print("solution=",sol)
-    plot_fit = 1
+    #print("solution=",sol)
+    plot_fit = 0
     if plot_fit:
         model_spec = np.array( np.zeros(freqs.size), dtype=np.float_)
         for i,f in enumerate(freqs):
@@ -589,7 +640,7 @@ def calc_fit(sta_dict, fc, fmin=20., fmax=1000., Lnorm='L2', weight_fr=False):
 
             #print("calc_fit: sta:%s cha:%s smom:%12.10g fit:%.2f" % (sta_code, cha_code, sol[0], fopt))
             plot_fit = 1
-            #plot_fit = 0
+            plot_fit = 0
             if plot_fit and sta_code == '15':
                 model_spec = np.array( np.zeros(freqs.size), dtype=np.float_)
                 for i,f in enumerate(freqs):
