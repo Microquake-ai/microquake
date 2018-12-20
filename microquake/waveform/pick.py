@@ -490,6 +490,7 @@ def snr_picker(st, picks, snr_dt=None, snr_window=(1e-3, 20e-3), filter=None):
             continue
 
         for phase in previous_picks[station]:
+
             if filter_p and phase=='P':
                 continue
             elif filter_s and phase=='S':
@@ -511,7 +512,7 @@ def snr_picker(st, picks, snr_dt=None, snr_window=(1e-3, 20e-3), filter=None):
             elif phase == 'P' and 'S' not in previous_picks[station]:
                 latest_time   = previous_picks[station]['P'].time + \
                                 post_window_length
-    
+
             old_pick = previous_picks[station][phase]
 
             logger.debug("%s: sta:%s [%s] pick:%s tr:%s-%s" % \
@@ -554,8 +555,14 @@ def snr_picker(st, picks, snr_dt=None, snr_window=(1e-3, 20e-3), filter=None):
                                                  post_wl=post_window_length))
                             for taut in tau])
 
-    
+            if 0 and phase == 'P':
+                for x in tmp:
+                    print("time:%s snr:%f" % (x[0], x[1]))
+
+
         # MTH: this is a hack to try to force the solution close to the oldPick
+            alpha = 0
+            """
             alpha = 10.
             for i, foo in enumerate(tmp):
                 time = foo[0]
@@ -565,6 +572,7 @@ def snr_picker(st, picks, snr_dt=None, snr_window=(1e-3, 20e-3), filter=None):
                 scale = np.exp(-alpha * dt)
                 tmp[i,1] *= np.exp(-alpha * dt) 
                 #print(time, dt, snr, scale, snr*scale, tmp[i,1])
+            """
 
             index = np.argmax(tmp[:,1])
             pick_time = tmp[index, 0]
@@ -575,6 +583,11 @@ def snr_picker(st, picks, snr_dt=None, snr_window=(1e-3, 20e-3), filter=None):
             logger.debug("%s: sta:%s [%s] old_pick:%s new_pick:%s SNR:%.2f" %
                          (function_name, station, phase, old_pick.time,
                           pick_time, snr))
+
+            if 0 and phase == 'P':
+                print("%s: sta:%s [%s] old_pick:%s new_pick:%s SNR:%.2f pre_wl=%f post_wl=%f" %
+                         (function_name, station, phase, old_pick.time,
+                          pick_time, snr, pre_window_length, post_window_length))
 
             method_string = 'snr_picker preWl=%.3g postWl=%.3g alpha=%.1f' % \
                             (pre_window_length, post_window_length, alpha)
@@ -602,6 +615,13 @@ def calculate_snr(stream, pick, pre_wl=1e-3, post_wl=10e-3):
     output:
     SNR - Signal to noise ratio
     """
+
+    starts = [tr.stats.starttime for tr in stream]
+    for start in starts:
+        if start != starts[0]:
+            print("calculate_snr: Mismatching trace start times!")
+            return 0
+
     try:
         sr = stream.traces[0].stats['sampling_rate']
         st = stream.traces[0].stats['starttime']
@@ -611,7 +631,6 @@ def calculate_snr(stream, pick, pre_wl=1e-3, post_wl=10e-3):
         N_post = int(post_wl * sr)
 
         #print("calc_snr: st:%s et:%s Ps:%d N_pre:%d N_post:%d" % (st, et, Ps, N_pre, N_post))
-
 
         if pick + post_wl > et:
             #EnergyS = np.sum([np.var(tr.data[Ps:]) for tr in St])
@@ -632,7 +651,12 @@ def calculate_snr(stream, pick, pre_wl=1e-3, post_wl=10e-3):
 
 
         SNR = 10 * np.log10(EnergyS / EnergyN)
-        #print('calculate_snr: Pick:%s EnergyS=%12.8g EntergyN=%12.8g SNR=%.1f' % (Pick, EnergyS, EnergyN, SNR))
+
+        #print('calculate_snr: sta:%s ntrs:%d pick:%s pre_wl=%f post_wl=%f SNR=%.1f' % \
+              #(stream[0].stats.station, ntrs, pick, pre_wl, post_wl, SNR))
+        #print('calculate_snr: sta:%s ntrs:%d pick:%s EnergyN=%12.10g EnergyS=%12.10g SNR=%.1f' % \
+              #(stream[0].stats.station, len(stream), pick, EnergyN, EnergyS, SNR))
+
         return SNR
     except:
         return 0

@@ -16,8 +16,28 @@ from microquake.waveform.pick import calculate_snr
 12345678901234567890123456789012345678901234567890123456789012345678901234567890
 """
 
+def set_pick_snrs(st, picks, pre_wl=.03, post_wl=.03):
+
+    pick_dict = copy_picks_to_dict(picks)
+
+    for tr in st:
+        sta = tr.stats.station
+        if sta in pick_dict:
+            for phase in pick_dict[tr.stats.station]:
+                pick_time = pick_dict[tr.stats.station][phase].time
+                snr = calculate_snr(Stream(traces=[tr]), pick_time, pre_wl=.03, post_wl=.03)
+                key = "%s_arrival" % phase
+            #print("tr:%s pha:%s time:%s snr:%.1f key=%s" % (tr.get_id(), phase, pick_time, snr, key))
+                if key not in tr.stats:
+                    tr.stats[key] = {}
+                tr.stats[key]['snr'] = snr
+        else:
+            print("set_pick_snrs: sta:%s not in pick_dict" % sta)
+
+    return
 
 def measure_pick_amps(st, picks, debug=False):
+
     """
     For each tr in st, for each pick phase (P,S) in picks:
         Measures the polarity and zero crossing from velocity trace
@@ -42,19 +62,26 @@ def measure_pick_amps(st, picks, debug=False):
 
     fname = 'measure_pick_amps'
 
+    #st2 = Stream()
+    #for sta in ['25','58','90','41', '25', '31', '28', '58', '12', '23', '15', '59', '89']:
+    #for sta in ['25', '40', '41']:
+        #st2 += st.select(station=sta)
+
+    measure_velocity_pulse(st, picks, debug=False)
+
+    #measure_displacement_pulse(st2, picks, debug=False)
+
+    return
+
+
+def measure_velocity_pulse(st, picks, debug=False):
+
+    # TODO: Need to pass in metadata and check for accel, or filter these out beforehand
+
+    fname = 'measure_velocity_pulse'
+
     pick_dict = copy_picks_to_dict(picks)
 
-    sta = '41'
-    #sta = '15'
-    #sta = '31'
-    sta = '12'
-    sta = '28'
-
-    st2 = st.select(station=sta)
-    #plot = True
-    plot = False
-
-    #for tr in st2:
     for tr in st:
 
         sta = tr.stats.station
@@ -63,156 +90,243 @@ def measure_pick_amps(st, picks, debug=False):
 
         data = tr.data.copy()
 
-        tr_acc = tr.copy()
-        tr_acc.differentiate()
-        tr_acc.stats.channel='acc'
+        snr_thresh = 3.0
 
-        tr_dis = tr.copy()
-        tr_dis.integrate().detrend("linear")
-        tr_dis.stats.channel='dis'
+        for phase in ['P']:
+        #for phase in ['P', 'S']:
 
-        # Window beyond pick to search for maximum amplitude
-        max_amp_win = .02
-
-        #for phase in ['P']:
-        for phase in ['P', 'S']:
-
-            dd = {}
-            pick_time = pick_dict[sta][phase].time
-            ipick = int((pick_time - tr.stats.starttime) * tr.stats.sampling_rate)
-
-            # Put vel[ipick] = 0 to measure zero crossing and polarity
-            #tr.data = tr.data - tr.data[ipick]
-            (polarity, icross) = measure_velocity_polarity(tr, ipick)
-
-            nmax_len = int(max_amp_win * tr.stats.sampling_rate)
-            ipeak, peak_vel = get_peak_amp(tr, ipick, icross)
-            imax, max_vel   = get_peak_amp(tr, ipick, ipick + nmax_len)
-
-            tpeak= tr.stats.starttime + float(ipeak * tr.stats.delta)
-            tmax = tr.stats.starttime + float(imax * tr.stats.delta)
-            tcross = tr.stats.starttime + float(icross * tr.stats.delta)
-
-            if debug:
-                print("Trace: sta:%s cha:%s" % (sta, tr.stats.channel))
-                print("[%s] Vel pol=%d tpick=%s" % \
-                    (phase, polarity, pick_time))
-                print("              tpeak=%s peak_vel=%12.10g" % (tpeak, peak_vel))
-                print("             tcross=%s" % tcross)
-                print("               tmax=%s max_vel=%12.10g" % (tmax, max_vel))
-
-            if plot:
-                #tr.plot()
-                plot_channels_with_picks(Stream(traces=[tr]), sta, picks, title="sta:%s cha:%s" % (sta, tr.stats.channel))
-
-            dd['pick_time']= pick_time
-            dd['polarity'] = polarity
-            dd['peak_vel'] = peak_vel
-            dd['max_vel']  = max_vel
-            dd['tpeak_vel'] = tpeak
-            dd['tmax_vel']  = tmax
-            #dd['vel_period']  = vel_period
-
-            # Put the disp[ipick] = 0 to measure pulse width/area
-            tr_dis.data = tr_dis.data - tr_dis.data[ipick]
-            dis_polarity = np.sign(tr_dis.data[icross])
-            pulse_width, pulse_area = measure_displacement_pulse(tr_dis, ipick, icross)
-
-            npulse = int(pulse_width * tr.stats.sampling_rate)
-
-            if pulse_width != 0:
-
-                ipeak,peak_dis = get_peak_amp(tr_dis, ipick, ipick + npulse)
-                imax, max_dis  = get_peak_amp(tr_dis, ipick, ipick + nmax_len)
-
-                tmax_dis  = tr.stats.starttime + float(imax * tr.stats.delta)
-                tpeak_dis = tr.stats.starttime + float(ipeak * tr.stats.delta)
-                tcross_dis = pick_time + pulse_width
-
-                dd['peak_dis'] = peak_dis
-                dd['max_dis']  = max_dis
-                dd['tpeak_dis'] = tpeak_dis
-                dd['tmax_dis']  = tmax_dis
-                dd['dis_pulse_width'] = pulse_width
-                dd['dis_pulse_area']  = pulse_area
-
-                if debug:
-                    print("[%s] Dis pol=%d tpick=%s" % \
-                        (phase, dis_polarity, pick_time))
-                    print("              tpeak=%s peak_dis=%12.10g" % (tpeak_dis, peak_dis))
-                    print("             tcross=%s" % tcross_dis)
-                    print("               tmax=%s max_dis=%12.10g" % (tmax_dis, max_dis))
-                    print("    dis pulse width=%.5f" % pulse_width)
-                    print("    dis pulse  area=%12.10g" % pulse_area)
-
-                if plot:
-                    #tr_dis.plot()
-                    plot_channels_with_picks(Stream(traces=[tr_dis]), sta, picks, title="sta:%s cha:%s" % (sta, tr.stats.channel))
-
-
-            # This is likely temporary and can be removed once we are working
-            # with automatic picks that already have snr set
-
-            dd['snr'] = calculate_snr(Stream(traces=[tr]), pick_time, pre_wl=.03, post_wl=.03)
-            #print("%s: snr=%f" % (tr.get_id(),snr))
+            if sta in pick_dict and phase in pick_dict[sta]:
+                pass
+            else:
+                print("%s: sta:%s has no [%s] pick" % (fname, sta, phase))
+                continue
 
             key = "%s_arrival" % phase
 
-    # TODO Need to check so we don't overwrite P_arrival/S_arrival dict if already created
-            #if key in tr.stats:
-                #tr.stats[key]
+            snr = tr.stats[key]['snr']
 
-            tr.stats[key] = dd
+            if snr < snr_thresh:
+                print("tr:%s pha:%s snr:%.1f < thresh --> Skip" % (tr.get_id(), phase, snr))
+                #tr.plot()
+                continue
 
-            #if plot:
-                #st3 = Stream(traces = [tr_dis, tr, tr_acc])
-                #plot_channels_with_picks(st3, sta, picks, title="sta:%s cha:%s" % (sta, tr.stats.channel))
+            pick_time = pick_dict[sta][phase].time
 
+            ipick = int((pick_time - tr.stats.starttime) * tr.stats.sampling_rate)
+
+            polarity, vel_zeros = find_signal_zeros(tr, ipick, nzeros_to_find=3)
+
+            dd = {}
+            dd['pick_time']= pick_time
+
+            # A good pick will have the first velocity pulse located between i1 and i2
+            if vel_zeros is not None:
+                i1 = vel_zeros[0]
+                i2 = vel_zeros[1]
+                t1 = tr.stats.starttime + float(i1 * tr.stats.delta)
+                t2 = tr.stats.starttime + float(i2 * tr.stats.delta)
+
+                ipeak, peak_vel = get_peak_amp(tr, i1, i2)
+                tpeak = tr.stats.starttime + float(ipeak * tr.stats.delta)
+
+                noise_npts  = int(.01 * tr.stats.sampling_rate)
+                noise_end   = ipick - int(.005 * tr.stats.sampling_rate)
+                noise_level = np.std(data[noise_end - noise_npts: noise_end])
+
+                pulse_snr = np.abs(peak_vel/noise_level)
+                pulse_width = float((i2-i1)*tr.stats.delta)
+
+                if pulse_snr < 9. or pulse_width < .0014:
+                    polarity = 0
+
+                dd['polarity'] = polarity
+                dd['peak_vel'] = peak_vel
+                dd['tpeak'] = tpeak
+                dd['t1'] = t1
+                dd['t2'] = t2
+                dd['pulse_snr'] = pulse_snr
+            #dd['vel_period']  = vel_period
+
+            else:
+                print("Unable to locate zeros for tr:%s pha:%s" % (tr.get_id(),phase))
+                polarity = 0
+                dd['polarity'] = polarity
+
+
+            tr.stats[key]['velocity_pulse'] = dd
 
     return
 
 
 
-def measure_velocity_polarity(tr, istart, max_pulse_duration=.08):
-    """
-    Determine polarity and first zero crossing of pick at istart on velocity trace
+def measure_displacement_pulse(st, picks, debug=False):
 
-    :param tr: velocity trace
-    :type tr: obspy.core.trace.Trace or microquake.core.Trace
-    :param istart: pick index in trace
-    :type istart: int
-    :param max_pulse_duration: max allowed duration (sec) beyond pick to search 
-                               for first zero crossing
-    :type max_pulse_duration: float
+    fname = 'measure_displacement_pulse'
 
-    :returns: polarity, icross: polarity = {-1,0,1}, icross=index of first zero cross in trace
-    :rtype: int, int
-    """
+    pick_dict = copy_picks_to_dict(picks)
 
-    fname = 'measure_velocity_polarity'
+    #plot = True
+    plot = False
 
-    # Max number of points out from pick to search for first zero crossing
-    nmax = int(max_pulse_duration * tr.stats.sampling_rate)
+    for tr in st:
 
-    sign = np.sign(tr.data)
+        sta = tr.stats.station
 
-    nbuf = 6 #  Fudge factor to account for pick too early
-    # Take polarity a bit beyond the pick to
-    #   ensure we're truly in the arrival pulse
-    polarity = sign[istart + nbuf]
 
-    for i in range(istart + nbuf, istart + nmax):
-        time = tr.stats.starttime + float(i*tr.stats.delta)
-        #print("%4d %s %12.10g %d" % (i, time, tr.data[i], sign[i]))
-        if sign[i] != polarity:
+        tr_dis = tr.copy().detrend("demean").detrend("linear")
+        tr_dis.integrate().detrend("linear")
+        tr_dis.stats.channel="%s.dis" % tr.stats.channel
+
+        snr_thresh = 3.0
+
+        for phase in ['P']:
+        #for phase in ['P', 'S']:
+
+            key = "%s_arrival" % phase
+
+            snr = tr.stats[key]['snr']
+
+            if snr < snr_thresh:
+                print("tr:%s pha:%s snr:%.1f < thresh --> Skip" % (tr.get_id(), phase, snr))
+                tr.plot()
+                continue
+
+            polarity = tr.stats[key]['velocity_pulse']['polarity']
+            t1 = tr.stats[key]['velocity_pulse']['t1']
+            t2 = tr.stats[key]['velocity_pulse']['t2']
+
+            pick_time = pick_dict[sta][phase].time
+
+            i1 = int((t1 - tr.stats.starttime) * tr.stats.sampling_rate)
+            i2 = int((t2 - tr.stats.starttime) * tr.stats.sampling_rate)
+
+            ipick = int((pick_time - tr.stats.starttime) * tr.stats.sampling_rate)
+
+            dd = {}
+
+
+            if polarity != 0:
+
+                icross = i2
+                tr_dis.data = tr_dis.data - tr_dis.data[i1]
+                #tr_dis.data = tr_dis.data - tr_dis.data[ipick]
+
+                dis_polarity = np.sign(tr_dis.data[icross])
+                pulse_width, pulse_area = measure_displacement_pulse(tr_dis, i1, icross)
+                #pulse_width, pulse_area = measure_displacement_pulse(tr_dis, ipick, icross)
+
+                npulse = int(pulse_width * tr.stats.sampling_rate)
+
+                if pulse_width != 0:
+
+                    ipeak,peak_dis = get_peak_amp(tr_dis, ipick, ipick + npulse)
+                    imax, max_dis  = get_peak_amp(tr_dis, ipick, ipick + nmax_len)
+
+                    tmax_dis  = tr.stats.starttime + float(imax * tr.stats.delta)
+                    tpeak_dis = tr.stats.starttime + float(ipeak * tr.stats.delta)
+                    tcross_dis = pick_time + pulse_width
+
+                    dd['peak_dis'] = peak_dis
+                    dd['max_dis']  = max_dis
+                    dd['tpeak_dis'] = tpeak_dis
+                    dd['tmax_dis']  = tmax_dis
+                    dd['dis_pulse_width'] = pulse_width
+                    dd['dis_pulse_area']  = pulse_area
+
+                    if debug:
+                        print("[%s] Dis pol=%d tpick=%s" % \
+                            (phase, dis_polarity, pick_time))
+                        print("              tpeak=%s peak_dis=%12.10g" % (tpeak_dis, peak_dis))
+                        print("             tcross=%s" % tcross_dis)
+                        print("               tmax=%s max_dis=%12.10g" % (tmax_dis, max_dis))
+                        print("    dis pulse width=%.5f" % pulse_width)
+                        print("    dis pulse  area=%12.10g" % pulse_area)
+                else:
+                    print("Got pulse_width=0 for tr:%s pha:%s" % (tr.get_id(), phase))
+
+            #if key in tr.stats:
+                #arrival_dict = tr.stats[key]
+                #for k,v in tr.stats[key].items():
+                    #print("Found k=%s --> v=%s" % (k,v))
+            #else:
+            #exit()
+
+    # TODO Need to check so we don't overwrite P_arrival/S_arrival dict if already created
+            #if key in tr.stats:
+                #tr.stats[key]
+
+            tr.stats[key]['displacement_pulse'] = dd
+
+            return
+
+
+
+#def find_signal_zeros(tr, istart, max_pulse_duration=.08, nzeros_to_find=3, 
+                      #walk_back_pick=False, min_noise_level=0):
+
+def find_signal_zeros(tr, istart, max_pulse_duration=.08, nzeros_to_find=3):
+
+    fname = 'find_signal_zeros'
+
+    data = tr.data
+    sign = np.sign(data)
+
+    counter = 0
+    s = 0
+    i1 = -9
+
+    #noise_npts  = int(.01 * tr.stats.sampling_rate)
+    #noise_end   = istart - int(.005 * tr.stats.sampling_rate)
+    #noise_level = np.std(data[noise_end - noise_npts: noise_end])
+
+# Stage 1: Find at least 6 points moving in the same direction (up or down)
+
+    scale = 1.4
+    for i in range(istart, istart + 100):
+
+        abs_diff = np.abs(data[i] - data[i+1])
+
+        #if sign[i] == s and abs_diff > scale * noise_level:
+            #print("increment counter: abs_diff=%g noise_level=%g" % (abs_diff, noise_level))
+        if sign[i] == s:
+            counter += 1
+        else:
+            counter = 0
+            s = sign[i]
+
+        if counter == 5:
+            i1 = i - 5
+            s1 = sign[i]
+            t = tr.stats.starttime + float(i*tr.stats.delta)
+            #print("i=%d: t=%s 6th sign in a row [first_sign=%d]" % (i, t, s1))
             break
-        if i == istart + nmax - 1:
-            print("%s: Unable to locate first velocity zero crossing for tr:%s!" % (fname, tr.get_id()))
-            tr.plot()
 
-    icross = i - 1
+    if i1 < 0:
+        print("%s: tr:%s Didn't pass first test" % (fname, tr.get_id()))
+        return 0, None
 
-    return polarity, icross
+    first_sign = s1
+
+# Stage 2: Find the first zero crossing after this
+# Could either check for polarity flip (assuming zero mean trace) or abs(amp) back to pick value
+
+    zeros = np.array( np.zeros(nzeros_to_find,), dtype=int)
+    zeros[0] = i1
+
+    for j in range(1,nzeros_to_find):
+        for i in range(i1, i1 + 100):
+            if sign[i] != s1:
+                #half_per = float( (i - i1) * tr.stats.delta)
+                #f = .5 / half_per
+                #ipeak,peak = get_peak_amp(tr, i1, i)
+                #print("sign:[%2s] t1:%s - t2:%s (T/2:%.6f f:%f) peak:%g" % \
+                      #(s1, t1, t2, half_per, f, peak))
+                i1 = i
+                s1 = sign[i]
+                zeros[j] = i
+                break
+
+    return first_sign, zeros
 
 
 
@@ -229,6 +343,10 @@ def get_peak_amp(tr, istart, istop):
     :rtype: int, float
     """
     abs_max = -1e12
+    if istop < istart:
+        print("get_peak_amp: istart=%d < istop=%d !" % (istart, istop))
+        exit()
+
     for i in range(istart, istop):
         if np.abs(tr.data[i]) >= abs_max:
             abs_max = np.abs(tr.data[i])
