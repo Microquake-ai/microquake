@@ -39,6 +39,7 @@ requirements = [
     # 'bson',  # for interaction with mongodb installed with pymongo
     'pymongo',  # for the db module and interaction with mongodb
     # 'py4j',  # for spark
+    'scikit-learn',
     'scikit-fmm',  # for the eikonal solver
     # 'mplstereonet', # to plot the station
     'pandas',

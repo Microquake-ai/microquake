@@ -21,6 +21,8 @@ plugin for reading and writing various waveform format expending
 
 from microquake.core import logger
 from microquake.core.util.decorator import uncompress_file as uncompress
+from microquake.core import UTCDateTime
+
 # import logging
 from struct import unpack
 from datetime import datetime
@@ -64,7 +66,7 @@ def mseed_date_from_header(block4096):
     year, julday, hour, minute, sec, _, sec_frac = vals
     tstamp = '%0.4d,%0.3d,%0.2d:%0.2d:%0.2d.%0.4d' % (year, julday, hour, minute, sec, sec_frac)
     dt = datetime.strptime(tstamp, '%Y,%j,%H:%M:%S.%f')
-    return dt
+    return UTCDateTime(dt)
 
 
 def read_IMS_ASCII(path, net='', **kwargs):
