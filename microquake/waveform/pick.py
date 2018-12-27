@@ -32,7 +32,7 @@ import logging
 logger = logging.getLogger()
 
 from microquake.core.event import make_pick
-from microquake.core.util.pick_formaters import copy_picks_to_dict
+from microquake.core.util.tools import copy_picks_to_dict
 
 
 import matplotlib.pyplot as plt
@@ -457,6 +457,7 @@ def snr_picker(st, picks, snr_dt=None, snr_window=(1e-3, 20e-3), filter=None):
     a new catalog containing a single event with a list of picks and 2) the SNR
     """
 
+
     function_name = 'snr_picker'
 
     filter_p = False
@@ -597,9 +598,10 @@ def snr_picker(st, picks, snr_dt=None, snr_window=(1e-3, 20e-3), filter=None):
                                     resource_id=old_pick.resource_id))
             snrs.append(snr)
 
-    catalog = event.Catalog()
-    catalog.events.append(event.Event(picks=opicks))
+    #catalog = event.Catalog()
+    #catalog.events.append(event.Event(picks=opicks))
 
+    #return [], []
     #return catalog, snrs
     return (snrs, opicks)
 

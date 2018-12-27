@@ -34,8 +34,11 @@ def copy_picks_to_dict(picks):
 
         if station not in pick_dict:
             pick_dict[station]={}
-        #pick_dict[station][phase]=pick.copy()
-        pick_dict[station][phase]=copy.deepcopy(pick)
+        # MTH: If you copy the pick you pollute the reference id space
+        #      and arrival.pick_id.get_referred_object() no longer works!
+        #pick_dict[station][phase]=copy.deepcopy(pick)
+        pick_dict[station][phase]=pick
+
     return pick_dict
 
 def picks_to_dict(picks):

@@ -6,6 +6,7 @@ from scipy.fftpack import fft, fftfreq, rfft, rfftfreq
 from spp.utils.application import Application
 from microquake.core.util.tools import copy_picks_to_dict
 import matplotlib.pyplot as plt
+from microquake.core.data.station2 import inv_station_list_to_dict
 
 """
     mag_utils - a collection of routines to assist in the moment magnitude calculation
@@ -223,32 +224,7 @@ def stack_spectra(sta_dict):
     return stack/np.amax(stack), freqs
 
 
-def inv_station_list_to_dict(station_list):
-    """ Convert station list (= list of obspy stations) to dict
-
-        :param station_list: list of
-        :return: dict
-        :rtype: dict
-    """
-    sta_meta_dict = {}
-
-    for station in station_list:
-        dd={}
-        dd['station'] = station.copy()
-        dd['loc'] = station.loc
-
-        chans_dict = {}
-        for channel in station.channels:
-            chans_dict[channel.code] = channel
-        dd['chans'] = chans_dict
-        dd['nchans'] = len(station.channels)
-
-        sta_meta_dict[station.code] = dd
-
-    return sta_meta_dict
-
-
-def get_spectra(st, event, stations, calc_displacement=False, S_win_len=.1, P_or_S='P'):
+def get_spectra(st, event, stations, synthetic_picks, calc_displacement=False, S_win_len=.1, P_or_S='P'):
     """ Calculate the fft at each channel in the stream that has an arrival in event.arrivals
 
         :param st: microquake.core.stream.Stream
@@ -275,10 +251,12 @@ def get_spectra(st, event, stations, calc_displacement=False, S_win_len=.1, P_or
 
     pick_dict = copy_picks_to_dict(event.picks)
 
-# MTH: This is probably an expensive operation - would be better to create a single, travel-time server!
-    app = Application()
-    synthetic_picks = app.synthetic_arrival_times(origin.loc, origin.time)
     synthetic_dict = copy_picks_to_dict(synthetic_picks)
+
+    for arr in origin.arrivals:
+        print(arr)
+        print(arr.pick_id.get_referred_object())
+        print(arr.pick_id.get_referred_object().phase_hint)
 
     if P_or_S == 'P':
         arrivals = [ arr for arr in origin.arrivals if \

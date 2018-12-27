@@ -5,7 +5,7 @@ from obspy.core.event.base import Comment, WaveformStreamID
 
 import matplotlib.pyplot as plt
 
-from microquake.waveform.mag_utils import get_spectra, stack_spectra, calc_fit, calc_fit1, peak_freq
+from microquake.waveform.smom_mag_utils import get_spectra, stack_spectra, calc_fit, calc_fit1, peak_freq
 
 """ This module's docstring summary line.
     This is a multi-line docstring. Paragraphs are separated with blank lines.
@@ -21,7 +21,7 @@ from microquake.waveform.mag_utils import get_spectra, stack_spectra, calc_fit, 
 def measure_pick_smom(st, stations, event, synthetic_picks, fmin=20, fmax=1000, P_or_S='P', debug=False):
 
 # Get P(S) spectra at all stations/channels that have a P(S) arrival:
-    sta_dict = get_spectra(st, event, stations, calc_displacement=False, S_win_len=.1, P_or_S=P_or_S)
+    sta_dict = get_spectra(st, event, stations, synthetic_picks, calc_displacement=False, S_win_len=.1, P_or_S=P_or_S)
 
 # Stack vel spectra to get fc ~ peak_f
 # Note that fc_S is predicted to be < fc_P 
@@ -33,7 +33,7 @@ def measure_pick_smom(st, stations, event, synthetic_picks, fmin=20, fmax=1000, 
 # Now recalculate the spectra as Displacment spectra:
 
 # Get P spectra at all stations/channels that have a P arrival:
-    sta_dict = get_spectra(st, event, stations, calc_displacement=True, S_win_len=.1, P_or_S=P_or_S)
+    sta_dict = get_spectra(st, event, stations, synthetic_picks, calc_displacement=True, S_win_len=.1, P_or_S=P_or_S)
     stacked_spec, freqs = stack_spectra(sta_dict)
     fit, fc_stack = calc_fit1(stacked_spec, freqs, fmin=1, fmax=fmax, fit_displacement=True)
 
@@ -68,7 +68,7 @@ def measure_pick_smom(st, stations, event, synthetic_picks, fmin=20, fmax=1000, 
 
     return smom_dict
 
-def moment_magnitude(st, event, stations, vp=5300, vs=3500, ttpath=None, only_triaxial=True, 
+def moment_magnitudeOLD(st, event, stations, vp=5300, vs=3500, ttpath=None, only_triaxial=True, 
                      density=2700, min_dist=20, fmin=20, fmax=1000):
     """
         moment_magnitude - calculate the moment magnitude

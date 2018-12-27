@@ -10,6 +10,9 @@ import csv
 import copy
 import os
 
+from obspy.clients.nrl import NRL
+nrl = NRL('http://ds.iris.edu/NRL/')
+
 ns_tag='mq'
 ns='MICROQUAKE'
 
@@ -116,6 +119,29 @@ class Station(obspy.core.inventory.station.Station):
                                          'z':    { 'namespace': ns, 'value': stn['z'] },
                                          'sensor_type':    { 'namespace': ns, 'value': cha['sensor_type'].upper()},
                                       })
+            # MTH: There doesn't seem to be any simple way to get the sensor_type (ACCELEROMETER vs GEOPHONE)
+            #      to attach to the trace
+            # e.g., tr.attach_response - just attaches a response object
+            # The closest thing I can find is to set
+            #   response.instrument.sensitivity.input_units to either "M/S**2" or "M/S"
+            # Then will have to write a microquake method to detect these and/or use them for lookups
+
+            # Temp attach a generic response to all OT channels:
+            chan_dict = {}
+
+            chan_dict['sensor'] = ['Sercel/Mark Products', 'L-22D', '325 Ohms', '1327 Ohms']
+            chan_dict['datalogger'] = ['REF TEK','RT 130 & 130-SMA','1','100']
+            response = nrl.get_response(sensor_keys=chan_dict['sensor'], datalogger_keys=chan_dict['datalogger'])
+
+            if cha['sensor_type'].upper() == "ACCELEROMETER":
+                input_units = "M/S**2"
+            elif cha['sensor_type'].upper() == "GEOPHONE":
+                input_units = "M/S" # The L-22D already has sensitivity.input_units = "M/S" ...
+
+            response.instrument_sensitivity.input_units = input_units
+
+            channel.response = response
+
             sta.channels.append(channel)
 
         sta.total_number_of_channels=len(sta.channels)
@@ -236,6 +262,7 @@ class Channel(obspy.core.inventory.channel.Channel):
         if getattr(chn, 'extra', None):
             cha.extra = copy.deepcopy(chn.extra)
 
+
         return cha
 
     @property
@@ -309,6 +336,33 @@ class Channel(obspy.core.inventory.channel.Channel):
             raise AttributeError
 
 
+
+def inv_station_list_to_dict(station_list):
+    """ Convert station list (= list of microquake Station class metadata) to dict
+
+        :param station_list: list of
+        :return: dict
+        :rtype: dict
+    """
+    sta_meta_dict = {}
+
+    for station in station_list:
+        dd={}
+        dd['station'] = station.copy()
+        dd['loc'] = station.loc
+
+        chans_dict = {}
+        for channel in station.channels:
+            chans_dict[channel.code] = channel
+        dd['chans'] = chans_dict
+        dd['nchans'] = len(station.channels)
+
+        sta_meta_dict[station.code] = dd
+
+    return sta_meta_dict
+
+
+
 def test_read_stationxml(xmlfile_in: str, xmlfile_out: str):
     """
         Read stationXML with or without namespace extras, wrap obspy Station/Channel in this class,
@@ -373,6 +427,39 @@ def get_inventory(csv_file):
     network = Network("OT")
     network.stations = obspy_stations
     return Inventory([network], source)
+
+
+def get_sensor_type_from_trace(tr):
+
+    fname = 'get_sensor_type_from_trace'
+
+    unit_map = {"DISP": ["M"],
+                "VEL": ["M/S", "M/SEC"],
+                "ACC": ["M/S**2", "M/(S**2)", "M/SEC**2", "M/(SEC**2)", "M/S/S"]
+               }
+
+    if 'response' in tr.stats:
+        unit = None
+        try:
+            sensitivity = tr.stats.response.instrument_sensitivity
+            i_u = sensitivity.input_units
+        #except Exception:
+        except AttributeError:
+            print("%s: Couldn't find response.instrument_sensitivity.input_units" % fname)
+            raise
+
+        for key, value in unit_map.items():
+            if i_u and i_u.upper() in value:
+                unit = key
+        if not unit:
+            msg = ("ObsPy does not know how to map unit '%s' to "
+                   "displacement, velocity, or acceleration - overall "
+                   "sensitivity will not be recalculated.") % i_u
+            raise ValueError(msg)
+
+        return unit
+    else:
+        return 'not set'
 
 #obs_Station.x = property(lambda self: self.latitude)
 def main():

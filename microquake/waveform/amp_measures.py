@@ -1,9 +1,9 @@
 import numpy as np
 
 from microquake.core.util.tools import copy_picks_to_dict
-from microquake.waveform.helpers import *
 from microquake.core.stream import Stream
 from microquake.waveform.pick import calculate_snr
+from microquake.core.data.station2 import get_sensor_type_from_trace
 
 """ This module's docstring summary line.
     This is a multi-line docstring. Paragraphs are separated with blank lines.
@@ -17,17 +17,36 @@ from microquake.waveform.pick import calculate_snr
 """
 
 def set_pick_snrs(st, picks, pre_wl=.03, post_wl=.03):
+    """
+    This function sets the pick snr on each individual trace
+     (vs the snr_picker which calculates snr on the composite trace)
+
+    The resulting snr is stored in the tr.stats[key] dict 
+    where key = {'P_arrival', 'S_arrival'}
+
+    :param st: traces
+    :type st: either obspy.core.Stream or microquake.core.Stream
+    :param picks: P & S picks
+    :type list: list of either obspy or microquake picks
+    :param pre_wl: pre pick window for noise calc
+    :type float:
+    :param post_wl: post pick window for signal calc
+    :type float:
+    """
 
     pick_dict = copy_picks_to_dict(picks)
 
     for tr in st:
         sta = tr.stats.station
         if sta in pick_dict:
-            for phase in pick_dict[tr.stats.station]:
-                pick_time = pick_dict[tr.stats.station][phase].time
-                snr = calculate_snr(Stream(traces=[tr]), pick_time, pre_wl=.03, post_wl=.03)
+            for phase in pick_dict[sta]:
+                pick_time = pick_dict[sta][phase].time
+                if phase == 'S':
+                    snr = calculate_snr(Stream(traces=[tr]), pick_time, pre_wl=.03, post_wl=.03)
+                else:
+                    snr = calculate_snr(Stream(traces=[tr]), pick_time, pre_wl=.03, post_wl=.06)
+                #print("set snr: tr:%s pha:%s" % (tr.get_id(), phase))
                 key = "%s_arrival" % phase
-            #print("tr:%s pha:%s time:%s snr:%.1f key=%s" % (tr.get_id(), phase, pick_time, snr, key))
                 if key not in tr.stats:
                     tr.stats[key] = {}
                 tr.stats[key]['snr'] = snr
@@ -35,6 +54,7 @@ def set_pick_snrs(st, picks, pre_wl=.03, post_wl=.03):
             print("set_pick_snrs: sta:%s not in pick_dict" % sta)
 
     return
+
 
 def measure_pick_amps(st, picks, debug=False):
 
@@ -58,25 +78,28 @@ def measure_pick_amps(st, picks, debug=False):
     :type list: list of either obspy or microquake picks
     """
 
-    # TODO: some of the sites have accelerometers and need to be integrated first!
-
     fname = 'measure_pick_amps'
-
-    #st2 = Stream()
-    #for sta in ['25','58','90','41', '25', '31', '28', '58', '12', '23', '15', '59', '89']:
-    #for sta in ['25', '40', '41']:
-        #st2 += st.select(station=sta)
 
     measure_velocity_pulse(st, picks, debug=False)
 
-    #measure_displacement_pulse(st2, picks, debug=False)
+    measure_displacement_pulse(st, picks, debug=True)
 
     return
 
 
 def measure_velocity_pulse(st, picks, debug=False):
+    """
+    locate velocity pulse (zero crossings) near pick and measure peak amp, polarity, etc on it
 
-    # TODO: Need to pass in metadata and check for accel, or filter these out beforehand
+    velocity pulse measurements are stored in each trace's stat dict, e.g.,:
+        tr.stats.P_arrival.velocity_pulse
+        tr.stats.S_arrival.velocity_pulse
+
+    :param st: velocity traces
+    :type st: either obspy.core.Stream or microquake.core.Stream
+    :param picks: P & S picks
+    :type list: list of either obspy or microquake picks
+    """
 
     fname = 'measure_velocity_pulse'
 
@@ -86,14 +109,19 @@ def measure_velocity_pulse(st, picks, debug=False):
 
         sta = tr.stats.station
 
-        tr.detrend("demean").detrend("linear")
+        sensor_type = get_sensor_type_from_trace(tr)
 
+        if sensor_type != "VEL":
+            print("%s: tr:%s units:%s NOT VEL --> Skip polarity check" % (fname, tr.get_id(), sensor_type))
+            continue
+
+
+        tr.detrend("demean").detrend("linear")
         data = tr.data.copy()
 
         snr_thresh = 3.0
 
-        for phase in ['P']:
-        #for phase in ['P', 'S']:
+        for phase in ['P', 'S']:
 
             if sta in pick_dict and phase in pick_dict[sta]:
                 pass
@@ -103,10 +131,14 @@ def measure_velocity_pulse(st, picks, debug=False):
 
             key = "%s_arrival" % phase
 
+            if key not in tr.stats:
+                print("%s: tr:%s pha:%s key:%s not in stats --> Skip" % (fname, tr.get_id(), phase, key))
+                continue
+
             snr = tr.stats[key]['snr']
 
             if snr < snr_thresh:
-                print("tr:%s pha:%s snr:%.1f < thresh --> Skip" % (tr.get_id(), phase, snr))
+                print("%s: tr:%s pha:%s snr:%.1f < thresh --> Skip" % (fname, tr.get_id(), phase, snr))
                 #tr.plot()
                 continue
 
@@ -136,8 +168,25 @@ def measure_velocity_pulse(st, picks, debug=False):
                 pulse_snr = np.abs(peak_vel/noise_level)
                 pulse_width = float((i2-i1)*tr.stats.delta)
 
-                if pulse_snr < 9. or pulse_width < .0014:
+                #if pulse_snr < 9. or pulse_width < .0014:
+                # TODO: Need to check that early S picks don't kill S polarity !
+
+                pulse_thresh = 9.
+                if phase == 'S':
+                    pulse_thresh = 6.
+
+                if pulse_snr < pulse_thresh:
+                    print("%s: tr:%s pha:%s t1:%s t2:%s pulse_snr=%.1f < thresh" % \
+                          (fname, tr.get_id(), phase, t1, t2, pulse_snr))
                     polarity = 0
+                    #plot_channels_with_picks(st, sta, picks, channel=tr.stats.channel,title="0 Polarity")
+
+                if pulse_width < .0014:
+                    print("%s: tr:%s pha:%s t1:%s t2:%s pulse_width=%f < .0014" % \
+                          (fname, tr.get_id(), phase, t1, t2, pulse_width))
+                    polarity = 0
+                    #plot_channels_with_picks(st, sta, picks, channel=tr.stats.channel,title="0 Polarity")
+
 
                 dd['polarity'] = polarity
                 dd['peak_vel'] = peak_vel
@@ -148,7 +197,7 @@ def measure_velocity_pulse(st, picks, debug=False):
             #dd['vel_period']  = vel_period
 
             else:
-                print("Unable to locate zeros for tr:%s pha:%s" % (tr.get_id(),phase))
+                print("%s: Unable to locate zeros for tr:%s pha:%s" % (fname,tr.get_id(),phase))
                 polarity = 0
                 dd['polarity'] = polarity
 
@@ -160,6 +209,19 @@ def measure_velocity_pulse(st, picks, debug=False):
 
 
 def measure_displacement_pulse(st, picks, debug=False):
+    """
+    measure displacement pulse (area + width) for each pick on each trace,
+        as needed for moment magnitude calculation
+
+    displacement pulse measurements are stored in each trace's stat dict, e.g.,:
+        tr.stats.P_arrival.displacement_pulse
+        tr.stats.S_arrival.displacement_pulse
+
+    :param st: velocity traces
+    :type st: either obspy.core.Stream or microquake.core.Stream
+    :param picks: P & S picks
+    :type list: list of either obspy or microquake picks
+    """
 
     fname = 'measure_displacement_pulse'
 
@@ -172,26 +234,28 @@ def measure_displacement_pulse(st, picks, debug=False):
 
         sta = tr.stats.station
 
+        sensor_type = get_sensor_type_from_trace(tr)
+
+        if sensor_type != "VEL":
+            print("%s: tr:%s units:%s NOT VEL --> Skip" % (fname, tr.get_id(), sensor_type))
+            continue
 
         tr_dis = tr.copy().detrend("demean").detrend("linear")
         tr_dis.integrate().detrend("linear")
         tr_dis.stats.channel="%s.dis" % tr.stats.channel
 
-        snr_thresh = 3.0
-
-        for phase in ['P']:
-        #for phase in ['P', 'S']:
+        for phase in ['P', 'S']:
 
             key = "%s_arrival" % phase
 
-            snr = tr.stats[key]['snr']
-
-            if snr < snr_thresh:
-                print("tr:%s pha:%s snr:%.1f < thresh --> Skip" % (tr.get_id(), phase, snr))
-                tr.plot()
+            if key in tr.stats and 'velocity_pulse' in tr.stats[key]:
+                pass
+            else:
+                print("%s: tr:%s --> NOT found velocity_pulse in key=%s" % (fname, tr.get_id(), key))
                 continue
 
             polarity = tr.stats[key]['velocity_pulse']['polarity']
+
             t1 = tr.stats[key]['velocity_pulse']['t1']
             t2 = tr.stats[key]['velocity_pulse']['t2']
 
@@ -212,14 +276,18 @@ def measure_displacement_pulse(st, picks, debug=False):
                 #tr_dis.data = tr_dis.data - tr_dis.data[ipick]
 
                 dis_polarity = np.sign(tr_dis.data[icross])
-                pulse_width, pulse_area = measure_displacement_pulse(tr_dis, i1, icross)
-                #pulse_width, pulse_area = measure_displacement_pulse(tr_dis, ipick, icross)
+                pulse_width, pulse_area = get_pulse_width_and_area(tr_dis, i1, icross)
 
                 npulse = int(pulse_width * tr.stats.sampling_rate)
 
+                max_pulse_duration = .08
+                nmax_len = int(max_pulse_duration * tr.stats.sampling_rate)
+
                 if pulse_width != 0:
 
+                    # peak_dis = peak of first pulse
                     ipeak,peak_dis = get_peak_amp(tr_dis, ipick, ipick + npulse)
+                    # max_dis = max within max_pulse_duration of pick time
                     imax, max_dis  = get_peak_amp(tr_dis, ipick, ipick + nmax_len)
 
                     tmax_dis  = tr.stats.starttime + float(imax * tr.stats.delta)
@@ -233,6 +301,8 @@ def measure_displacement_pulse(st, picks, debug=False):
                     dd['dis_pulse_width'] = pulse_width
                     dd['dis_pulse_area']  = pulse_area
 
+                    tr.stats[key]['displacement_pulse'] = dd
+
                     if debug:
                         print("[%s] Dis pol=%d tpick=%s" % \
                             (phase, dis_polarity, pick_time))
@@ -241,23 +311,14 @@ def measure_displacement_pulse(st, picks, debug=False):
                         print("               tmax=%s max_dis=%12.10g" % (tmax_dis, max_dis))
                         print("    dis pulse width=%.5f" % pulse_width)
                         print("    dis pulse  area=%12.10g" % pulse_area)
+
                 else:
                     print("Got pulse_width=0 for tr:%s pha:%s" % (tr.get_id(), phase))
+            else:
+                print("Got polarity=0 for tr:%s pha:%s" % (tr.get_id(), phase))
 
-            #if key in tr.stats:
-                #arrival_dict = tr.stats[key]
-                #for k,v in tr.stats[key].items():
-                    #print("Found k=%s --> v=%s" % (k,v))
-            #else:
-            #exit()
 
-    # TODO Need to check so we don't overwrite P_arrival/S_arrival dict if already created
-            #if key in tr.stats:
-                #tr.stats[key]
-
-            tr.stats[key]['displacement_pulse'] = dd
-
-            return
+    return
 
 
 
@@ -313,8 +374,9 @@ def find_signal_zeros(tr, istart, max_pulse_duration=.08, nzeros_to_find=3):
     zeros = np.array( np.zeros(nzeros_to_find,), dtype=int)
     zeros[0] = i1
 
+# TODO: Need to catch flag edge cases where we reach end of range with no zero set!
     for j in range(1,nzeros_to_find):
-        for i in range(i1, i1 + 100):
+        for i in range(i1, i1 + 200):
             if sign[i] != s1:
                 #half_per = float( (i - i1) * tr.stats.delta)
                 #f = .5 / half_per
@@ -356,7 +418,7 @@ def get_peak_amp(tr, istart, istop):
 
 
 
-def measure_displacement_pulse(tr, ipick, icross, max_pulse_duration=.08):
+def get_pulse_width_and_area(tr, ipick, icross, max_pulse_duration=.08):
     """
     Measure the width & area of the arrival pulse on the displacement trace
     Start from the displacement peak index (=icross - location of first zero crossing of velocity)
@@ -376,7 +438,7 @@ def measure_displacement_pulse(tr, ipick, icross, max_pulse_duration=.08):
     :rtype: float, float
     """
 
-    fname = 'measure_displacement_pulse'
+    fname = 'get_pulse_width_and_area'
 
     data = tr.data
     sign = np.sign(data)
