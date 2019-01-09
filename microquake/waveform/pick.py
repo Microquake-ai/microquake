@@ -247,7 +247,7 @@ def STALTA_picker_refraction(st, nsta=1e-3, nlta=4e-2, fc=50, nc=2,
     return catalog, cfs, snrs
 
 
-def STALTA_picker(st, nphase=2, nsta=1e-3, nlta=4e-2, fc=50, nc=2,
+def sta_lta_picker(st, nphase=2, nsta=1e-3, nlta=4e-2, fc=50, nc=2,
     noise_mag=1e-25, SNR_window=5e-3):
     """The STA/LTA picker provides a first order good estimate of the arrival
     times for both the P- and S- wave. The STA/LTA picker uses
@@ -307,7 +307,7 @@ def STALTA_picker(st, nphase=2, nsta=1e-3, nlta=4e-2, fc=50, nc=2,
 
         StaLta = np.sum([recursive_sta_lta(tr, sta, lta) for tr in sttmp],
                         axis=0)
-        StaLta = StaLta[len(StaLta) / 2::]
+        StaLta = StaLta[int(len(StaLta) / 2)::]
 
         sfreq = trs.traces[0].stats['sampling_rate']
         sigma = sfreq / (2 * np.pi * fc)
@@ -329,10 +329,7 @@ def STALTA_picker(st, nphase=2, nsta=1e-3, nlta=4e-2, fc=50, nc=2,
             else:
                 opicks.append(make_pick(p, '?', trs.traces[0], SNRs[k]))
 
-    catalog = event.Catalog()
-    catalog.events.append(event.Event(picks=opicks))
-
-    return catalog, cfs, snrs
+    return opicks, cfs, snrs
 
 
 def kurtosis_picker(st, picks, freqmin=100, freqmax=1000, pick_freqs=None,
@@ -440,7 +437,6 @@ def kurtosis_picker(st, picks, freqmin=100, freqmax=1000, pick_freqs=None,
     #return catalog, cfs, snrs
     return opicks
 
-
 def snr_picker(st, picks, snr_dt=None, snr_window=(1e-3, 20e-3), filter=None):
     """
     Function to improve the picks based on the SNR.
@@ -457,6 +453,9 @@ def snr_picker(st, picks, snr_dt=None, snr_window=(1e-3, 20e-3), filter=None):
     a new catalog containing a single event with a list of picks and 2) the SNR
     """
 
+    from IPython.core.debugger import Tracer
+    from scipy.signal import hilbert
+    import matplotlib.pyplot as plt
     function_name = 'snr_picker'
 
     filter_p = False
@@ -482,7 +481,7 @@ def snr_picker(st, picks, snr_dt=None, snr_window=(1e-3, 20e-3), filter=None):
 
     for station in stations:
 
-        trs = st.select(station=station)
+        trs = st.select(station=station).composite()
 
         if station not in previous_picks:
             logger.warn('SNR_detect: station:[%s] has no previous picks'
@@ -549,6 +548,9 @@ def snr_picker(st, picks, snr_dt=None, snr_window=(1e-3, 20e-3), filter=None):
                 exit()
 
             tau = np.array(tau)
+            analytic_signal = hilbert(trs[0].data)
+            envelope = np.abs(analytic_signal)
+            # trs[0].data = np.abs(analytic_signal)
             tmp = np.array([(taut, calculate_snr(trs, taut,
                                                  pre_wl=pre_window_length,
                                                  post_wl=post_window_length))
@@ -556,32 +558,92 @@ def snr_picker(st, picks, snr_dt=None, snr_window=(1e-3, 20e-3), filter=None):
 
     
         # MTH: this is a hack to try to force the solution close to the oldPick
-            alpha = 10.
-            for i, foo in enumerate(tmp):
-                time = foo[0]
-                snr = foo[1]
-                dt = np.abs(old_pick.time - foo[0])
-                #dt = np.abs(oldPick['time'] - foo[0])
-                scale = np.exp(-alpha * dt)
-                tmp[i,1] *= np.exp(-alpha * dt) 
-                #print(time, dt, snr, scale, snr*scale, tmp[i,1])
+        #     alpha = 10.
+        #     for i, foo in enumerate(tmp):
+        #         time = foo[0]
+        #         snr = foo[1]
+        #         dt = np.abs(old_pick.time - foo[0])
+        #         #dt = np.abs(oldPick['time'] - foo[0])
+        #         scale = np.exp(-alpha * dt)
+        #         tmp[i,1] *= np.exp(-alpha * dt)
+        #         #print(time, dt, snr, scale, snr*scale, tmp[i,1])
 
-            index = np.argmax(tmp[:,1])
-            pick_time = tmp[index, 0]
+            # index = np.argmax(tmp[:,1])
+            # pick_time = tmp[index, 0]
+            #### DEBUG ###
+            starttime = trs[0].stats.starttime
+            delta = trs[0].stats.delta
+            time = np.array([starttime + delta * i
+                             for i in range(0, len(trs[0]))])
 
+            # calculating SNR
+            sampling_rate = trs[0].stats.sampling_rate
+            time_index = np.argmin([np.abs(t - old_pick.time) for t in time])
+            search_window_indices = (snr_dt * sampling_rate).astype('int') +\
+                                    time_index
+            snrs_tr = []
+            for i in search_window_indices:
+                noise_start_index = i - np.int((snr_window[0] *
+                                                sampling_rate))
+                signal_end_index = i + np.int((snr_window[0] *
+                                               sampling_rate))
 
-            snr = calculate_snr(trs, pick_time, pre_wl=pre_window_length,
-                                post_wl=post_window_length)
+                noise = np.var(trs[0].data[noise_start_index:i])
+                signal = np.var(trs[0].data[i:signal_end_index])
+                snrs_tr.append(10 * np.log10(signal / noise))
+
+            snrs_tr = np.array(snrs_tr)
+            # time_index = np.argmin(np.abs(tome - old_pick.time))
+
+            # start_time_index = time_index - snr_dt[0]
+
+            # babou = trs[0].data / np.max(trs[0].data)
+            snrss = snrs_tr / np.max(snrs_tr)
+
+            index_new_pick = search_window_indices[np.argmax(snrs_tr)]
+            if index_new_pick >= len(time):
+                pick_time = np.array(time)[-1]
+            elif index_new_pick < 0:
+                pick_time = np.array(time)[0]
+            else:
+                pick_time = np.array(time)[index_new_pick]
+
+            snr = np.max(snrs_tr)
+
+            # plt.plot(tome, babou, 'k')
+            # plt.figure(1, figsize=(20, 4))
+            # plt.clf()
+            # print(np.max(snrs_tr))
+            # plt.plot(tome, envelope / np.max(envelope), alpha=0.5)
+            # plt.plot(tome[search_window_indices], snrss, 'g', alpha=0.5)
+            # plt.axvline(old_pick.time, color='b')
+            # plt.axvline(pick_time, color='r')
+            # plt.plot(tome, trs[0].data / np.max(trs[0].data), alpha=0.2)
+            # plt.tight_layout()
+            # plt.show()
+            #
+            # Tracer()()
+            # plt.close('all')
+
+            #
+            # # #### END DEBUG ###
+            #
+            # Tracer()()
+            # plt.close()
+
+            # snr = calculate_snr(trs, pick_time, pre_wl=pre_window_length,
+            #                     post_wl=post_window_length)
+
             logger.debug("%s: sta:%s [%s] old_pick:%s new_pick:%s SNR:%.2f" %
                          (function_name, station, phase, old_pick.time,
                           pick_time, snr))
 
-            method_string = 'snr_picker preWl=%.3g postWl=%.3g alpha=%.1f' % \
-                            (pre_window_length, post_window_length, alpha)
+            method_string = 'snr_picker preWl=%.3g postWl=%.3g' % \
+                            (pre_window_length, post_window_length)
             opicks.append(make_pick(pick_time, phase=old_pick.phase_hint,
                                     wave_data=trs.traces[0], snr=snr,
-                                    method_string=method_string,
-                                    resource_id=old_pick.resource_id))
+                                    method_string=method_string))
+
             snrs.append(snr)
 
     catalog = event.Catalog()
