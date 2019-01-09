@@ -19,8 +19,9 @@ module to interact IMS web API
 
 import numpy as np
 from logging import getLogger, INFO
+from IPython.core.debugger import Tracer
 
-logger = getLogger('microquake.IMS.web_api')
+logger = getLogger('microquake.IMS.web_client')
 logger.level = INFO
 
 
@@ -78,6 +79,7 @@ def get_continuous(base_url, start_datetime, end_datetime,
     import sys
     from time import time as timer
     from datetime import datetime
+    from IPython.core.debugger import Tracer
 
     if sys.version_info[0] < 3:
         from StringIO import StringIO
@@ -151,8 +153,6 @@ def get_continuous(base_url, start_datetime, end_datetime,
         time, sigs = strided_read(content)
 
         time_norm = (time - time[0]) / 1e9
-        tstart_norm_new = (reqtime_start_nano - time[0]) / 1e9
-        tend_norm_new = (reqtime_end_nano - time[0]) / 1e9
         nan_ranges = get_nan_ranges(time_norm, sampling_rate, limit=nan_limit)
 
         time_new = np.arange(time_norm[0], time_norm[-1], 1. / sampling_rate)
@@ -161,7 +161,8 @@ def get_continuous(base_url, start_datetime, end_datetime,
         for i in range(len(sigs)):
             newsigs[i] = np.interp(time_new, time_norm, sigs[i])
 
-        nan_ranges_ix = ((nan_ranges - time_new[0]) * sampling_rate).astype(int)
+        nan_ranges_ix = ((nan_ranges - time_new[0]) *
+                         sampling_rate).astype(int)
 
         for chan in newsigs:
             for lims in nan_ranges_ix:
@@ -332,11 +333,11 @@ def get_catalogue(base_url, start_datetime, end_datetime, site,
             if ((not e_blast) and (blast)) or ((e_blast) and (event)):
                 continue
 
-        if (accepted) and (not e_accepted):
+        if accepted and (not e_accepted):
             continue
 
-        if (manual) and (e_automatic):
-           continue
+        if manual and e_automatic:
+            continue
 
         csv_string += line + '\n'
         event_name = line.split(',')[0]
@@ -350,6 +351,7 @@ def get_catalogue(base_url, start_datetime, end_datetime, site,
                 row[1][k] = None
 
         event = Event()
+        event.resource_id.id = event_name
         extra = row[1].to_dict()
         for key in extra.keys():
             if key not in event.extra_keys:
