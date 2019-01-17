@@ -556,10 +556,6 @@ def snr_picker(st, picks, snr_dt=None, snr_window=(1e-3, 20e-3), filter=None):
                                                  post_wl=post_window_length))
                             for taut in tau])
 
-            if 0 and phase == 'P':
-                for x in tmp:
-                    print("time:%s snr:%f" % (x[0], x[1]))
-
 
         # MTH: this is a hack to try to force the solution close to the oldPick
             alpha = 0
@@ -585,10 +581,6 @@ def snr_picker(st, picks, snr_dt=None, snr_window=(1e-3, 20e-3), filter=None):
                          (function_name, station, phase, old_pick.time,
                           pick_time, snr))
 
-            if 0 and phase == 'P':
-                print("%s: sta:%s [%s] old_pick:%s new_pick:%s SNR:%.2f pre_wl=%f post_wl=%f" %
-                         (function_name, station, phase, old_pick.time,
-                          pick_time, snr, pre_window_length, post_window_length))
 
             method_string = 'snr_picker preWl=%.3g postWl=%.3g alpha=%.1f' % \
                             (pre_window_length, post_window_length, alpha)

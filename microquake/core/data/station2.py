@@ -111,9 +111,11 @@ class Station(obspy.core.inventory.station.Station):
                               depth=0.,           # required
                               )
 
+
             channel.extra = AttribDict({ 'cos1': { 'namespace': ns, 'value': cha['orientation'][0] },
                                          'cos2': { 'namespace': ns, 'value': cha['orientation'][1] },
                                          'cos3': { 'namespace': ns, 'value': cha['orientation'][2] },
+                                         'cosines': { 'namespace': ns, 'value': cha['orientation'] },
                                          'x':    { 'namespace': ns, 'value': stn['x'] },
                                          'y':    { 'namespace': ns, 'value': stn['y'] },
                                          'z':    { 'namespace': ns, 'value': stn['z'] },
@@ -304,6 +306,18 @@ class Channel(obspy.core.inventory.channel.Channel):
                 raise AttributeError
         else:
             raise AttributeError
+
+    @property
+    def cosines(self):
+        if self.extra:
+            if self.extra.get('cosines', None):
+                #return float(self.extra.cos.value)
+                return self.extra.cosines.value
+            else:
+                raise AttributeError
+        else:
+            raise AttributeError
+
 
     @property
     def x(self):

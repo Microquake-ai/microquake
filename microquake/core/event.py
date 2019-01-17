@@ -54,7 +54,7 @@ class Event(obsevent.Event):
 
     def __init__(self, obspy_obj=None, **kwargs):
         _init_handler(self, obspy_obj, **kwargs)
-        
+
     def __setattr__(self, name, value):
         _set_attr_handler(self, name, value)
 
@@ -84,10 +84,10 @@ class Origin(obsevent.Origin):
 
     def __init__(self, obspy_obj=None, **kwargs):
         _init_handler(self, obspy_obj, **kwargs)
-            
+
     def __setattr__(self, name, value):
         _set_attr_handler(self, name, value)
-    
+
     @property
     def loc(self):
         return np.array([self.x, self.y, self.z])
@@ -130,10 +130,10 @@ class Magnitude(obsevent.Magnitude):
 
     def __init__(self, obspy_obj=None, **kwargs):
         _init_handler(self, obspy_obj, **kwargs)
-            
+
     def __setattr__(self, name, value):
         _set_attr_handler(self, name, value)
-       
+
 
 class Pick(obsevent.Pick):
     __doc__ = obsevent.Pick.__doc__.replace('obspy', 'microquake')
@@ -141,7 +141,11 @@ class Pick(obsevent.Pick):
 
     def __init__(self, obspy_obj=None, **kwargs):
         _init_handler(self, obspy_obj, **kwargs)
-            
+        # MTH  - this seems to have been left out ??
+        if obspy_obj:
+            wid = self.waveform_id
+            self.trace_id = "%s.%s.%s.%s" % (wid.network_code, wid.station_code, wid.location_code, wid.channel_code)
+
     def __setattr__(self, name, value):
         _set_attr_handler(self, name, value)
 
@@ -149,13 +153,14 @@ class Pick(obsevent.Pick):
         string = """
           trace_id: %s
               time: %s
+             phase:[%s]
             method: %s [%s]
    evaluation_mode: %s
  evaluation_status: %s
        resource_id: %s
         """ \
             % (self.trace_id, self.time.strftime("%Y/%m/%d %H:%M:%S.%f"),
-               self.method, self.snr, self.evaluation_mode,
+               self.phase_hint, self.method, self.snr, self.evaluation_mode,
                self.evaluation_status, self.resource_id)
         return string
 
@@ -163,11 +168,11 @@ class Pick(obsevent.Pick):
 class Arrival(obsevent.Arrival):
     __doc__ = obsevent.Arrival.__doc__.replace('obspy', 'microquake')
 
-    extra_keys = ['ray']
+    extra_keys = ['ray', 'backazimuth', 'inc_angle']
 
     def __init__(self, obspy_obj=None, **kwargs):
         _init_handler(self, obspy_obj, **kwargs)
-            
+
     def __setattr__(self, name, value):
         _set_attr_handler(self, name, value)
 
@@ -296,7 +301,7 @@ def _set_attr_handler2(self, name, value, namespace='MICROQUAKE'):
         if type(value) is np.ndarray:
             value = "npy64_" + array_to_b64(value)
         self['extra'][name] = {'value': value, 'namespace': namespace}
-        
+
 
 def isfloat(value):
     try:
@@ -376,6 +381,7 @@ def break_down(event):
     return
 
 
+# MTH: this could(should?) be moved to waveforms/pick.py ??
 def make_pick(time, phase='P', wave_data=None, snr=None, mode='automatic',
               status='preliminary', method_string=None, resource_id=None):
 
@@ -384,26 +390,17 @@ def make_pick(time, phase='P', wave_data=None, snr=None, mode='automatic',
     this_pick.phase_hint = phase
     this_pick.evaluation_mode = mode
     this_pick.evaluation_status = status
+
+    this_pick.method = method_string
+    this_pick.snr = snr
+
     if wave_data is not None:
         this_pick.waveform_id = WaveformStreamID(
             network_code=wave_data.stats.network,
             station_code=wave_data.stats.station,
             location_code=wave_data.stats.location,
             channel_code=wave_data.stats.channel)
-    if snr is not None:
-        #this_pick.comments = [Comment(text="SNR=%.3f" % SNR)]
-        if resource_id is not None:
-            this_pick.comments = [Comment(text="SNR=%.3f" % snr,
-                                          resource_id=resource_id)]
-        else:
-            this_pick.comments = [Comment(text="SNR=%.3f" % snr,
-                                          force_resource_id=False)]
 
-    if method_string is not None:
-        method = AttribDict()
-        method['namespace'] = 'MICROQUAKE'
-        method['value'] = method_string
-        this_pick['extra'] = AttribDict()
-        this_pick['extra']['method'] = method
+        this_pick.trace_id = wave_data.get_id()
 
     return this_pick
