@@ -89,13 +89,19 @@ def ray_tracer(travel_time, start, grid_coordinates=False, max_iter=1000):
 
     dist = np.linalg.norm(start - end)
     cloc = start  # initializing cloc "current location" to start
-    gamma = spacing / 2  # gamma is set to half the grid spacing. This should be
+    gamma = spacing / 2    # gamma is set to half the grid spacing. This
+                         # should be
                          # sufficient. Note that gamma is fixed to reduce
                          # processing time.
     nodes = [start]
     while dist > spacing / 2:
-        gvect = np.array([gd.interpolate(cloc, grid_coordinate=False)[0] for
-                          gd in gds])
+
+        if dist < spacing * 4:
+            gamma = spacing / 4
+
+        gvect = np.array([gd.interpolate(cloc, grid_coordinate=False,
+                          order=1)[0] for gd in gds])
+
 
         cloc = cloc - gamma * gvect / np.linalg.norm(gvect)
         nodes.append(cloc)
