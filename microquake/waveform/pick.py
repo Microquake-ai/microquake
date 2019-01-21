@@ -32,7 +32,7 @@ import logging
 logger = logging.getLogger()
 
 from microquake.core.event import make_pick
-from microquake.core.util.pick_formaters import copy_picks_to_dict
+from microquake.core.util.tools import copy_picks_to_dict
 
 
 import matplotlib.pyplot as plt
@@ -457,6 +457,7 @@ def snr_picker(st, picks, snr_dt=None, snr_window=(1e-3, 20e-3), filter=None):
     a new catalog containing a single event with a list of picks and 2) the SNR
     """
 
+
     function_name = 'snr_picker'
 
     filter_p = False
@@ -490,6 +491,7 @@ def snr_picker(st, picks, snr_dt=None, snr_window=(1e-3, 20e-3), filter=None):
             continue
 
         for phase in previous_picks[station]:
+
             if filter_p and phase=='P':
                 continue
             elif filter_s and phase=='S':
@@ -511,7 +513,7 @@ def snr_picker(st, picks, snr_dt=None, snr_window=(1e-3, 20e-3), filter=None):
             elif phase == 'P' and 'S' not in previous_picks[station]:
                 latest_time   = previous_picks[station]['P'].time + \
                                 post_window_length
-    
+
             old_pick = previous_picks[station][phase]
 
             logger.debug("%s: sta:%s [%s] pick:%s tr:%s-%s" % \
@@ -554,8 +556,10 @@ def snr_picker(st, picks, snr_dt=None, snr_window=(1e-3, 20e-3), filter=None):
                                                  post_wl=post_window_length))
                             for taut in tau])
 
-    
+
         # MTH: this is a hack to try to force the solution close to the oldPick
+            alpha = 0
+            """
             alpha = 10.
             for i, foo in enumerate(tmp):
                 time = foo[0]
@@ -565,6 +569,7 @@ def snr_picker(st, picks, snr_dt=None, snr_window=(1e-3, 20e-3), filter=None):
                 scale = np.exp(-alpha * dt)
                 tmp[i,1] *= np.exp(-alpha * dt) 
                 #print(time, dt, snr, scale, snr*scale, tmp[i,1])
+            """
 
             index = np.argmax(tmp[:,1])
             pick_time = tmp[index, 0]
@@ -576,6 +581,7 @@ def snr_picker(st, picks, snr_dt=None, snr_window=(1e-3, 20e-3), filter=None):
                          (function_name, station, phase, old_pick.time,
                           pick_time, snr))
 
+
             method_string = 'snr_picker preWl=%.3g postWl=%.3g alpha=%.1f' % \
                             (pre_window_length, post_window_length, alpha)
             opicks.append(make_pick(pick_time, phase=old_pick.phase_hint,
@@ -584,9 +590,10 @@ def snr_picker(st, picks, snr_dt=None, snr_window=(1e-3, 20e-3), filter=None):
                                     resource_id=old_pick.resource_id))
             snrs.append(snr)
 
-    catalog = event.Catalog()
-    catalog.events.append(event.Event(picks=opicks))
+    #catalog = event.Catalog()
+    #catalog.events.append(event.Event(picks=opicks))
 
+    #return [], []
     #return catalog, snrs
     return (snrs, opicks)
 
@@ -602,6 +609,13 @@ def calculate_snr(stream, pick, pre_wl=1e-3, post_wl=10e-3):
     output:
     SNR - Signal to noise ratio
     """
+
+    starts = [tr.stats.starttime for tr in stream]
+    for start in starts:
+        if start != starts[0]:
+            print("calculate_snr: Mismatching trace start times!")
+            return 0
+
     try:
         sr = stream.traces[0].stats['sampling_rate']
         st = stream.traces[0].stats['starttime']
@@ -611,7 +625,6 @@ def calculate_snr(stream, pick, pre_wl=1e-3, post_wl=10e-3):
         N_post = int(post_wl * sr)
 
         #print("calc_snr: st:%s et:%s Ps:%d N_pre:%d N_post:%d" % (st, et, Ps, N_pre, N_post))
-
 
         if pick + post_wl > et:
             #EnergyS = np.sum([np.var(tr.data[Ps:]) for tr in St])
@@ -632,7 +645,12 @@ def calculate_snr(stream, pick, pre_wl=1e-3, post_wl=10e-3):
 
 
         SNR = 10 * np.log10(EnergyS / EnergyN)
-        #print('calculate_snr: Pick:%s EnergyS=%12.8g EntergyN=%12.8g SNR=%.1f' % (Pick, EnergyS, EnergyN, SNR))
+
+        #print('calculate_snr: sta:%s ntrs:%d pick:%s pre_wl=%f post_wl=%f SNR=%.1f' % \
+              #(stream[0].stats.station, ntrs, pick, pre_wl, post_wl, SNR))
+        #print('calculate_snr: sta:%s ntrs:%d pick:%s EnergyN=%12.10g EnergyS=%12.10g SNR=%.1f' % \
+              #(stream[0].stats.station, len(stream), pick, EnergyN, EnergyS, SNR))
+
         return SNR
     except:
         return 0

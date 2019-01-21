@@ -52,6 +52,8 @@ def read_nlloc_hypocenter_file(filename, picks=None,
 
     with open(filename) as hyp_file:
 
+        #print("read_nlloc_file:%s" % filename)
+        #exit()
         all_lines = hyp_file.readlines()
         hyp = [line.split() for line in all_lines if 'HYPOCENTER' in line][0]
         stat = [line.split() for line in all_lines if 'STATISTICS' in line][0]
@@ -152,12 +154,22 @@ def read_nlloc_hypocenter_file(filename, picks=None,
                 sx = float(tmp[18])
                 sy = float(tmp[19])
                 sz = float(tmp[20])
+    # MTH: In order to not get default = -1.0 for ray azimuth + takeoff here, you
+    #      need to set ANGLES_YES in the NLLOC Grid2Time control file. Then, when Grid2Time runs, it
+    #      will also create the angle.buf files in NLLOC/run/time and when NLLoc runs, it will interpolate
+    #      these to get the ray azi + takeoff and put them on the phase line of last.hyp
+    # However, the NLLoc generated takeoff angles look to be incorrect (< 90 deg),
+    #  likely due to how OT vertical up convention wrt NLLoc.
+    # So instead, use the spp generated files *.azimuth.buf and *.takeoff.buf to overwrite these later
                 azi = float(tmp[23])
                 toa = float(tmp[24])
 
                 dist = np.linalg.norm([sx * 1000 - origin.x,
                                        sy * 1000 - origin.y,
                                        sz * 1000 - origin.z])
+
+                sdist = float(tmp[21])
+                az2 = float(tmp[22])
 
                 arrival = Arrival()
                 arrival.phase = phase
@@ -736,7 +748,6 @@ class NLL(object):
 
             logger.debug('Calculating P time grids')
             cmd = 'Grid2Time %s/run/%s.in' % (self.base_folder, self.base_name)
-            #print('MTH: microquake nlloc create_time_grids: cmd = [%s]' % cmd)
             os.system(cmd)
 
         if self.gridpar.vs:
@@ -1099,6 +1110,10 @@ VGTYPE S
 GTFILES  <BASEFOLDER>/model/<MODELNAME>  <BASEFOLDER>/time/<MODELNAME> <PHASE>
 
 GTMODE GRID3D ANGLES_NO
+# MTH Uncomment these if you want Grid2Time to calculate angles.buf (takeoff + azimuth)
+#     and for the resulting angles to appear on the last.hyp phase lines
+#GTMODE GRID3D ANGLES_YES
+#LOCANGLES ANGLES_YES 5
 
 <GTSRCE>
 
