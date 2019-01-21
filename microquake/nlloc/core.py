@@ -81,7 +81,7 @@ def read_nlloc_hypocenter_file(filename, picks=None,
         hyp_y = float(hyp[4]) * 1000
         hyp_z = float(hyp[6]) * 1000
 
-        method = '%s %s' % ("NLLOC", search[1])
+        method = '%s' % ("NLLOC")
 
         creation_info = event.CreationInfo(author='microquake',
                                            creation_time=UTCDateTime.now())
@@ -89,7 +89,7 @@ def read_nlloc_hypocenter_file(filename, picks=None,
         origin = event.Origin(x=hyp_x, y=hyp_y, z=hyp_z, time=tme,
                               evaluation_mode=evaluation_mode,
                               evaluation_status=evaluation_status,
-                              epicenter_fixed=0, method=method,
+                              epicenter_fixed=0, method_id=method,
                               creation_info=creation_info)
 
         xminor = np.cos(float(stat[22]) * np.pi / 180) * np.sin(float(stat[20])
