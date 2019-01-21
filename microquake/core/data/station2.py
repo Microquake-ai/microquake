@@ -26,6 +26,15 @@ ns='MICROQUAKE'
 """
 
 def read_csv(csv_file: str) -> []:
+    """
+    Read in a station csv file
+
+    :param csv_file: path to file
+    :type: csv_file: str
+    :return: stations
+    :rtype: list
+    """
+
     stations = []
     with open(csv_file, mode='r') as csv_file:
         csv_reader = csv.DictReader(csv_file)
@@ -431,8 +440,25 @@ def test_print_OT_xml_summary(xmlfile_in: str):
             print("  chan:%3s: <%.3f %.3f %.3f>" % (chan.code, chan.cos1, chan.cos2, chan.cos3))
 
 
-def get_inventory(csv_file):
-    stations = read_csv(csv_file)
+def load_inventory(fname, format='CSV', **kwargs):
+    """
+    An obspy inventory is just a list of stations contained in a list of networks
+    This will return such a list, only the contained stations are 
+    microquake.core.data.station2.Station class
+
+    :param fname: path to file
+    :type: fname: str
+    :param format: input file type (CSV only type for now)
+    :type: format: str
+    :return: station inventory = list of networks containing list of (this) Station class
+    :rtype: obspy.core.inventory
+
+    """
+    if format == 'CSV':
+        stations = read_csv(fname)
+    else:
+        print("get_inventory: Only set up to read CSV formats!!!")
+        return None
     obspy_stations = []
     for station in stations:
         obspy_stations.append(Station.from_csv_station(station))
