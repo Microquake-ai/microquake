@@ -17,20 +17,28 @@ ns_tag='mq'
 ns='MICROQUAKE'
 
 """
-    Thin wrapper classes around obspy Station/Channel to provide property accesss to stn.x, stn.y, stn.z etc
-    plus helper functions to convert between obspy Station, this Station and CSV records
+Thin wrapper classes around obspy Station/Channel to provide property
+access to stn.x, stn.y, stn.z etc plus helper functions to convert
+between obspy Station, this Station and CSV records
 
-    To maintain compatibility with obspy Inventory classes & methods, all the OT info is
-    stored in {extra} dicts (accessible directly via properties), while the expected
-    lat,lon,elev on station/channel are set to 0. for io compatibility.
+To maintain compatibility with obspy Inventory classes & methods,
+all the OT info is stored in {extra} dicts (accessible directly via
+properties), while the expected lat,lon,elev on station/channel are set
+to 0. for io compatibility.
 """
 
-def read_csv(csv_file: str) -> []:
+
+def read_csv(csv_file: str, sensor_file=None, cable_file=None) -> []:
     """
-    Read in a station csv file
+    Read in a station csv file, with companion sensor_file, sensor response
+    file, and cable_file containing the cable response.
 
     :param csv_file: path to file
     :type: csv_file: str
+    :param sensor_file: path to sensor response file
+    :type: sensor_file: str
+    :param cable_file: path to the cable response file
+    :type: cable_file: str
     :return: stations
     :rtype: list
     """
@@ -51,7 +59,8 @@ def read_csv(csv_file: str) -> []:
             station['loc'] = np.array([station['x'],station['y'],station['z']])
             station['long_name'] = row['Long Name']
 
-            chans = [row[chan] for chan in ['Cmp01', 'Cmp02', 'Cmp03'] if row[chan].strip()]
+            chans = [row[chan] for chan in ['Cmp01', 'Cmp02', 'Cmp03']
+                     if row[chan].strip()]
             station['channels'] = []
             ic = 1
             for chan in chans:
@@ -60,35 +69,59 @@ def read_csv(csv_file: str) -> []:
                 x = 'x%d' % ic
                 y = 'y%d' % ic
                 z = 'z%d' % ic
-                chan_dict['orientation'] = np.array([float(row[x]), float(row[y]), float(row[z])])
+                chan_dict['orientation'] = np.array([float(row[x]),
+                                                     float(row[y]),
+                                                     float(row[z])])
                 chan_dict['sensor_type'] = row['Type']
                 station['channels'].append(chan_dict)
                 ic += 1
 
             '''
-            print("sta:%3s <%.3f, %.3f> %9.3f %s" % (row['Code'], float(row['Easting']), float(row['Northing']), \
-                                                  float(row['Elev']), chans))
+            print("sta:%3s <%.3f, %.3f> %9.3f %s" % (row['Code'], float(row[
+            'Easting']), float(row['Northing']), float(row['Elev']), chans))
             '''
             line_count += 1
             stations.append(station)
 
-    #print(f'Processed {line_count} lines.')
     return stations
 
-
 class Station(obspy.core.inventory.station.Station):
+
     @classmethod
-    def from_obspy_station(cls, obspy_station) -> obspy.core.inventory.Station :
+    def from_dict(cls, dictionary):
+        stn = obspy.core.inventory.station.Station()
+        stn = obspy.core.inventory.Station('', 0, 0, 0)
+
+        sta = cls(stn.code, stn.latitude, stn.longitude, stn.elevation,
+                  channels=stn.channels, site=stn.site, vault=stn.vault,
+                  geology=stn.geology, equipments=stn.equipments,
+                  total_number_of_channels=stn.total_number_of_channels,
+                  selected_number_of_channels=stn.selected_number_of_channels,
+                  description=stn.description,
+                  restricted_status=stn.restricted_status,
+                  alternate_code=stn.alternate_code,comments=stn.comments,
+                  start_date=stn.start_date, end_date=stn.end_date,
+                  historical_code=stn.historical_code,
+                  data_availability=stn.data_availability)
+
+
+
+
+    @classmethod
+    def from_obspy_station(cls, obspy_station) -> obspy.core.inventory.Station:
         stn = obspy_station
 
-        #     cls(*params) is same as calling Station(*params):
-        sta = cls(stn.code, stn.latitude, stn.longitude, stn.elevation, channels=stn.channels, \
-                  site=stn.site, vault=stn.vault, geology=stn.geology, equipments=stn.equipments, \
-                  total_number_of_channels=stn.total_number_of_channels, \
-                  selected_number_of_channels=stn.selected_number_of_channels, description=stn.description, \
-                  restricted_status=stn.restricted_status, alternate_code=stn.alternate_code, \
-                  comments=stn.comments, start_date=stn.start_date, end_date=stn.end_date, \
-                  historical_code=stn.historical_code, data_availability=stn.data_availability)
+        sta = cls(stn.code, stn.latitude, stn.longitude, stn.elevation,
+                  channels=stn.channels, site=stn.site, vault=stn.vault,
+                  geology=stn.geology, equipments=stn.equipments,
+                  total_number_of_channels=stn.total_number_of_channels,
+                  selected_number_of_channels=stn.selected_number_of_channels,
+                  description=stn.description,
+                  restricted_status=stn.restricted_status,
+                  alternate_code=stn.alternate_code,comments=stn.comments,
+                  start_date=stn.start_date, end_date=stn.end_date,
+                  historical_code=stn.historical_code,
+                  data_availability=stn.data_availability)
         if getattr(stn, 'extra', None):
             sta.extra = copy.deepcopy(stn.extra)
 
@@ -98,68 +131,114 @@ class Station(obspy.core.inventory.station.Station):
 
         return sta
 
-    @classmethod
-    def from_csv_station(cls, csv_station) -> obspy.core.inventory.Station :
-        stn = csv_station
-
-# New obspy seems to require creation_date .. here I set it before any expected event dats:
-        sta = Station(stn['code'], 0., 0., 0., site=Site(name='Oyu Tolgoi'), creation_date=UTCDateTime("2015-12-31T12:23:34.5"))
-
-        sta.extra = AttribDict({'x': { 'namespace': ns, 'value': stn['x'], },
-                                'y': { 'namespace': ns, 'value': stn['y'], },
-                                'z': { 'namespace': ns, 'value': stn['z'], },
-                              })
-
-        sta.channels = []
-        for cha in stn['channels']:
-            channel = Channel(code=cha['cmp'],    # required
-                              location_code="",   # required
-                              latitude = 0.,      # required
-                              longitude= 0.,      # required
-                              elevation= 0.,      # required
-                              depth=0.,           # required
-                              )
-
-
-            channel.extra = AttribDict({ 'cos1': { 'namespace': ns, 'value': cha['orientation'][0] },
-                                         'cos2': { 'namespace': ns, 'value': cha['orientation'][1] },
-                                         'cos3': { 'namespace': ns, 'value': cha['orientation'][2] },
-                                         'cosines': { 'namespace': ns, 'value': cha['orientation'] },
-                                         'x':    { 'namespace': ns, 'value': stn['x'] },
-                                         'y':    { 'namespace': ns, 'value': stn['y'] },
-                                         'z':    { 'namespace': ns, 'value': stn['z'] },
-                                         'sensor_type':    { 'namespace': ns, 'value': cha['sensor_type'].upper()},
-                                      })
-            # MTH: There doesn't seem to be any simple way to get the sensor_type (ACCELEROMETER vs GEOPHONE)
-            #      to attach to the trace
-            # e.g., tr.attach_response - just attaches a response object
-            # The closest thing I can find is to set
-            #   response.instrument.sensitivity.input_units to either "M/S**2" or "M/S"
-            # Then will have to write a microquake method to detect these and/or use them for lookups
-
-            # Temp attach a generic response to all OT channels:
-            chan_dict = {}
-
-            chan_dict['sensor'] = ['Sercel/Mark Products', 'L-22D', '325 Ohms', '1327 Ohms']
-            chan_dict['datalogger'] = ['REF TEK','RT 130 & 130-SMA','1','100']
-            response = nrl.get_response(sensor_keys=chan_dict['sensor'], datalogger_keys=chan_dict['datalogger'])
-
-            if cha['sensor_type'].upper() == "ACCELEROMETER":
-                input_units = "M/S**2"
-            elif cha['sensor_type'].upper() == "GEOPHONE":
-                input_units = "M/S" # The L-22D already has sensitivity.input_units = "M/S" ...
-
-            response.instrument_sensitivity.input_units = input_units
-
-            channel.response = response
-
-            sta.channels.append(channel)
-
-        sta.total_number_of_channels=len(sta.channels)
-        sta.selected_number_of_channels=len(sta.channels)
-
-
-        return sta
+    # @classmethod
+    # def from_csv_station(cls, inventory_csv) -> obspy.core.inventory.Station :
+    #
+    #     import numpy as np
+    #     import pandas as pd
+    #     import obspy.core.inventory
+    #
+    #     with open(inventory_csv, mode='r') as csv_file:
+    #         sensor_file = csv_file.readline().split(',')[1]
+    #         cable_file = csv_file.readline().split(',')[1]
+    #
+    #     sensors = pd.read_csv(sensor_file)
+    #     cables = pd.read_csv(cable_file)
+    #     inventory = pd.read_csv(inventory_csv, header=2)
+    #
+    #     # New obspy seems to require creation_date .. here I set it before any
+    #     # expected event dats:
+    #
+    #     for i, station in inventory.iterrows():
+    #     if sensors[station['type']]['sensor type'].lower() == 'geophone':
+    #         code = 'PE'
+    #     if sensors[station['type']]['sensor type'].lower() == 'accelerometer':
+    #         code = 'AE'
+    #     for j in range(0, 3):
+    #         if station['cmp0%d' % j]:
+    #             code += station[cmp].upper()
+    #             location_code = ""
+    #             latitude = 0
+    #             longitude = 0
+    #             elevation = 0
+    #             depth = 0
+    #             ori_x = station['y%d' % j]
+    #             ori_y = station['y%d' % j]
+    #             ori_z = station['y%d' % j]
+    #             ori_h = np.linalg.norm(ori_y - ori_x)
+    #             azimuth = np.arctan2(ori_x, ori_y)
+    #             dip = np.arctan2(ori_z, ori_h)
+    #
+    #
+    #     sta = Station(['code'], 0., 0., 0., site=Site(name='Oyu '
+    #                                                               'Tolgoi'),
+    #                   creation_date=UTCDateTime.now())
+    #
+    #     sta.extra = AttribDict({'x': { 'namespace': ns, 'value': stn['x'],},
+    #                             'y': { 'namespace': ns, 'value': stn['y'],},
+    #                             'z': { 'namespace': ns, 'value': stn['z'],},
+    #                           })
+    #
+    #     sta.channels = []
+    #     for cha in stn['channels']:
+    #         channel = Channel(code=cha['cmp'],    # required
+    #                           location_code="",   # required
+    #                           latitude = 0.,      # required
+    #                           longitude= 0.,      # required
+    #                           elevation= 0.,      # required
+    #                           depth=0.,           # required
+    #                           )
+    #
+    #
+    #         channel.extra = AttribDict({'cos1': {'namespace': ns,
+    #                                              'value': cha['orientation'][0]},
+    #                                     'cos2': {'namespace': ns,
+    #                                              'value': cha['orientation'][1]},
+    #                                     'cos3': {'namespace': ns,
+    #                                              'value': cha['orientation'][2]},
+    #                                     'cosines': {'namespace': ns,
+    #                                                 'value': cha['orientation']},
+    #                                     'x':    {'namespace': ns,
+    #                                             'value': stn['x'] },
+    #                                     'y':    { 'namespace': ns, 'value': stn['y'] },
+    #                                     'z':    { 'namespace': ns, 'value': stn['z'] },
+    #                                     'sensor_type':    { 'namespace': ns, 'value': cha['sensor_type'].upper()},
+    #                                   })
+    #         # MTH: There doesn't seem to be any simple way to get the
+    #         # sensor_type (ACCELEROMETER vs GEOPHONE)
+    #         # to attach to the trace
+    #         # e.g., tr.attach_response - just attaches a response object
+    #         # The closest thing I can find is to set
+    #         #   response.instrument.sensitivity.input_units to either
+    #         # "M/S**2" or "M/S"
+    #         # Then will have to write a microquake method to detect these
+    #         # and/or use them for lookups
+    #
+    #         # Temp attach a generic response to all OT channels:
+    #         chan_dict = {}
+    #
+            chan_dict['sensor'] = ['Sercel/Mark Products', 'L-22D',
+                                   '325 Ohms', '1327 Ohms']
+    #         chan_dict['datalogger'] = ['REF TEK','RT 130 & 130-SMA','1','100']
+    #         response = nrl.get_response(sensor_keys=chan_dict['sensor'],
+    #                                     datalogger_keys=chan_dict['datalogger'])
+    #
+    #         if cha['sensor_type'].upper() == "ACCELEROMETER":
+    #             input_units = "M/S**2"
+    #         elif cha['sensor_type'].upper() == "GEOPHONE":
+    #             input_units = "M/S" # The L-22D already has sensitivity.input_units = "M/S" ...
+    #
+    #         response.instrument_sensitivity.input_units = input_units
+    #
+    #         channel.response = response
+    #
+    #         sta.channels.append(channel)
+    #
+    #     sta.total_number_of_channels=len(sta.channels)
+    #     sta.selected_number_of_channels=len(sta.channels)
+    #
+    #
+    #     return sta
 
     @property
     def x(self):
@@ -254,20 +333,25 @@ class Station(obspy.core.inventory.station.Station):
             expand_tabs=False))
         return ret
 
-class Channel(obspy.core.inventory.channel.Channel):
 
-    #__doc__ = obsevent.Origin.__doc__.replace('obspy', 'microquake')
+class Channel(obspy.core.inventory.channel.Channel):
 
     @classmethod
     def from_obspy_channel(cls, obspy_channel):
         chn = obspy_channel
-        cha = Channel(chn.code, chn.location_code, chn.latitude, chn.longitude, chn.elevation, chn.depth, \
-                      chn.azimuth, chn.dip, chn.types, chn.external_references, chn.sample_rate, \
-                      chn.sample_rate_ratio_number_samples, chn.sample_rate_ratio_number_seconds, \
-                      chn.storage_format, chn.clock_drift_in_seconds_per_sample, chn.calibration_units, \
-                      chn.calibration_units_description, chn.sensor, chn.pre_amplifier, chn.data_logger, \
-                      chn.equipment, chn.response, chn.description, chn.comments, chn.start_date, \
-                      chn.end_date, chn.restricted_status, chn.alternate_code, chn.historical_code, \
+        cha = Channel(chn.code, chn.location_code, chn.latitude,
+                      chn.longitude, chn.elevation, chn.depth, chn.azimuth,
+                      chn.dip, chn.types, chn.external_references,
+                      chn.sample_rate, chn.sample_rate_ratio_number_samples,
+                      chn.sample_rate_ratio_number_seconds,
+                      chn.storage_format,
+                      chn.clock_drift_in_seconds_per_sample,
+                      chn.calibration_units,
+                      chn.calibration_units_description, chn.sensor,
+                      chn.pre_amplifier, chn.data_logger, chn.equipment,
+                      chn.response, chn.description, chn.comments,
+                      chn.start_date, chn.end_date, chn.restricted_status,
+                      chn.alternate_code, chn.historical_code,
                       chn.data_availability)
 
         if getattr(chn, 'extra', None):
