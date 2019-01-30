@@ -18,10 +18,13 @@ from microquake.waveform.smom_mag_utils import get_spectra, stack_spectra, calc_
 12345678901234567890123456789012345678901234567890123456789012345678901234567890
 """
 
-def measure_pick_smom(st, stations, event, synthetic_picks, fmin=20, fmax=1000, P_or_S='P', debug=False):
+#def measure_pick_smom(st, stations, event, synthetic_picks, fmin=20, fmax=1000, P_or_S='P', debug=False):
+def measure_pick_smom(st, inventory, event, synthetic_picks, fmin=20, fmax=1000, P_or_S='P', debug=False):
 
+    stations = inventory[0]
 # Get P(S) spectra at all stations/channels that have a P(S) arrival:
-    sta_dict = get_spectra(st, event, stations, synthetic_picks, calc_displacement=False, S_win_len=.1, P_or_S=P_or_S)
+    #sta_dict = get_spectra(st, event, stations, synthetic_picks, calc_displacement=False, S_win_len=.1, P_or_S=P_or_S)
+    sta_dict = get_spectra(st, event, inventory, synthetic_picks, calc_displacement=False, S_win_len=.1, P_or_S=P_or_S)
 
 # Stack vel spectra to get fc ~ peak_f
 # Note that fc_S is predicted to be < fc_P 
@@ -33,11 +36,22 @@ def measure_pick_smom(st, stations, event, synthetic_picks, fmin=20, fmax=1000, 
 # Now recalculate the spectra as Displacment spectra:
 
 # Get P spectra at all stations/channels that have a P arrival:
-    sta_dict = get_spectra(st, event, stations, synthetic_picks, calc_displacement=True, S_win_len=.1, P_or_S=P_or_S)
+    #sta_dict = get_spectra(st, event, stations, synthetic_picks, calc_displacement=True, S_win_len=.1, P_or_S=P_or_S)
+    sta_dict = get_spectra(st, event, inventory, synthetic_picks, calc_displacement=True, S_win_len=.1, P_or_S=P_or_S)
     stacked_spec, freqs = stack_spectra(sta_dict)
     fit, fc_stack = calc_fit1(stacked_spec, freqs, fmin=1, fmax=fmax, fit_displacement=True)
 
     fit,smom_dict = calc_fit(sta_dict, fc=peak_f, fmin=30, fmax=600)
+
+    arrivals = event.preferred_origin().arrivals
+    arr_dict = {}
+    for arr in arrivals:
+        pk = arr.pick_id.get_referred_object()
+        sta= pk.waveform_id.station_code
+        pha= arr.phase
+        if sta not in arr_dict:
+            arr_dict[sta] = {}
+        arr_dict[sta][pha] = arr
 
     for tr in st:
 
@@ -65,6 +79,10 @@ def measure_pick_smom(st, stations, event, synthetic_picks, fmin=20, fmax=1000, 
 
         tr.stats[key]['smom'] = smom_dict[sta][cha]['smom']
         tr.stats[key]['fit'] = smom_dict[sta][cha]['fit']
+
+        arr = arr_dict[sta][phase]
+        arr.smom = smom_dict[sta][cha]['smom']
+        arr.fit  = smom_dict[sta][cha]['fit']
 
     return smom_dict
 

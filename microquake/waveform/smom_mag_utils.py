@@ -6,7 +6,7 @@ from scipy.fftpack import fft, fftfreq, rfft, rfftfreq
 from spp.utils.application import Application
 from microquake.core.util.tools import copy_picks_to_dict
 import matplotlib.pyplot as plt
-from microquake.core.data.station2 import inv_station_list_to_dict
+from microquake.core.data.inventory import inv_station_list_to_dict
 
 """
     mag_utils - a collection of routines to assist in the moment magnitude calculation
@@ -224,7 +224,8 @@ def stack_spectra(sta_dict):
     return stack/np.amax(stack), freqs
 
 
-def get_spectra(st, event, stations, synthetic_picks, calc_displacement=False, S_win_len=.1, P_or_S='P'):
+#def get_spectra(st, event, stations, synthetic_picks, calc_displacement=False, S_win_len=.1, P_or_S='P'):
+def get_spectra(st, event, inventory, synthetic_picks, calc_displacement=False, S_win_len=.1, P_or_S='P'):
     """ Calculate the fft at each channel in the stream that has an arrival in event.arrivals
 
         :param st: microquake.core.stream.Stream
@@ -245,7 +246,9 @@ def get_spectra(st, event, stations, synthetic_picks, calc_displacement=False, S
 
     fname = 'get_spectra'
 
-    sta_meta_dict = inv_station_list_to_dict(stations)
+    #sta_meta_dict = inv_station_list_to_dict(stations)
+    sta_meta_dict = inv_station_list_to_dict(inventory)
+    stations = inventory[0]
 
     origin = event.preferred_origin() if event.preferred_origin() else event.origins[0]
 
@@ -348,7 +351,8 @@ def get_spectra(st, event, stations, synthetic_picks, calc_displacement=False, S
                 ch = {}
 
                 cha_code = tr.stats.channel
-                sensor_type = sta_meta_dict[sta_code]['chans'][cha_code].sensor_type
+                #sensor_type = sta_meta_dict[sta_code]['chans'][cha_code].sensor_type
+                sensor_type = sta_meta_dict[sta_code]['chans']['z'].sensor_type
 
                 tt_s = sta['stime'] - tr.stats.starttime
                 tr.detrend('demean').detrend('linear').taper(type='cosine', max_percentage=0.05, side='both')
@@ -359,6 +363,9 @@ def get_spectra(st, event, stations, synthetic_picks, calc_displacement=False, S
                 signal.taper(type='cosine', max_percentage=0.05, side='both')
 
                 # If this trace sensor_type='ACCELEROMETER' --> integrate to velocity
+
+                if sensor_type not in ['ACCELEROMETER', 'GEOPHONE']:
+                    print("%s: ERROR: sensor_type=[%s] is unknown" % (fname, sensor_type))
 
                 if sensor_type == 'ACCELEROMETER':
                     signal.integrate().taper(type='cosine', max_percentage=0.05, side='both')
