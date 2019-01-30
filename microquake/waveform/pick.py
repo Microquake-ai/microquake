@@ -557,6 +557,7 @@ def snr_picker(st, picks, snr_dt=None, snr_window=(1e-3, 20e-3), filter=None):
                             for taut in tau])
 
 
+
         # MTH: this is a hack to try to force the solution close to the oldPick
             alpha = 0
             """
@@ -574,6 +575,9 @@ def snr_picker(st, picks, snr_dt=None, snr_window=(1e-3, 20e-3), filter=None):
             index = np.argmax(tmp[:,1])
             pick_time = tmp[index, 0]
 
+            #print(tmp)
+
+            #print("sta:%s  pha:%s old_time:%s new_pick_time:%s" % (station, phase, old_pick.time, pick_time))
 
             snr = calculate_snr(trs, pick_time, pre_wl=pre_window_length,
                                 post_wl=post_window_length)

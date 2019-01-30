@@ -3,7 +3,9 @@ import numpy as np
 from microquake.core.util.tools import copy_picks_to_dict
 from microquake.core.stream import Stream
 from microquake.waveform.pick import calculate_snr
-from microquake.core.data.station2 import get_sensor_type_from_trace
+from microquake.core.data.inventory import get_sensor_type_from_trace
+
+from helpers import *
 
 """ This module's docstring summary line.
     This is a multi-line docstring. Paragraphs are separated with blank lines.
@@ -56,7 +58,8 @@ def set_pick_snrs(st, picks, pre_wl=.03, post_wl=.03):
     return
 
 
-def measure_pick_amps(st, picks, debug=False):
+#def measure_pick_amps(st, picks, debug=False):
+def measure_pick_amps(st, cat, phase_list=['P'], debug=False):
 
     """
     For each tr in st, for each pick phase (P,S) in picks:
@@ -80,14 +83,14 @@ def measure_pick_amps(st, picks, debug=False):
 
     fname = 'measure_pick_amps'
 
-    measure_velocity_pulse(st, picks, debug=False)
-
-    measure_displacement_pulse(st, picks, debug=True)
+    measure_velocity_pulse(st, cat, phase_list=phase_list, debug=False)
+    measure_displacement_pulse(st, cat, phase_list=phase_list, debug=False)
 
     return
 
 
-def measure_velocity_pulse(st, picks, debug=False):
+def measure_velocity_pulse(st, cat, debug=False, phase_list=['P']):
+#def measure_velocity_pulse(st, picks, debug=False, phase_list=['P']):
     """
     locate velocity pulse (zero crossings) near pick and measure peak amp, polarity, etc on it
 
@@ -102,6 +105,9 @@ def measure_velocity_pulse(st, picks, debug=False):
     """
 
     fname = 'measure_velocity_pulse'
+
+    arrivals = cat[0].preferred_origin().arrivals
+    picks = [ arr.pick_id.get_referred_object() for arr in arrivals ]
 
     pick_dict = copy_picks_to_dict(picks)
 
@@ -121,7 +127,10 @@ def measure_velocity_pulse(st, picks, debug=False):
 
         snr_thresh = 3.0
 
-        for phase in ['P', 'S']:
+        #for phase in ['P', 'S']:
+        for phase in phase_list:
+
+            print("measure_vel_pulse: sta:%s cha:%s pha:%s" % (sta, tr.stats.channel, phase))
 
             if sta in pick_dict and phase in pick_dict[sta]:
                 pass
@@ -129,6 +138,7 @@ def measure_velocity_pulse(st, picks, debug=False):
                 print("%s: sta:%s has no [%s] pick" % (fname, sta, phase))
                 continue
 
+            '''
             key = "%s_arrival" % phase
 
             if key not in tr.stats:
@@ -139,8 +149,21 @@ def measure_velocity_pulse(st, picks, debug=False):
 
             if snr < snr_thresh:
                 print("%s: tr:%s pha:%s snr:%.1f < thresh --> Skip" % (fname, tr.get_id(), phase, snr))
-                #tr.plot()
+                tr.plot()
                 continue
+            '''
+
+            pick = pick_dict[sta][phase]
+            arrival = None
+            for arr in arrivals:
+                if arr.pick_id == pick.resource_id:
+                    arrival = arr
+                    break
+
+            if arrival is None:
+                print("%s: Unable able to locate arrival for sta:%s pha:%s pick" % (fname, sta, phase))
+                continue
+
 
             pick_time = pick_dict[sta][phase].time
 
@@ -172,6 +195,7 @@ def measure_velocity_pulse(st, picks, debug=False):
                 # TODO: Need to check that early S picks don't kill S polarity !
 
                 pulse_thresh = 9.
+
                 if phase == 'S':
                     pulse_thresh = 6.
 
@@ -185,7 +209,10 @@ def measure_velocity_pulse(st, picks, debug=False):
                     print("%s: tr:%s pha:%s t1:%s t2:%s pulse_width=%f < .0014" % \
                           (fname, tr.get_id(), phase, t1, t2, pulse_width))
                     polarity = 0
-                    #plot_channels_with_picks(st, sta, picks, channel=tr.stats.channel,title="0 Polarity")
+
+                if debug:
+                    plot_channels_with_picks(st, sta, picks, channel=tr.stats.channel,title="pulse_snr:%.1f Pol:%d" % \
+                                             (pulse_snr, polarity))
 
 
                 dd['polarity'] = polarity
@@ -194,21 +221,31 @@ def measure_velocity_pulse(st, picks, debug=False):
                 dd['t1'] = t1
                 dd['t2'] = t2
                 dd['pulse_snr'] = pulse_snr
-            #dd['vel_period']  = vel_period
+                #dd['vel_period']  = vel_period
+
+                arrival.polarity  = polarity
+                arrival.peak_vel  = peak_vel
+                arrival.tpeak_vel = tpeak
+                arrival.t1 = t1
+                arrival.t2 = t2
+                arrival.pulse_snr = pulse_snr
+
 
             else:
                 print("%s: Unable to locate zeros for tr:%s pha:%s" % (fname,tr.get_id(),phase))
                 polarity = 0
-                dd['polarity'] = polarity
+                arrival.polarity  = polarity
+                #dd['polarity'] = polarity
 
 
-            tr.stats[key]['velocity_pulse'] = dd
+            #tr.stats[key]['velocity_pulse'] = dd
 
     return
 
 
 
-def measure_displacement_pulse(st, picks, debug=False):
+#def measure_displacement_pulse(st, picks, debug=False):
+def measure_displacement_pulse(st, cat, debug=False, phase_list=['P']):
     """
     measure displacement pulse (area + width) for each pick on each trace,
         as needed for moment magnitude calculation
@@ -225,6 +262,8 @@ def measure_displacement_pulse(st, picks, debug=False):
 
     fname = 'measure_displacement_pulse'
 
+    arrivals = cat[0].preferred_origin().arrivals
+    picks = [ arr.pick_id.get_referred_object() for arr in arrivals ]
     pick_dict = copy_picks_to_dict(picks)
 
     #plot = True
@@ -244,8 +283,9 @@ def measure_displacement_pulse(st, picks, debug=False):
         tr_dis.integrate().detrend("linear")
         tr_dis.stats.channel="%s.dis" % tr.stats.channel
 
-        for phase in ['P', 'S']:
+        for phase in phase_list:
 
+            '''
             key = "%s_arrival" % phase
 
             if key in tr.stats and 'velocity_pulse' in tr.stats[key]:
@@ -253,11 +293,27 @@ def measure_displacement_pulse(st, picks, debug=False):
             else:
                 print("%s: tr:%s --> NOT found velocity_pulse in key=%s" % (fname, tr.get_id(), key))
                 continue
+            '''
+            if phase not in pick_dict[sta]:
+                print("%s: sta:%s has no [%s] pick in dict" % (fname, sta, phase))
+                continue
 
-            polarity = tr.stats[key]['velocity_pulse']['polarity']
+            pick = pick_dict[sta][phase]
+            arrival = None
+            for arr in arrivals:
+                if arr.pick_id == pick.resource_id:
+                    arrival = arr
+                    break
 
-            t1 = tr.stats[key]['velocity_pulse']['t1']
-            t2 = tr.stats[key]['velocity_pulse']['t2']
+            if arrival is None:
+                print("%s: Unable able to locate arrival for sta:%s pha:%s pick" % (fname, sta, phase))
+
+            #polarity = tr.stats[key]['velocity_pulse']['polarity']
+            #t1 = tr.stats[key]['velocity_pulse']['t1']
+            #t2 = tr.stats[key]['velocity_pulse']['t2']
+            polarity = arrival.polarity
+            t1 = arrival.t1
+            t2 = arrival.t2
 
             pick_time = pick_dict[sta][phase].time
 
@@ -301,7 +357,14 @@ def measure_displacement_pulse(st, picks, debug=False):
                     dd['dis_pulse_width'] = pulse_width
                     dd['dis_pulse_area']  = pulse_area
 
-                    tr.stats[key]['displacement_pulse'] = dd
+                    #tr.stats[key]['displacement_pulse'] = dd
+
+                    arrival.peak_dis = peak_dis
+                    arrival.max_dis  = max_dis
+                    arrival.tpeak_dis = tpeak_dis
+                    arrival.tmax_dis  = tmax_dis
+                    arrival.dis_pulse_width = pulse_width
+                    arrival.dis_pulse_area  = pulse_area
 
                     if debug:
                         print("[%s] Dis pol=%d tpick=%s" % \

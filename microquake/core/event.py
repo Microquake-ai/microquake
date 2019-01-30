@@ -168,7 +168,15 @@ class Pick(obsevent.Pick):
 class Arrival(obsevent.Arrival):
     __doc__ = obsevent.Arrival.__doc__.replace('obspy', 'microquake')
 
-    extra_keys = ['ray', 'backazimuth', 'inc_angle']
+    #extra_keys = ['ray', 'backazimuth', 'inc_angle']
+    extra_keys = ['ray', 'backazimuth', 'inc_angle', 'polarity',
+                  'peak_vel', 'tpeak_vel', 't1', 't2', 'pulse_snr',
+                  'peak_dis', 'tpeak_dis', 'max_dis', 'tmax_dis',
+                  'dis_pulse_width', 'dis_pulse_area',
+                  'smom','fit',
+                  ]
+
+    #extra_keys = ['ray', 'backazimuth', 'inc_angle', 'velocity_pulse', 'displacement_pulse']
 
     def __init__(self, obspy_obj=None, **kwargs):
         _init_handler(self, obspy_obj, **kwargs)

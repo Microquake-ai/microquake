@@ -360,7 +360,8 @@ class Channel(obspy.core.inventory.channel.Channel):
 
 
 
-def inv_station_list_to_dict(station_list):
+#def inv_station_list_to_dict(station_list):
+def inv_station_list_to_dict(inventory):
     """ Convert station list (= list of microquake Station class metadata) to dict
 
         :param station_list: list of
@@ -369,10 +370,22 @@ def inv_station_list_to_dict(station_list):
     """
     sta_meta_dict = {}
 
+    station_list = []
+    for i in range(len(inventory)):
+        net = inventory[i]
+        station_list += net.stations
+
     for station in station_list:
         dd={}
         dd['station'] = station.copy()
-        dd['loc'] = station.loc
+
+        #if 'loc' in station:
+        if hasattr(station, 'loc'):
+            dd['loc'] = station.loc
+        else:
+            dd['lat'] = station.latitude
+            dd['lon'] = station.longitude
+            dd['elev'] = station.elevation
 
         chans_dict = {}
         for channel in station.channels:
@@ -457,7 +470,7 @@ def load_inventory(fname, format='CSV', **kwargs):
     if format == 'CSV':
         stations = read_csv(fname)
     else:
-        print("get_inventory: Only set up to read CSV formats!!!")
+        print("load_inventory: Only set up to read CSV formats!!!")
         return None
     obspy_stations = []
     for station in stations:
