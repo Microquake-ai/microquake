@@ -174,6 +174,7 @@ class Arrival(obsevent.Arrival):
                   'peak_dis', 'tpeak_dis', 'max_dis', 'tmax_dis',
                   'dis_pulse_width', 'dis_pulse_area',
                   'smom','fit',
+                  'hypo_dist_in_m',
                   ]
 
     #extra_keys = ['ray', 'backazimuth', 'inc_angle', 'velocity_pulse', 'displacement_pulse']
