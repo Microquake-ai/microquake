@@ -64,8 +64,6 @@ def measure_velocity_pulse(st, cat, phase_list=['P'], debug=False, \
 
     fname = 'measure_velocity_pulse'
 
-    print("%s: min_pulse_width=%f min_pulse_snr=%f" % (fname, min_pulse_width, min_pulse_snr))
-
   # TODO: Move these to toml settings
   # Min thresh params for velocity pulses:
     pulse_thresh_P = 9.
@@ -94,7 +92,8 @@ def measure_velocity_pulse(st, cat, phase_list=['P'], debug=False, \
 
             for phase in phase_list:
 
-                print("measure_vel_pulse: sta:%s cha:%s pha:%s" % (sta, tr.stats.channel, phase))
+                if debug:
+                    print("measure_vel_pulse: sta:%s cha:%s pha:%s" % (sta, tr.stats.channel, phase))
 
                 if sta not in pick_dict or phase not in pick_dict[sta]:
                     print("%s: sta:%s has no [%s] pick" % (fname, sta, phase))
@@ -117,7 +116,7 @@ def measure_velocity_pulse(st, cat, phase_list=['P'], debug=False, \
                 # This setting is for UK
                 polarity, vel_zeros = find_signal_zeros(tr, ipick, nzeros_to_find=3, \
                                                         min_pulse_width=min_pulse_width,\
-                                                        min_pulse_snr=min_pulse_snr)
+                                                        min_pulse_snr=min_pulse_snr, debug=debug)
                 # This setting is for OT
                 #polarity, vel_zeros = find_signal_zeros(tr, ipick, nzeros_to_find=3, min_pulse_width=.0016)
 
@@ -244,7 +243,8 @@ def measure_displacement_pulse(st, cat, phase_list=['P'], debug=False, use_stats
 
             for phase in phase_list:
 
-                print("measure_dis_pulse: sta:%s cha:%s pha:%s" % (sta, tr.stats.channel, phase))
+                if debug:
+                    print("measure_dis_pulse: sta:%s cha:%s pha:%s" % (sta, tr.stats.channel, phase))
 
                 if phase not in pick_dict[sta]:
                     print("%s: sta:%s has no [%s] pick in dict" % (fname, sta, phase))
@@ -369,14 +369,13 @@ def measure_displacement_pulse(st, cat, phase_list=['P'], debug=False, use_stats
 
 
 def find_signal_zeros(tr, istart, max_pulse_duration=.1, nzeros_to_find=3, \
-                      second_try=False, min_pulse_width=.00167, min_pulse_snr=5):
+                      second_try=False, min_pulse_width=.00167, min_pulse_snr=5,
+                      debug=False):
 
     fname = 'find_signal_zeros'
 
     data = tr.data
     sign = np.sign(data)
-
-    debug = 1
 
     counter = 0
     s = 0
@@ -415,7 +414,7 @@ def find_signal_zeros(tr, istart, max_pulse_duration=.1, nzeros_to_find=3, \
     i0 = 0
     snr_thresh = 10.
     for i in range(istart, istart + nmax_look):
-        print("i:%4d data[i]:%g snr:%f" % (i,data[i],np.abs(data[i]/noise_level)))
+        #print("i:%4d data[i]:%g snr:%f" % (i,data[i],np.abs(data[i]/noise_level)))
         if np.abs(data[i]) >= snr_thresh * np.abs(noise_level):
             #print("  data[i]=%g >= 10 x noise_level --> Set sign s0=%d" % (data[i], sign[i]))
             s0 = sign[i]
@@ -591,8 +590,6 @@ def get_pulse_width_and_area(tr, ipick, icross, max_pulse_duration=.08):
     iend = ipick + nmax
 
     epsilon = 1e-10
-
-    print("get_width: %s" % tr.get_id())
 
     for i in range(icross, iend):
         diff = np.abs(data[i] - data[ipick])
