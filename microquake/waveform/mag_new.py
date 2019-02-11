@@ -26,11 +26,11 @@ def moment_magnitude_new(st, event, stations, vp=5300, vs=3500, ttpath=None, onl
 
 # Use time(or freq) lambda to calculate moment magnitudes for each arrival
 
-    Mw_P, station_mags_P = calc_magnitudes_from_lambda(st, event, stations, vp=vp, vs=vs,
-                                                       density=2700, P_or_S='P', use_smom=use_smom)
+    Mw_P, station_mags_P = calc_magnitudes_from_lambda(cat, vp=vp, vs=vs, density=2700,
+                                                       P_or_S='P', use_smom=use_smom)
 
-    Mw_S, station_mags_S = calc_magnitudes_from_lambda(st, event, stations, vp=vp, vs=vs,
-                                                       density=2700, P_or_S='S', use_smom=use_smom)
+    Mw_S, station_mags_S = calc_magnitudes_from_lambda(cat, vp=vp, vs=vs, density=2700,
+                                                       P_or_S='S', use_smom=use_smom)
 
 # Average Mw_P,Mw_S to get event Mw and wrap with list of station mags/contributions
 
@@ -75,16 +75,16 @@ def set_new_event_mag(event, station_mags, Mw, comment):
 from obspy.core.event.magnitude import Magnitude, StationMagnitude, StationMagnitudeContribution
 from obspy.core.event.base import Comment, WaveformStreamID
 
-#def calc_magnitudes_from_lambda(st, event, stations, vp=5300, vs=3500, density=2700, P_or_S='P', use_smom=False):
-def calc_magnitudes_from_lambda(cat, inventory, vp=5300, vs=3500, density=2700, P_or_S='P', use_smom=False):
+def calc_magnitudes_from_lambda(cat, vp=5300, vs=3500, density=2700, P_or_S='P', use_smom=False):
     """
     Calculate the moment magnitude at each station from lambda, where lambda is either:
         'dis_pulse_area' (use_smom=False) - calculated by integrating arrival displacement pulse in time
         'smom' (use_smom=True) - calculated by fiting Brune spectrum to displacement spectrum in frequency
     """
 
-    sta_meta_dict = inv_station_list_to_dict(inventory)
-    #sta_meta_dict = inv_station_list_to_dict(stations)
+    fname = 'calc_magnitudes_from_lambda'
+
+    #sta_meta_dict = inv_station_list_to_dict(inventory)
 
 # TODO: If you want this function to be a loop over event in cat,
 #       need to pass in or calc vp/vs at each source depth
@@ -116,42 +116,45 @@ def calc_magnitudes_from_lambda(cat, inventory, vp=5300, vs=3500, density=2700, 
 
     M0_scale = 4. * np.pi * density * v**3 / rad
 
-    # Loop over unique stations in stream
-    # If there are 3 chans and ...
+
     station_mags = []
     Mw_list = []
 
     Mw_P = []
 
-    for arr in event.preferred_origin().arrivals:
+    arrivals = [arr for arr in event.preferred_origin().arrivals if arr.phase == P_or_S]
+
+    for arr in arrivals:
+    #for arr in event.preferred_origin().arrivals:
 
     #for sta in sorted([sta for sta in st.unique_stations()],
                     #key=lambda x: int(x)):
 
         pha = arr.phase
 
+        if pha != P_or_S:
+            print("%s: P_or_S=%s but arr pha=%s --> Skip" % (fname, P_or_S, pha))
+            continue
+
         pk = arr.pick_id.get_referred_object()
         sta = pk.waveform_id.station_code
         cha = pk.waveform_id.channel_code
         net = pk.waveform_id.network_code
 
-        sta_dict = sta_meta_dict[sta]
 
-        print("calc_magnitudes: sta:%s cha:%s pha:%s" % (sta, cha, pha))
-
-        #if arr.dis_pulse_area is not None: 
         _lambda = getattr(arr, lambda_key)
 
         if _lambda is not None: 
 
-            #_lambda = arr.dis_pulse_area
+            #R  = np.linalg.norm(sta_dict['station'].loc -ev_loc) # Dist in meters
 
-            R  = np.linalg.norm(sta_dict['station'].loc -ev_loc) # Dist in meters
+        # MTH: obspy arrival.distance = *epicentral* distance in degrees
+        #      So adding attribute hypo_dist_in_m to microquake arrival class to make it clear
+            #R  = arr.distance # Dist in meters
+            R  = arr.hypo_dist_in_m
 
             M0 = M0_scale * R * np.abs(_lambda)
             Mw = 2./3. * np.log10(M0) - 6.033
-            #print("sta:%s cha:%s pha:%s _lambda:%12.10g equiv_Mw:%.2f" % \
-                  #(sta, tr.stats.channel, P_or_S, _lambda, equiv_Mw))
 
             Mw_list.append(Mw)
 
@@ -167,7 +170,7 @@ def calc_magnitudes_from_lambda(cat, inventory, vp=5300, vs=3500, density=2700, 
             station_mags.append(station_mag)
 
         else:
-            print("sta:%s cha:%s arr pha:%s lambda_key:%s is NOT SET --> Skip" % \
+            print("arrival sta:%s cha:%s arr pha:%s lambda_key:%s is NOT SET --> Skip" % \
                   (sta, cha, pha, lambda_key))
 
 
