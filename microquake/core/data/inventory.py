@@ -62,6 +62,9 @@ def read_csv(csv_file: str) -> []:
                 z = 'z%d' % ic
                 chan_dict['orientation'] = np.array([float(row[x]), float(row[y]), float(row[z])])
                 chan_dict['sensor_type'] = row['Type']
+                chan_dict['cable_type'] = row['Cable Type']
+                chan_dict['cable_length'] = row['Cable length']
+                chan_dict['motion'] = row['Motion']
                 station['channels'].append(chan_dict)
                 ic += 1
 
@@ -129,6 +132,9 @@ class Station(obspy.core.inventory.station.Station):
                                          'y':    { 'namespace': ns, 'value': stn['y'] },
                                          'z':    { 'namespace': ns, 'value': stn['z'] },
                                          'sensor_type':    { 'namespace': ns, 'value': cha['sensor_type'].upper()},
+                                         'motion':    { 'namespace': ns, 'value': cha['motion'].upper()},
+                                         'cable_type':    { 'namespace': ns, 'value': cha['cable_type'].upper()},
+                                         'cable_length':  { 'namespace': ns, 'value': cha['cable_length'] },
                                       })
             # MTH: There doesn't seem to be any simple way to get the sensor_type (ACCELEROMETER vs GEOPHONE)
             #      to attach to the trace
@@ -144,10 +150,14 @@ class Station(obspy.core.inventory.station.Station):
             chan_dict['datalogger'] = ['REF TEK','RT 130 & 130-SMA','1','100']
             response = nrl.get_response(sensor_keys=chan_dict['sensor'], datalogger_keys=chan_dict['datalogger'])
 
-            if cha['sensor_type'].upper() == "ACCELEROMETER":
+            #if cha['sensor_type'].upper() == "ACCELEROMETER":
+            #elif cha['sensor_type'].upper() == "GEOPHONE":
+            if "ACCELEROMETER" in cha['sensor_type'].upper():
                 input_units = "M/S**2"
-            elif cha['sensor_type'].upper() == "GEOPHONE":
+            elif "GEOPHONE" in cha['sensor_type'].upper():
                 input_units = "M/S" # The L-22D already has sensitivity.input_units = "M/S" ...
+
+            #print("MTH: sensor_type=%s" % cha['sensor_type'])
 
             response.instrument_sensitivity.input_units = input_units
 
@@ -285,6 +295,37 @@ class Channel(obspy.core.inventory.channel.Channel):
                 raise AttributeError
         else:
             raise AttributeError
+
+    @property
+    def motion(self):
+        if self.extra:
+            if self.extra.get('motion', None):
+                return self.extra.motion.value
+            else:
+                raise AttributeError
+        else:
+            raise AttributeError
+
+    @property
+    def cable_type(self):
+        if self.extra:
+            if self.extra.get('cable_type', None):
+                return self.extra.cable_type.value
+            else:
+                raise AttributeError
+        else:
+            raise AttributeError
+
+    @property
+    def cable_length(self):
+        if self.extra:
+            if self.extra.get('cable_length', None):
+                return float(self.extra.cable_length.value)
+            else:
+                raise AttributeError
+        else:
+            raise AttributeError
+
 
     @property
     def cos1(self):
