@@ -883,6 +883,7 @@ class NLL(object):
         self.ctrlfile.write(new_in)
 
         os.system('NLLoc %s' % new_in)
+        logger.info("Zach: Here is the command: >NLLoc %s" % new_in)
 
         filename = "%s/%s/loc/last.hyp" % (self.base_folder, self.worker_folder)
         logger.debug('%s.%s: scan hypo from filename = %s' % (__name__, fname, filename))

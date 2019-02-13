@@ -529,6 +529,7 @@ def find_signal_zeros(tr, istart, max_pulse_duration=.1, nzeros_to_find=3, \
                                  nzeros_to_find=nzeros_to_find, second_try=True)
 
     if debug:
+        print("Its here ---> debug is True!!!")
         tr.plot()
 
     return first_sign, zeros
