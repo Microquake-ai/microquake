@@ -588,12 +588,9 @@ class NLL(object):
 
     def _clean_outputs(self):
         try:
-            print("This is where you would clean up")
-            """
             for f in glob(os.path.join(self.base_folder, 'loc',
                                        self.base_name)):
                 os.remove(f)
-            """
         except:
             pass
 
@@ -618,7 +615,7 @@ class NLL(object):
         self._clean_outputs()
         tmp = '%s/%s' % (self.base_folder, self.worker_folder)
         shutil.rmtree(tmp)
-        
+
 
     def init_header_file(self):
         """
@@ -858,8 +855,6 @@ class NLL(object):
     def run_event(self, event, silent=True):
         fname = 'run_event'
 
-        print("Enter run_event")
-
         from glob import glob
 
         evt = event
@@ -872,14 +867,12 @@ class NLL(object):
         event2 = self.gen_observations_from_event(evt)
 
         new_in = '%s/run/%s_%s.in' % (self.base_folder, self.base_name, self.worker_folder)
-        print("new_in=%s" % new_in)
+        #print("new_in=%s" % new_in)
 
         self.ctrlfile.workerfolder = self.worker_folder
         self.ctrlfile.write(new_in)
 
-        print("Zach: Here is the command: >NLLoc %s" % new_in)
         os.system('NLLoc %s' % new_in)
-        exit()
 
         filename = "%s/%s/loc/last.hyp" % (self.base_folder, self.worker_folder)
         logger.debug('%s.%s: scan hypo from filename = %s' % (__name__,fname,filename))
