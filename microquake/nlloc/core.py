@@ -588,9 +588,12 @@ class NLL(object):
 
     def _clean_outputs(self):
         try:
+            print("This is where you would clean up")
+            """
             for f in glob(os.path.join(self.base_folder, 'loc',
                                        self.base_name)):
                 os.remove(f)
+            """
         except:
             pass
 
