@@ -1,7 +1,8 @@
 import obspy.core.inventory
 from obspy.core.inventory.util import _unified_content_strings, _textwrap
 from obspy.core.inventory.inventory import read_inventory
-from obspy.core.inventory import Inventory, Network, Site
+from obspy.core.inventory import Network, Site
+#from obspy.core.inventory import Inventory, Network, Site
 from obspy.core import AttribDict
 from obspy.core.utcdatetime import UTCDateTime
 import numpy as np
@@ -50,6 +51,10 @@ def read_csv(csv_file: str) -> []:
             station['z'] = float(row['Elev'])
             station['loc'] = np.array([station['x'],station['y'],station['z']])
             station['long_name'] = row['Long Name']
+            station['sensor_type'] = row['Type']
+            station['cable_type'] = row['Cable Type']
+            station['cable_length'] = row['Cable length']
+            station['motion'] = row['Motion']
 
             chans = [row[chan] for chan in ['Cmp01', 'Cmp02', 'Cmp03'] if row[chan].strip()]
             station['channels'] = []
@@ -61,10 +66,6 @@ def read_csv(csv_file: str) -> []:
                 y = 'y%d' % ic
                 z = 'z%d' % ic
                 chan_dict['orientation'] = np.array([float(row[x]), float(row[y]), float(row[z])])
-                chan_dict['sensor_type'] = row['Type']
-                chan_dict['cable_type'] = row['Cable Type']
-                chan_dict['cable_length'] = row['Cable length']
-                chan_dict['motion'] = row['Motion']
                 station['channels'].append(chan_dict)
                 ic += 1
 
@@ -77,6 +78,85 @@ def read_csv(csv_file: str) -> []:
 
     #print(f'Processed {line_count} lines.')
     return stations
+
+
+class Inventory(obspy.core.inventory.inventory.Inventory):
+
+    def select(self, sta_code, net_code=None, cha_code=None):
+        '''
+            Select a single Station or Channel object out of the Inventory
+        '''
+        station_found = None
+        for network in self:
+            for station in network.stations:
+                if station.code == sta_code:
+                    if net_code:
+                        if network.code == net_code:
+                            station_found = station
+                            break
+                    else:
+                        station_found = station
+                        break
+
+        if not station_found:
+            return None
+
+        channel_found = None
+        if cha_code:
+            for cha in station_found.channels:
+                if cha.code == cha_code:
+                    channel_found = cha
+                    break
+            return channel_found
+
+        else:
+            return station_found
+
+
+    def stations(self, net_code=None):
+        '''
+            Return list of all Station objects in Inventory, optionally
+                with matching net_code
+        '''
+
+        stations = []
+
+        for network in self:
+            if net_code:
+                if network.code == net_code:
+                    for station in network.stations:
+                        stations.append(station)
+            else:
+                for station in network.stations:
+                    stations.append(station)
+
+        return stations
+
+
+
+
+    def get_sta_codes(self, unique=False):
+
+        sta_codes = []
+        for network in self:
+            for station in network.stations:
+                sta_codes.append(station.code)
+
+        if unique:
+            return set(sta_codes)
+        else:
+            return sta_codes
+
+    def sort_by_motion(self, motion='VELOCITY'):
+
+        stations = []
+
+        for network in self:
+            for station in network.stations:
+                if station.motion.upper()  == motion.upper():
+                    stations.append(station)
+
+        return stations
 
 
 class Station(obspy.core.inventory.station.Station):
@@ -106,11 +186,19 @@ class Station(obspy.core.inventory.station.Station):
         stn = csv_station
 
 # New obspy seems to require creation_date .. here I set it before any expected event dats:
-        sta = Station(stn['code'], 0., 0., 0., site=Site(name='Oyu Tolgoi'), creation_date=UTCDateTime("2015-12-31T12:23:34.5"))
+        #sta = Station(stn['code'], 0., 0., 0., site=Site(name='Oyu Tolgoi'), creation_date=UTCDateTime("2015-12-31T12:23:34.5"))
+# Putting the OT station long_name into obspy Station historical_code:
+        sta = Station(stn['code'], 0., 0., 0., site=Site(name='Oyu Tolgoi'), \
+                      historical_code=stn['long_name'], \
+                      creation_date=UTCDateTime("2015-12-31T12:23:34.5"))
 
         sta.extra = AttribDict({'x': { 'namespace': ns, 'value': stn['x'], },
                                 'y': { 'namespace': ns, 'value': stn['y'], },
                                 'z': { 'namespace': ns, 'value': stn['z'], },
+                                'sensor_type':    { 'namespace': ns, 'value': stn['sensor_type'].upper()},
+                                'motion':         { 'namespace': ns, 'value': stn['motion'].upper()},
+                                'cable_type':     { 'namespace': ns, 'value': stn['cable_type'].upper()},
+                                'cable_length':   { 'namespace': ns, 'value': stn['cable_length'] },
                               })
 
         sta.channels = []
@@ -131,10 +219,6 @@ class Station(obspy.core.inventory.station.Station):
                                          'x':    { 'namespace': ns, 'value': stn['x'] },
                                          'y':    { 'namespace': ns, 'value': stn['y'] },
                                          'z':    { 'namespace': ns, 'value': stn['z'] },
-                                         'sensor_type':    { 'namespace': ns, 'value': cha['sensor_type'].upper()},
-                                         'motion':    { 'namespace': ns, 'value': cha['motion'].upper()},
-                                         'cable_type':    { 'namespace': ns, 'value': cha['cable_type'].upper()},
-                                         'cable_length':  { 'namespace': ns, 'value': cha['cable_length'] },
                                       })
             # MTH: There doesn't seem to be any simple way to get the sensor_type (ACCELEROMETER vs GEOPHONE)
             #      to attach to the trace
@@ -152,10 +236,14 @@ class Station(obspy.core.inventory.station.Station):
 
             #if cha['sensor_type'].upper() == "ACCELEROMETER":
             #elif cha['sensor_type'].upper() == "GEOPHONE":
-            if "ACCELEROMETER" in cha['sensor_type'].upper():
+            #if "ACCELEROMETER" in cha['sensor_type'].upper():
+                #input_units = "M/S**2"
+            #elif "GEOPHONE" in cha['sensor_type'].upper():
+                #input_units = "M/S" # The L-22D already has sensitivity.input_units = "M/S" ...
+            if stn['motion'].upper() == 'ACCELERATION':
                 input_units = "M/S**2"
-            elif "GEOPHONE" in cha['sensor_type'].upper():
-                input_units = "M/S" # The L-22D already has sensitivity.input_units = "M/S" ...
+            elif stn['motion'].upper() == 'VELOCITY':
+                input_units = "M/S" 
 
             #print("MTH: sensor_type=%s" % cha['sensor_type'])
 
@@ -217,6 +305,47 @@ class Station(obspy.core.inventory.station.Station):
         return self.loc
         #return self._loc
     '''
+
+    @property
+    def sensor_type(self):
+        if self.extra:
+            if self.extra.get('sensor_type', None):
+                return self.extra.sensor_type.value
+            else:
+                raise AttributeError
+        else:
+            raise AttributeError
+
+
+    @property
+    def motion(self):
+        if self.extra:
+            if self.extra.get('motion', None):
+                return self.extra.motion.value
+            else:
+                raise AttributeError
+        else:
+            raise AttributeError
+
+    @property
+    def cable_type(self):
+        if self.extra:
+            if self.extra.get('cable_type', None):
+                return self.extra.cable_type.value
+            else:
+                raise AttributeError
+        else:
+            raise AttributeError
+
+    @property
+    def cable_length(self):
+        if self.extra:
+            if self.extra.get('cable_length', None):
+                return float(self.extra.cable_length.value)
+            else:
+                raise AttributeError
+        else:
+            raise AttributeError
 
 
     def __str__(self):
@@ -286,45 +415,6 @@ class Channel(obspy.core.inventory.channel.Channel):
 
         return cha
 
-    @property
-    def sensor_type(self):
-        if self.extra:
-            if self.extra.get('sensor_type', None):
-                return self.extra.sensor_type.value
-            else:
-                raise AttributeError
-        else:
-            raise AttributeError
-
-    @property
-    def motion(self):
-        if self.extra:
-            if self.extra.get('motion', None):
-                return self.extra.motion.value
-            else:
-                raise AttributeError
-        else:
-            raise AttributeError
-
-    @property
-    def cable_type(self):
-        if self.extra:
-            if self.extra.get('cable_type', None):
-                return self.extra.cable_type.value
-            else:
-                raise AttributeError
-        else:
-            raise AttributeError
-
-    @property
-    def cable_length(self):
-        if self.extra:
-            if self.extra.get('cable_length', None):
-                return float(self.extra.cable_length.value)
-            else:
-                raise AttributeError
-        else:
-            raise AttributeError
 
 
     @property
@@ -400,6 +490,8 @@ class Channel(obspy.core.inventory.channel.Channel):
             raise AttributeError
 
 
+
+#def get_station_codes():
 
 #def inv_station_list_to_dict(station_list):
 def inv_station_list_to_dict(inventory):
