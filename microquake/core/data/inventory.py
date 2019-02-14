@@ -217,8 +217,8 @@ class Station(obspy.core.inventory.station.Station):
     #         # Temp attach a generic response to all OT channels:
     #         chan_dict = {}
     #
-            chan_dict['sensor'] = ['Sercel/Mark Products', 'L-22D',
-                                   '325 Ohms', '1327 Ohms']
+        # chan_dict['sensor'] = ['Sercel/Mark Products', 'L-22D',
+        #                        '325 Ohms', '1327 Ohms']
     #         chan_dict['datalogger'] = ['REF TEK','RT 130 & 130-SMA','1','100']
     #         response = nrl.get_response(sensor_keys=chan_dict['sensor'],
     #                                     datalogger_keys=chan_dict['datalogger'])
