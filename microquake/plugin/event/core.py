@@ -18,6 +18,7 @@ format
     (http://www.gnu.org/copyleft/lesser.html)
 """
 
+
 def write_simple_sqlite(catalog, filename, **kwargs):
     """
     :param catalog: catalogue object
@@ -93,7 +94,6 @@ def write_simple_sqlite(catalog, filename, **kwargs):
             if conn.execute("SELECT id FROM events WHERE datetime=?",
                             (datetime,)).fetchall():
                 continue
-
 
             conn.execute("INSERT INTO events(id, datetime, x, y, z, magnitude, " + \
                          " magnitude_type, Ep, Es, number_triggers," + \
