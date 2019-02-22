@@ -825,10 +825,12 @@ def convert_pz_to_obspy(pz):
 
 #obs_Station.x = property(lambda self: self.latitude)
 
-from response_utils import read_sensor_types_file, read_cable_file
+'''
+from microquake.core.data.response_utils import read_sensor_types_file, read_cable_file
 from instResp.libInst import getResponse, get_corner_freq_from_pole
 from instResp.libNom import WA, RC, Accelerometer
 from instResp.plotResp import plotResponse
+'''
 
 def write_OT_xml(sensor_file, sensor_type_file, cable_file, xml_outfile='OT.xml'):
 
