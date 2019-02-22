@@ -43,6 +43,7 @@ requirements = [
     'scikit-fmm',  # for the eikonal solver
     # 'mplstereonet', # to plot the station
     'pandas',
+    'msgpack'
     # 'libcomcat' # for manipulating error ellipsoid
 ]
 
