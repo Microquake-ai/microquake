@@ -1,38 +1,51 @@
 
+""" Collection of functions to calculate moment magnitude
+
+"""
+
 import warnings
+import numpy as np
+from obspy.core.event.base import Comment, WaveformStreamID
+from obspy.core.event.base import ResourceIdentifier
+from obspy.core.event.magnitude import Magnitude, StationMagnitude, StationMagnitudeContribution
+
+#from microquake.core.data.inventory import inv_station_list_to_dict
+#from microquake.core.event import (Origin, CreationInfo, Event)
+from microquake.waveform.amp_measures import measure_pick_amps
+from microquake.waveform.smom_mag import measure_pick_smom
+from microquake.waveform.mag_utils import double_couple_rad_pat, free_surface_displacement_amplification
+
 warnings.simplefilter("ignore", UserWarning)
 warnings.simplefilter("ignore")
 
-from microquake.core.event import (Origin, CreationInfo, Event)
+#1234567890123456789012345678901234567890123456789012345678901234567890123456789
 
-from microquake.core.data.inventory import inv_station_list_to_dict
-
-from microquake.waveform.amp_measures import measure_pick_amps
-from microquake.waveform.smom_mag import measure_pick_smom
-
-import numpy as np
-
-
-def moment_magnitude_new(st, event, stations, vp=5300, vs=3500, ttpath=None, only_triaxial=True,
-                         density=2700, min_dist=20, fmin=20, fmax=1000, use_smom=False):
+def moment_magnitude_new(st, event, vp=5300, vs=3500, ttpath=None,
+                         only_triaxial=True, density=2700, min_dist=20,
+                         fmin=20, fmax=1000, use_smom=False):
 
     picks = event.picks
     if use_smom:
         measure_pick_smom(st, picks, debug=False)
-        comment="Average of freq-domain P & S moment magnitudes"
+        comment = "Average of freq-domain P & S moment magnitudes"
     else:
         measure_pick_amps(st, picks, debug=False)
-        comment="Average of time-domain P & S moment magnitudes"
+        comment = "Average of time-domain P & S moment magnitudes"
 
 # Use time(or freq) lambda to calculate moment magnitudes for each arrival
 
-    Mw_P, station_mags_P = calc_magnitudes_from_lambda(cat, vp=vp, vs=vs, density=2700,
-                                                       P_or_S='P', use_smom=use_smom)
+    Mw_P, station_mags_P = calc_magnitudes_from_lambda(cat, vp=vp, vs=vs,
+                                                       density=density,
+                                                       P_or_S='P',
+                                                       use_smom=use_smom)
 
-    Mw_S, station_mags_S = calc_magnitudes_from_lambda(cat, vp=vp, vs=vs, density=2700,
-                                                       P_or_S='S', use_smom=use_smom)
+    Mw_S, station_mags_S = calc_magnitudes_from_lambda(cat, vp=vp, vs=vs,
+                                                       density=density,
+                                                       P_or_S='S',
+                                                       use_smom=use_smom)
 
-# Average Mw_P,Mw_S to get event Mw and wrap with list of station mags/contributions
+# Average Mw_P,Mw_S to get event Mw and wrap with list of
+#   station mags/contributions
 
     Mw = 0.5 * (Mw_P + Mw_S)
 
@@ -43,15 +56,14 @@ def moment_magnitude_new(st, event, stations, vp=5300, vs=3500, ttpath=None, onl
 
 
 
-from obspy.core.event.base import ResourceIdentifier
 def set_new_event_mag(event, station_mags, Mw, comment):
 
     count = len(station_mags)
 
     sta_mag_contributions = []
     for sta_mag in station_mags:
-        sta_mag_contributions.append( StationMagnitudeContribution(
-                                        station_magnitude_id=sta_mag.resource_id)
+        sta_mag_contributions.append(StationMagnitudeContribution(
+                                      station_magnitude_id=sta_mag.resource_id)
                                     )
 
     origin_id = event.preferred_origin().resource_id
@@ -67,19 +79,26 @@ def set_new_event_mag(event, station_mags, Mw, comment):
 
     event.magnitudes.append(event_mag)
     event.station_magnitudes = station_mags
-    event.preferred_magnitude_id = ResourceIdentifier(id=event_mag.resource_id.id, referred_object=event_mag)
+    event.preferred_magnitude_id = ResourceIdentifier(id=event_mag.resource_id.id,
+                                                      referred_object=event_mag)
 
     return
 
 
-from obspy.core.event.magnitude import Magnitude, StationMagnitude, StationMagnitudeContribution
-from obspy.core.event.base import Comment, WaveformStreamID
-
-def calc_magnitudes_from_lambda(cat, vp=5300, vs=3500, density=2700, P_or_S='P', use_smom=False):
+def calc_magnitudes_from_lambda(cat,
+                                vp=5300, vs=3500, density=2700,
+                                P_or_S='P',
+                                use_smom=False,
+                                use_sdr_rad=False,
+                                use_free_surface_correction=False,
+                                **kwargs):
     """
-    Calculate the moment magnitude at each station from lambda, where lambda is either:
-        'dis_pulse_area' (use_smom=False) - calculated by integrating arrival displacement pulse in time
-        'smom' (use_smom=True) - calculated by fiting Brune spectrum to displacement spectrum in frequency
+    Calculate the moment magnitude at each station from lambda,
+      where lambda is either:
+        'dis_pulse_area' (use_smom=False) - calculated by integrating arrival
+            displacement pulse in time
+        'smom' (use_smom=True) - calculated by fiting Brune spectrum to
+            displacement spectrum in frequency
     """
 
     fname = 'calc_magnitudes_from_lambda'
@@ -104,17 +123,14 @@ def calc_magnitudes_from_lambda(cat, vp=5300, vs=3500, density=2700, P_or_S='P',
         rad = rad_S
         mag_type = 'Mw_S'
 
-    magnitude_comment = 'moment magnitude calculated from displacement pulse area ' 
+    magnitude_comment = 'moment magnitude calculated from displacement pulse area'
 
     if use_smom:
-        magnitude_comment+= 'measured in frequeny-domain (smom)'
+        magnitude_comment += 'measured in frequeny-domain (smom)'
         lambda_key = 'smom'
     else:
-        magnitude_comment+= 'measured in time-domain'
+        magnitude_comment += 'measured in time-domain'
         lambda_key = 'dis_pulse_area'
-
-
-    M0_scale = 4. * np.pi * density * v**3 / rad
 
 
     station_mags = []
@@ -141,17 +157,38 @@ def calc_magnitudes_from_lambda(cat, vp=5300, vs=3500, density=2700, P_or_S='P',
         cha = pk.waveform_id.channel_code
         net = pk.waveform_id.network_code
 
+# TODO: check that inc_angle is set. Also, should we check that this is
+#       a surface sensor or just assume it is ??
+        fs_factor = 1.
+        if use_free_surface_correction:
+            inc_angle = arr.inc_angle
+            fs_factor = free_surface_displacement_amplification(
+                                inc_angle, vp, vs, incident_wave=P_or_S)
+
+        if use_sdr_rad and 'sdr' in kwargs:
+            strike, dip, rake = kwargs['sdr']
+            takeoff_angle = arr.takeoff_angle
+            takeoff_azimuth = arr.azimuth
+            rad = double_couple_rad_pat(takeoff_angle, takeoff_azimuth,
+                                        strike, dip, rake, phase=P_or_S)
+            rad = np.abs(rad)
+            magnitude_comment += ' rad_pat calculated for (s,d,r)=\
+                    (%.1f,%.1f,%.1f) |rad|=%f' % (strike, dip, rake, rad)
+
 
         _lambda = getattr(arr, lambda_key)
 
-        if _lambda is not None: 
+        if _lambda is not None:
 
-            #R  = np.linalg.norm(sta_dict['station'].loc -ev_loc) # Dist in meters
+            M0_scale = 4. * np.pi * density * v**3 / (rad * fs_factor)
+
+            #R  = np.linalg.norm(sta_dict['station'].loc -ev_loc) #Dist in meters
 
         # MTH: obspy arrival.distance = *epicentral* distance in degrees
-        #      So adding attribute hypo_dist_in_m to microquake arrival class to make it clear
+        #      So adding attribute hypo_dist_in_m to microquake arrival class
+        #      to make it clear
             #R  = arr.distance # Dist in meters
-            R  = arr.hypo_dist_in_m
+            R = arr.hypo_dist_in_m
 
             M0 = M0_scale * R * np.abs(_lambda)
             Mw = 2./3. * np.log10(M0) - 6.033
@@ -170,15 +207,12 @@ def calc_magnitudes_from_lambda(cat, vp=5300, vs=3500, density=2700, P_or_S='P',
             station_mags.append(station_mag)
 
         else:
-            print("arrival sta:%s cha:%s arr pha:%s lambda_key:%s is NOT SET --> Skip" % \
-                  (sta, cha, pha, lambda_key))
+            print("arrival sta:%s cha:%s arr pha:%s lambda_key:%s is NOT \
+                  SET --> Skip" % (sta, cha, pha, lambda_key))
 
 
     print("nmags=%d avg:%.1f med:%.1f std:%.1f" % \
           (len(Mw_list), np.mean(Mw_list), np.median(Mw_list), np.std(Mw_list)))
-
-    #print("Equiv Mw_%s: nchans=%d mean=%.2f median=%.2f std=%.3f" % (P_or_S, len(Mw_P), np.mean(Mw_P), \
-                                                           #np.median(Mw_P), np.std(Mw_P)))
 
     return np.median(Mw_list), station_mags
 
