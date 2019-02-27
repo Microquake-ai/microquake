@@ -83,7 +83,7 @@ def rotate_to_P_SV_SH(st, cat):
     return st_new
 
 
-def rotate_to_ENZ(st, sta_meta_data):
+def rotate_to_ENZ(st, inventory):
     st_new = st.copy()
 
     for sta in st_new.unique_stations():
@@ -93,9 +93,14 @@ def rotate_to_ENZ(st, sta_meta_data):
         if len(trs) == 3:
             #trs.plot()
 
-            col1 = sta_meta_data[sta]['chans']['x'].cosines
-            col2 = sta_meta_data[sta]['chans']['y'].cosines
-            col3 = sta_meta_data[sta]['chans']['z'].cosines
+            #col1 = sta_meta_data[sta]['chans']['x'].cosines
+            #col2 = sta_meta_data[sta]['chans']['y'].cosines
+            #col3 = sta_meta_data[sta]['chans']['z'].cosines
+
+            col1 = inventory.get_channel(sta=sta, cha='x').cosines
+            col2 = inventory.get_channel(sta=sta, cha='y').cosines
+            col3 = inventory.get_channel(sta=sta, cha='z').cosines
+
             A = np.column_stack((col1,col2,col3))
             At = A.transpose()
             #print(A)

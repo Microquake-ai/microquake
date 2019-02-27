@@ -70,6 +70,22 @@ def measure_velocity_pulse(st, cat, phase_list=None, debug=False,
     pulse_thresh_S = 6.
     pulse_min_width = .0014
 
+    """
+    for event in cat:
+        arrivals = [arr for arr in event.preferred_origin().arrivals if arr.phase in phase_list]
+        for arr in arrivals:
+            pk = arr.pick_id.get_referred_object()
+            sta = pk.waveform_id.station_code
+            trs = st.select(station=sta)
+            chans = "%s" % trs[0].stats.channel
+            for i in range(1,len(trs)):
+                chans += " %s" % trs[i].stats.channel
+            sensor_type = get_sensor_type_from_trace(trs[0])
+            print("arr [%s] sta:%3s time:%s ntrs:%d [ %s ] type:%s" % \
+                  (arr.phase, sta, pk.time, len(trs), chans, sensor_type))
+
+    """
+
     for event in cat:
         arrivals = event.preferred_origin().arrivals
         picks = [arr.pick_id.get_referred_object() for arr in arrivals]
@@ -253,6 +269,11 @@ def measure_displacement_pulse(st, cat, phase_list=None, debug=False,
                 if debug:
                     print("measure_dis_pulse: sta:%s cha:%s pha:%s" %
                           (sta, tr.stats.channel, phase))
+
+                if sta not in pick_dict:
+                    print("%s: sta:%s not in dict" %
+                          (fname, sta))
+                    continue
 
                 if phase not in pick_dict[sta]:
                     print("%s: sta:%s has no [%s] pick in dict" %
@@ -529,9 +550,8 @@ def _find_signal_zeros(tr, istart, max_pulse_duration=.1, nzeros_to_find=3,
                                   nzeros_to_find=nzeros_to_find,
                                   second_try=True)
 
-    if debug:
-        print("Its here ---> debug is True!!!")
-        tr.plot()
+    #if debug:
+        #tr.plot()
 
     return first_sign, zeros
 

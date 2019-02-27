@@ -4,9 +4,10 @@ from scipy.fftpack import fft, fftfreq, rfft, rfftfreq
 #from scipy.optimize import fmin, fmin_powell, curve_fit
 
 from spp.utils.application import Application
+from microquake.core.data.inventory import get_sensor_type_from_trace, get_corner_freq_from_pole
 from microquake.core.util.tools import copy_picks_to_dict
+
 import matplotlib.pyplot as plt
-from microquake.core.data.inventory import inv_station_list_to_dict
 
 """
     mag_utils - a collection of routines to assist in the moment magnitude calculation
@@ -224,7 +225,6 @@ def stack_spectra(sta_dict):
     return stack/np.amax(stack), freqs
 
 
-#def get_spectra(st, event, stations, synthetic_picks, calc_displacement=False, S_win_len=.1, P_or_S='P'):
 def get_spectra(st, event, inventory, synthetic_picks, calc_displacement=False, S_win_len=.1, P_or_S='P'):
     """ Calculate the fft at each channel in the stream that has an arrival in event.arrivals
 
@@ -247,8 +247,8 @@ def get_spectra(st, event, inventory, synthetic_picks, calc_displacement=False, 
     fname = 'get_spectra'
 
     #sta_meta_dict = inv_station_list_to_dict(stations)
-    sta_meta_dict = inv_station_list_to_dict(inventory)
-    stations = inventory[0]
+    #sta_meta_dict = inv_station_list_to_dict(inventory)
+    #stations = inventory[0]
 
     origin = event.preferred_origin() if event.preferred_origin() else event.origins[0]
 
@@ -256,19 +256,26 @@ def get_spectra(st, event, inventory, synthetic_picks, calc_displacement=False, 
 
     synthetic_dict = copy_picks_to_dict(synthetic_picks)
 
-    for arr in origin.arrivals:
-        print(arr)
-        print(arr.pick_id.get_referred_object())
-        print(arr.pick_id.get_referred_object().phase_hint)
-
     if P_or_S == 'P':
-        arrivals = [ arr for arr in origin.arrivals if \
-                     arr.pick_id.get_referred_object().phase_hint == 'P' ]
+        arrivals = [ arr for arr in origin.arrivals if arr.phase == 'P' ]
+        #arrivals = [ arr for arr in origin.arrivals if \
+                     #arr.pick_id.get_referred_object().phase_hint == 'P' ]
     else:
-        arrivals = [ arr for arr in origin.arrivals if \
-                     arr.pick_id.get_referred_object().phase_hint == 'S' ]
+        arrivals = [ arr for arr in origin.arrivals if arr.phase == 'S' ]
+        #arrivals = [ arr for arr in origin.arrivals if \
+                     #arr.pick_id.get_referred_object().phase_hint == 'S' ]
 
     #print("%s: Calc [%s] spectra for [n=%d] arrivals" % (fname, P_or_S, len(arrivals)))
+
+    arr_dict = {}
+    for arr in arrivals:
+        pk = arr.pick_id.get_referred_object()
+        sta= pk.waveform_id.station_code
+        pha= arr.phase
+        if sta not in arr_dict:
+            arr_dict[sta] = {}
+        arr_dict[sta][pha] = arr
+
 
     arr_stations = set()
     for arr in arrivals:
@@ -314,18 +321,21 @@ def get_spectra(st, event, inventory, synthetic_picks, calc_displacement=False, 
             d['stime']   = synthetic_dict[sta_code]['S'].time
 
         found = False
-        for sta in stations:
-            if sta.code == sta_code:
-                d['loc'] = sta.loc
-                found = True
-                break
-        if not found:
+
+        sta_loc = inventory.select(sta_code).loc
+        if sta_loc is None:
             print("Oops: sta:%s not found in inventory!" % sta_code)
             raise
 
+        d['loc'] = sta_loc
+
     # TODO May want to revise to use distance along raypath here
+        # Could get this from: arr_dict[sta_code]['P'].hypo_dist_in_m
         d['R'] = np.linalg.norm(d['loc'] - origin.loc) # Dist in meters
         sta_dict[sta_code] = d
+
+        #print("%s: loc:%s straight_dist:%f ray_dist:%f" % \
+              #(sta_code, sta_loc, d['R'], arr_dict[sta_code]['P'].hypo_dist_in_m))
 
 
 # 2. Calc/save signal/noise fft spectra at all channels that have P(S) arrivals:
@@ -351,8 +361,6 @@ def get_spectra(st, event, inventory, synthetic_picks, calc_displacement=False, 
                 ch = {}
 
                 cha_code = tr.stats.channel
-                #sensor_type = sta_meta_dict[sta_code]['chans'][cha_code].sensor_type
-                sensor_type = sta_meta_dict[sta_code]['chans']['z'].sensor_type
 
                 tt_s = sta['stime'] - tr.stats.starttime
                 tr.detrend('demean').detrend('linear').taper(type='cosine', max_percentage=0.05, side='both')
@@ -362,35 +370,27 @@ def get_spectra(st, event, inventory, synthetic_picks, calc_displacement=False, 
                 signal.detrend('demean').detrend('linear')
                 signal.taper(type='cosine', max_percentage=0.05, side='both')
 
-                # If this trace sensor_type='ACCELEROMETER' --> integrate to velocity
-
-                if sensor_type not in ['ACCELEROMETER', 'GEOPHONE']:
-                    print("%s: ERROR: sensor_type=[%s] is unknown" % (fname, sensor_type))
-
-                if sensor_type == 'ACCELEROMETER':
-                    signal.integrate().taper(type='cosine', max_percentage=0.05, side='both')
-
-                if calc_displacement:
-                    signal.integrate().taper(type='cosine', max_percentage=0.05, side='both')
-
                 noise  = tr.copy()
             # if noise_start < trace.stats.starttime - then what ?
                 noise.trim(starttime=noise_start, endtime=noise_end)
                 noise.detrend('demean').detrend('linear')
                 noise.taper(type='cosine', max_percentage=0.05, side='both')
 
-                # If this trace sensor_type='ACCELEROMETER' --> integrate to velocity
-                if sensor_type == 'ACCELEROMETER':
+                sensor_type = get_sensor_type_from_trace(tr)
+
+                if sensor_type == 'ACC':
                     signal.integrate().taper(type='cosine', max_percentage=0.05, side='both')
+                    noise.integrate().taper(type='cosine', max_percentage=0.05, side='both')
+                elif sensor_type == 'VEL':
+                    pass
+                elif sensor_type == 'DISP':
+                    print("%s: Not yet set up to handle input traces = DISPLACMENT !!" % fname)
+                else:
+                    print("%s: ERROR: sensor_type=[%s] is unknown" % (fname, sensor_type))
 
                 if calc_displacement:
+                    signal.integrate().taper(type='cosine', max_percentage=0.05, side='both')
                     noise.integrate().taper(type='cosine', max_percentage=0.05, side='both')
-
-                #if calc_displacement:
-                    #disp_area = np.trapz(signal.data, dx=dt)
-                    #print("sta:%s cha:%s pha:%s t1:%s t2:%s disp_area:%12.10g" % 
-                          #(sta_code, tr.stats.channel, P_or_S, signal_start, signal_end, disp_area))
-
 
                 #check(signal)
                 #parsevals(signal.data, dt, nfft)
@@ -398,15 +398,38 @@ def get_spectra(st, event, inventory, synthetic_picks, calc_displacement=False, 
                 (signal_fft, freqs) = unpack_rfft( rfft(signal.data, n=nfft), df)
                 (noise_fft, freqs)  = unpack_rfft( rfft(noise.data, n=nfft), df)
 
+
                 #signal_fft /= damped_response(freqs, fn=14, eta=0.18)
-                resp = damped_response(freqs, fn=14, eta=0.18)
+
+                #resp = damped_response(freqs, fn=14, eta=0.18)
                 #signal_fft[1:] /= resp[1:]
-                #for i,f in enumerate(freqs):
-                    #print("%4d %6.2f %12.10g %8.6f" % (i, f, np.abs(signal_fft[i]), resp[i]))
-                #exit()
+
+                # MTH: Determine the valid freq range: fmin - fmax
+                #      To fit to model.
+                # fmin/fmax = where smoothed signal spec exceeds smoothed noise spec by snr_threshold
+                # fc1 = low-frequency corner of this trace's sensor
+
+                if not calc_displacement:
+
+                    fc1 = get_corner_freq_from_pole(tr.stats.response.get_paz().poles[0])
+                    fmin,fmax = find_fmin_fmax_from_spec(signal_fft, noise_fft, 1.3, 200., df)
+                    # fmin is None if signal > noise all the way to DC
+                    # Take the maximum of fc1 and fmin to use for fitting:
+
+                    if fmin is None or fc1 > fmin:
+                        fmin = fc1
+
+                    ch['fmin'] = fmin
+                    ch['fmax'] = fmax
+
+                # What to do if fmax is None ?
+
+                #plot_spec(freqs, signal_fft, noise_fft, title=None)
 
                 #plot_signal(signal, noise)
-                #plot_spec(freqs, signal_fft, noise_fft, title=None)
+                # 4.5Hz sensors:
+                #if sta_code in ['25', '40']:
+                    #plot_spec(freqs, signal_fft, noise_fft, title=None)
                 #exit()
 
             # np/scipy ffts are not scaled by dt
@@ -573,7 +596,7 @@ def calc_fit2(spec, freqs, fmin=10., fmax=1000., Lnorm='L2', weight_fr=False):
         plot_spec2(freqs, spec, model_spec, title="Fit to spec stack fc=%f" % sol[1])
     return fit
 
-def calc_fit(sta_dict, fc, fmin=20., fmax=1000., Lnorm='L2', weight_fr=False):
+def calc_fit(sta_dict, fc, fmin=20., fmax=1000., Lnorm='L2', weight_fr=False, use_fixed_fmin_fmax=False):
 
     fit = 0.
     smom_dict = {}
@@ -594,6 +617,13 @@ def calc_fit(sta_dict, fc, fmin=20., fmax=1000., Lnorm='L2', weight_fr=False):
 
             ch_dict = {}
             # Optimize fit of model_func to signal_fft to solve for smom:
+
+            if not use_fixed_fmin_fmax:
+                fmin = cha['fmin']
+                fmax = cha['fmax']
+
+            print("    calc_fit sta:%3s cha:%s fmin:%.1f fmax:%.1f" % \
+                  (sta_code, cha_code, fmin, fmax))
 
             residfit = getresidfit(np.abs(signal_fft), model_func, fc, freqs, Lnorm=Lnorm, \
                                            weight_fr=weight_fr, fmin=fmin, fmax=fmax)
@@ -654,16 +684,61 @@ def plot_spec3(freqs, signal_fft, noise_fft, model_spec, title=None):
     plt.grid()
     plt.show()
 
+
+from scipy.signal import savgol_filter
+
+def find_fmin_fmax_from_spec(signal_fft, noise_fft, snr_thresh, fc, df):
+
+    npoly = 2
+    nsmooth = 31
+    signal = savgol_filter(np.abs(signal_fft), nsmooth, npoly)
+    noise = savgol_filter(np.abs(noise_fft), nsmooth, npoly)
+    snr = signal/noise
+
+    fmin = None
+    fmax = None
+
+    ic = int(fc/df)
+    i1 = -999
+    i2 = -999
+    for i in range(ic, 0, -1):
+        if snr[i] <= snr_thresh:
+            i1 = i
+            break
+    if i1 > 0:
+        fmin = float(i1)*df
+
+    for i in range(ic, snr.size):
+        if snr[i] <= snr_thresh:
+            i2 = i
+            break
+
+    if i2 > 0:
+        fmax = float(i2)*df
+
+    return fmin, fmax
+
+
 #def plot_spec(freqs, signal_fft, noise_fft, model_spec, title=None):
+from scipy.signal import savgol_filter
 def plot_spec(freqs, signal_fft, noise_fft=None, title=None):
 
-    plt.loglog(freqs, np.abs(signal_fft), color='blue')
-    if noise_fft:
-        plt.loglog(freqs, np.abs(noise_fft),  color='red')
+    npoly = 2
+    nsmooth = 31
+    signal = savgol_filter(np.abs(signal_fft), nsmooth, npoly)
+    noise = savgol_filter(np.abs(noise_fft), nsmooth, npoly)
+    #signal = np.abs(signal_fft)
+    #noise = np.abs(noise_fft)
+
+    #plt.loglog(freqs, np.abs(signal_fft), color='blue')
+    plt.loglog(freqs, signal, color='blue')
+
+    if noise_fft is not None:
+        plt.loglog(freqs, noise,  color='red')
+        #plt.loglog(freqs, np.abs(noise_fft),  color='red')
+        plt.legend(['signal', 'noise'])
     #plt.loglog(freqs, model_spec,  color='green')
     #plt.legend(['signal', 'noise', 'model'])
-    if noise_fft:
-        plt.legend(['signal', 'noise'])
     plt.xlim(1e0, 3e3)
     plt.ylim(1e-8, 1.2e-4)
     #plt.ylim(1e-12, 1e-4)

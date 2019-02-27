@@ -483,6 +483,9 @@ def snr_picker(st, picks, snr_dt=None, snr_window=(1e-3, 20e-3), filter=None):
 
     for station in stations:
 
+        if station in ['2','3','4','5','7','10']:
+            print("snr_picker sta:%2s" % (station))
+
         trs = st.select(station=station)
 
         if station not in previous_picks:
