@@ -10,8 +10,11 @@ import csv
 import copy
 import os
 
+# Imports only needed for creating OT.xml from csv files:
+"""
 from obspy.clients.nrl import NRL
 nrl = NRL('http://ds.iris.edu/NRL/')
+"""
 
 ns_tag='mq'
 ns='MICROQUAKE'
@@ -100,6 +103,12 @@ class Inventory(obspy.core.inventory.inventory.Inventory):
 
         return Inventory([network], source)
 
+
+    def get_station(self, sta):
+        return self.select(sta)
+
+    def get_channel(self, sta=None, cha=None):
+        return self.select(sta, cha_code=cha)
 
     def select(self, sta_code, net_code=None, cha_code=None):
         '''
@@ -544,9 +553,11 @@ class Channel(obspy.core.inventory.channel.Channel):
     @property
     def cosines(self):
         if self.extra:
-            if self.extra.get('cosines', None):
+            #if self.extra.get('cosines', None):
+            if self.extra.get('cos1', None) and self.extra.get('cos2', None) and self.extra.get('cos3', None):
+                return np.array([self.cos1, self.cos2, self.cos3])
                 #return float(self.extra.cos.value)
-                return self.extra.cosines.value
+                #return self.extra.cosines.value
             else:
                 raise AttributeError
         else:
@@ -706,6 +717,14 @@ def load_inventory(fname, format='CSV', **kwargs):
     network = Network("OT")
     network.stations = obspy_stations
     return Inventory([network], source)
+
+
+def get_corner_freq_from_pole(pole):
+    '''
+        get distance [rad/s] from lowest order pole to origin
+            and return Hz [/s]
+    '''
+    return np.sqrt(pole.real**2 + pole.imag**2) / (2.*np.pi)
 
 
 def get_sensor_type_from_trace(tr):

@@ -5,8 +5,6 @@ warnings.simplefilter("ignore")
 
 from microquake.core.event import (Origin, CreationInfo, Event)
 
-from microquake.core.data.inventory import inv_station_list_to_dict
-
 from microquake.waveform.amp_measures import measure_pick_amps
 from microquake.waveform.smom_mag import measure_pick_smom
 
@@ -66,6 +64,10 @@ def free_surface_displacement_amplification(inc_angle, vp, vs, incident_wave='P'
     Returns free surface displacement amplification for incident P/S wave
         see Aki & Richards prob (5.6)
     All input angles in degrees
+
+    Not sure how useful this will be.
+    e.g., It returns the P/SV amplifications for the x1,x3 incidence plane,
+    but we rarely rotate into that coord system.
     """
 
     fname = 'free_surface_displacement_amplification'

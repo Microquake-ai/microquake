@@ -9,7 +9,6 @@ from obspy.core.event.base import Comment, WaveformStreamID
 from obspy.core.event.base import ResourceIdentifier
 from obspy.core.event.magnitude import Magnitude, StationMagnitude, StationMagnitudeContribution
 
-#from microquake.core.data.inventory import inv_station_list_to_dict
 #from microquake.core.event import (Origin, CreationInfo, Event)
 from microquake.waveform.amp_measures import measure_pick_amps
 from microquake.waveform.smom_mag import measure_pick_smom
@@ -56,7 +55,7 @@ def moment_magnitude_new(st, event, vp=5300, vs=3500, ttpath=None,
 
 
 
-def set_new_event_mag(event, station_mags, Mw, comment):
+def set_new_event_mag(event, station_mags, Mw, comment, make_preferred=False):
 
     count = len(station_mags)
 
@@ -79,8 +78,10 @@ def set_new_event_mag(event, station_mags, Mw, comment):
 
     event.magnitudes.append(event_mag)
     event.station_magnitudes = station_mags
-    event.preferred_magnitude_id = ResourceIdentifier(id=event_mag.resource_id.id,
-                                                      referred_object=event_mag)
+
+    if make_preferred:
+        event.preferred_magnitude_id = ResourceIdentifier(id=event_mag.resource_id.id,
+                                                          referred_object=event_mag)
 
     return
 
@@ -103,10 +104,11 @@ def calc_magnitudes_from_lambda(cat,
 
     fname = 'calc_magnitudes_from_lambda'
 
-    #sta_meta_dict = inv_station_list_to_dict(inventory)
+    if 'logger' in kwargs:
+        logger = kwargs['logger']
 
-# TODO: If you want this function to be a loop over event in cat,
-#       need to pass in or calc vp/vs at each source depth
+# Don't loop over event here, do it in the calling routine
+#   so that vp/vs can be set for correct source depth
     event = cat[0]
     origin = event.preferred_origin()
     ev_loc = origin.loc
@@ -123,15 +125,19 @@ def calc_magnitudes_from_lambda(cat,
         rad = rad_S
         mag_type = 'Mw_S'
 
-    magnitude_comment = 'moment magnitude calculated from displacement pulse area'
 
     if use_smom:
-        magnitude_comment += 'measured in frequeny-domain (smom)'
+        magnitude_comment = 'station magnitude measured in frequeny-domain (smom)'
         lambda_key = 'smom'
     else:
-        magnitude_comment += 'measured in time-domain'
+        magnitude_comment = 'station magnitude measured in time-domain (dis_pulse_area)'
         lambda_key = 'dis_pulse_area'
 
+    if use_free_surface_correction and np.abs(ev_loc[2]) > 0.:
+        logger.warn("%s: Free surface correction requested for event [h=%.1f] > 0" % \
+                    (fname, ev_loc[2]))
+    if use_sdr_rad and 'sdr' not in kwargs:
+        logger.warn("%s: use_sdr_rad requested but NO [sdr] given!" % fname)
 
     station_mags = []
     Mw_list = []
@@ -141,39 +147,45 @@ def calc_magnitudes_from_lambda(cat,
     arrivals = [arr for arr in event.preferred_origin().arrivals if arr.phase == P_or_S]
 
     for arr in arrivals:
-    #for arr in event.preferred_origin().arrivals:
 
     #for sta in sorted([sta for sta in st.unique_stations()],
                     #key=lambda x: int(x)):
-
-        pha = arr.phase
-
-        if pha != P_or_S:
-            print("%s: P_or_S=%s but arr pha=%s --> Skip" % (fname, P_or_S, pha))
-            continue
 
         pk = arr.pick_id.get_referred_object()
         sta = pk.waveform_id.station_code
         cha = pk.waveform_id.channel_code
         net = pk.waveform_id.network_code
 
-# TODO: check that inc_angle is set. Also, should we check that this is
-#       a surface sensor or just assume it is ??
         fs_factor = 1.
         if use_free_surface_correction:
-            inc_angle = arr.inc_angle
-            fs_factor = free_surface_displacement_amplification(
-                                inc_angle, vp, vs, incident_wave=P_or_S)
+            if arr.get('inc_angle', None):
+                inc_angle = arr.inc_angle
+                fs_factor = free_surface_displacement_amplification(
+                             inc_angle, vp, vs, incident_wave=P_or_S)
+
+            # MTH: Not ready to implement this.  The reflection coefficients
+            #      are expressed in x1,x2,x3 coords
+                #print("inc_angle:%.1f x1:%.1f x3:%.1f" % (inc_angle, fs_factor[0], fs_factor[2]))
+                # MTH: The free surface corrections are returned as <x1,x2,x3>=<
+                fs_factor = 1.
+            else:
+                logger.warn("%s: sta:%s cha:%s pha:%s: inc_angle NOT set in arrival dict --> use default" %\
+                            (fname, sta, cha, arr.phase))
 
         if use_sdr_rad and 'sdr' in kwargs:
             strike, dip, rake = kwargs['sdr']
-            takeoff_angle = arr.takeoff_angle
-            takeoff_azimuth = arr.azimuth
-            rad = double_couple_rad_pat(takeoff_angle, takeoff_azimuth,
-                                        strike, dip, rake, phase=P_or_S)
-            rad = np.abs(rad)
-            magnitude_comment += ' rad_pat calculated for (s,d,r)=\
-                    (%.1f,%.1f,%.1f) |rad|=%f' % (strike, dip, rake, rad)
+            if arr.get('takeoff_angle', None) and arr.get('azimuth', None):
+                takeoff_angle = arr.takeoff_angle
+                takeoff_azimuth = arr.azimuth
+                rad = double_couple_rad_pat(takeoff_angle, takeoff_azimuth,
+                                            strike, dip, rake, phase=P_or_S)
+                rad = np.abs(rad)
+                magnitude_comment += ' rad_pat calculated for (s,d,r)=\
+                        (%.1f,%.1f,%.1f) |rad|=%f' % (strike, dip, rake, rad)
+                print(magnitude_comment)
+            else:
+                logger.warn("%s: sta:%s cha:%s pha:%s: takeoff_angle/azimuth NOT set in arrival dict --> use default radpat" %\
+                            (fname, sta, cha, arr.phase))
 
 
         _lambda = getattr(arr, lambda_key)
@@ -185,9 +197,8 @@ def calc_magnitudes_from_lambda(cat,
             #R  = np.linalg.norm(sta_dict['station'].loc -ev_loc) #Dist in meters
 
         # MTH: obspy arrival.distance = *epicentral* distance in degrees
-        #      So adding attribute hypo_dist_in_m to microquake arrival class
-        #      to make it clear
-            #R  = arr.distance # Dist in meters
+        #   >> Add attribute hypo_dist_in_m to microquake arrival class
+        #         to make it clear
             R = arr.hypo_dist_in_m
 
             M0 = M0_scale * R * np.abs(_lambda)
@@ -207,11 +218,11 @@ def calc_magnitudes_from_lambda(cat,
             station_mags.append(station_mag)
 
         else:
-            print("arrival sta:%s cha:%s arr pha:%s lambda_key:%s is NOT \
-                  SET --> Skip" % (sta, cha, pha, lambda_key))
+            logger.warn("arrival sta:%s cha:%s arr pha:%s lambda_key:%s is NOT \
+                  SET --> Skip" % (sta, cha, arr.phase, lambda_key))
 
 
-    print("nmags=%d avg:%.1f med:%.1f std:%.1f" % \
+    logger.info("nmags=%d avg:%.1f med:%.1f std:%.1f" % \
           (len(Mw_list), np.mean(Mw_list), np.median(Mw_list), np.std(Mw_list)))
 
     return np.median(Mw_list), station_mags

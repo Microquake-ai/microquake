@@ -129,6 +129,10 @@ class Stream(obsstream.Stream):
 
         return comp_st
 
+    def sorted_sta_codes(self):
+        sorted_list = sorted(self.unique_stations().astype(int))
+        return ((np.array(sorted_list).astype(str)))
+
     def unique_stations(self):
 
         return np.unique([tr.stats.station for tr in self])
