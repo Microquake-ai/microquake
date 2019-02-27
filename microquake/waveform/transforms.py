@@ -90,13 +90,8 @@ def rotate_to_ENZ(st, inventory):
 
         trs = st_new.select(station=sta)
 
-
-        if len(trs) == 3:
+        if len(trs) == 3 and len(inventory.select(sta).channels) == 3:
             #trs.plot()
-            print("rotate_to_ENZ rotate channels for sta:%s" % sta)
-            for tr in trs:
-                print("rotate_to_ENZ: tr.get_id:%s" % tr.get_id())
-
             #col1 = sta_meta_data[sta]['chans']['x'].cosines
             #col2 = sta_meta_data[sta]['chans']['y'].cosines
             #col3 = sta_meta_data[sta]['chans']['z'].cosines
