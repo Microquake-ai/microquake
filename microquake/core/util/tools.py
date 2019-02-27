@@ -114,6 +114,8 @@ def stream_to_array(st, t0, npts_fix, taplen=0.05):
         if taplen != 0:
             taper_data(sig, taplen_npts)
         slen = min(len(sig), npts_fix - i0)
+        if i0 <= npts_fix or slen < 1:
+            continue
         data[i, i0: i0 + slen] = sig[:slen]
     return data
 
