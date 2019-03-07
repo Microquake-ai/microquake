@@ -13,177 +13,6 @@ import matplotlib.pyplot as plt
     mag_utils - a collection of routines to assist in the moment magnitude calculation
 """
 
-def parsevals(data, dt, nfft):
-    """
-        Scale a 2-sided fft by dt
-        Scale a 1-sided rft by dt x sqrt(2) 
-    """
-    tsum = np.sum(np.square(data))*dt
-    print("Parseval's: [time] ndata=%d dt=%f sum=%12.10g" % (data.size, dt, tsum))
-
-
-    for n in [512, 1024, 2048, 4096]:
-        nfft = n
-        tsum2 = np.sum(np.square(data))
-        G=fft(data,nfft)
-        G2 = np.abs(G)*np.abs(G)
-        #G2 /= dt  # Same as G2/(N*df)
-        fsum = np.sum(G2)/float(nfft)
-        print("Gerald's Parseval's: nfft=%d tsum=%12.10g fsum=%12.10g" % (nfft, tsum2, fsum))
-
-    '''
-        Note: We scale the forward fft by dt, then in Parseval's we scale it by df,
-              So we'd get the same result if we don't scale the forward fft & just scale Parseval's by df*dt = 1/N
-    '''
-    X=fft(data,nfft)*dt
-
-    df = 1./(dt * float(X.size))
-    #fsum = np.sum(X*np.conj(X))*df
-    # Do it this way so it doesn't spit a ComplexWarning about throwing away imag part
-    fsum = np.sum(np.abs(X)*np.abs(X))*df
-    print("Parseval's: [freq] nfft=%d df=%f sum=%12.10g" % (X.size, df, fsum))
-
-
-    df = 1./(dt * float(nfft))
-    Y,freqs = unpack_rfft(rfft(data, n=nfft), df)
-    Y *= dt
-    '''
-        Note: We only have the +ve freq half, so we need to double all these values *except* for DC & Nyquist,
-              which are purely real and don't have a -ve freq.
-              So either scale the fsum by 2, or scale Y (minus DC/Nyq) by sqrt(2) here
-    '''
-    Y[1:-1] *= np.sqrt(2.)
-    #fsum = np.sum(Y*np.conj(Y))*df
-    fsum = np.sum(np.abs(X)*np.abs(X))*df
-    print("Parseval's: [freq] nfft=%d df=%f sum=%12.10g" % (Y.size, df, fsum))
-
-    exit()
-
-def check2():
-    # Specify the parameters of a signal with a sampling frequency of 1 kHz and a signal duration of 1.5 seconds.
-
-    Fs = 1000.           # Sampling frequency
-    T = 1/Fs             # Sampling period
-    L = 1500            # Length of signal
-    t =[]
-    s = []
-    for j in range(L):
-        t.append(float(j)*T)        # Time vector
-        s.append(1.0*np.sin(2*np.pi*60*float(j)*T))
-    #Form a signal containing a 50 Hz sinusoid of amplitude 0.7 and a 120 Hz sinusoid of amplitude 1.
-    #print(t)
-
-    #Y = fft(s)
-    #print(Y.dtype)
-    #print(Y.size)
-    #exit()
-
-    #S = 0.7*np.sin(2*np.pi*50*t)
-    #S = 0.7*np.sin(2*np.pi*50*t) + sin(2*pi*120*t);
-
-    #for i,n in enumerate([256, 512, 1024, 2048, 4096, 8192, 16384]):
-    for i,n in enumerate([1024, L, 2048, 4096, 8192, 16384]):
-        df = 1./(float(n)*T)
-        shat,freqs = unpack_rfft(rfft(s, n=n), df)
-        #cmod = 2. * np.abs(shat/float(n))
-        cmod = 2. * np.abs(shat)
-        cmod /= float(L)
-        #cmod = 2. * np.abs(shat*T)
-        peak_f = freqs[np.argmax(cmod)]
-        print("n=%d (cmod.size=%d) f:%.2f mean_shat=%f max_shat=%f" % (n, cmod.size, peak_f, np.mean(cmod), np.amax(cmod)))
-        parsevals(np.array(s), T, n)
-
-
-
-def check(tr=None):
-    '''
-    It looks like the peak spec amp doesn't change much for Nfft >= 1024 (for rfft).
-    And the only scaling needed on the forward FFT is dt.
-
-    If you're going to prove Parseval's, then you need to scale rfft
-    by sqrt(2/N) to get correct match to power in t-domain
-    '''
-    dt = 0.1
-    s = [1/dt, 0, 0, 0, 0, 0, 0, 0]
-    #n=128
-
-    #df = 1./(float(n)*dt)
-    #shat,freqs = unpack_rfft(rfft(s, n=n), df)
-    #shat = fft(s, n=64)
-
-    T = 1.
-    s = []
-    for j in range(1024):
-        t = j*dt
-        y = np.cos( 2*np.pi*t/T )
-        s.append(y)
-
-    if tr is not None:
-        plot_signal(tr)
-        dt = tr.stats.delta
-        s  = tr.data
-
-    #for i,n in enumerate([512, 1024]):
-    for i,n in enumerate([256, 512, 1024, 2048, 4096, 8192, 16384]):
-        df = 1./(float(n)*dt)
-        shat,freqs = unpack_rfft(rfft(s, n=n), df)
-
-        cmod = np.abs(shat)
-        print("nfft=%d df=%.3f mean_shat=%f max_shat=%f" % (n, df, np.mean(cmod), np.amax(cmod)))
-
-        if tr is None:
-            continue
-
-        mask = [all(f) for f in zip(freqs >= 100., freqs <= 200.)]
-        new = shat[mask]
-
-        max_amp = np.amax(np.abs(shat))
-        print("N=%d-fft of real array contans [n=%d] pnts.  maxamp=[%12.10g]" % (n, shat.size,max_amp))
-        mean_amp = np.mean(np.abs(new))
-        print("new has %d pnts and mean=%f" % (new.size, mean_amp))
-
-        plot_spec(freqs, shat)
-    exit()
-    #print(shat)
-
-def damped_response(freqs, fn, eta=.18):
-    mag = np.array( np.zeros(freqs.size, dtype=np.float_))
-    pha = np.array( np.zeros(freqs.size, dtype=np.float_))
-    for i,f in enumerate(freqs):
-        r = f/fn
-        x = 1 - r*r
-        y = 2*eta*r
-        pha[i] = np.arctan2(y, x)
-        mag[i] = (r*r)/np.sqrt(x*x + y*y)
-        #print("%3d %8.6f %8.6f %5.2f" % (i, f, mag[i], pha[i]))
-
-    return mag
-
-
-    #exit()
-    plt.loglog(freqs, mag, color='blue')
-    # plt.xlim(1e0, 3e3)
-    # plt.ylim(1e-8, 1.2e-4)
-    # #plt.ylim(1e-12, 1e-4)
-    # if title:
-    #     plt.title(title)
-    plt.grid()
-    plt.show()
-    plt.semilogx(freqs, pha, color='red')
-    plt.grid()
-    plt.show()
-
-
-def main():
-    '''
-    for v in [1.5, 2.0, 2.5, 3.0, 3.5, 4.0]:
-        print(v, 2.*np.log10(v))
-    exit()
-    '''
-    freqs = np.logspace(0, 3, num=500, endpoint=True, base=10.0, dtype=np.float_)
-    #print(freqs)
-    damped_response(freqs, 14)
-    #check2()
 
 def peak_freq(spec_array, freqs, fmin=0., fmax=None):
     """ Return peak_f of spec_array within bounds: fmin <= freqs <= fmax
@@ -216,16 +45,13 @@ def stack_spectra(sta_dict):
 
             stack += np.abs(signal_fft)/np.amax(np.abs(signal_fft))
 
-            #print("stack[100]=%12.10g signal_fft[100]=%12.10g max=%12.10g" % \
-                  #(stack[100], np.abs(signal_fft[100]), np.amax(np.abs(signal_fft))))
             n += 1
 
-    print("stack_spectra: stacked n=%d spectra" % n)
-    # Return normalized stack, freq array
     return stack/np.amax(stack), freqs
 
 
-def get_spectra(st, event, inventory, synthetic_picks, calc_displacement=False, S_win_len=.1, P_or_S='P'):
+def get_spectra(st, event, inventory, synthetic_picks,calc_displacement=False,
+                S_win_len=.1, P_or_S='P'):
     """ Calculate the fft at each channel in the stream that has an arrival in event.arrivals
 
         :param st: microquake.core.stream.Stream
@@ -241,14 +67,13 @@ def get_spectra(st, event, inventory, synthetic_picks, calc_displacement=False, 
         :rtype: dict
     """
 
+    pre_window_start_sec = .01
+    max_S_P_time = 0.25
+
     # TODO Right now S win len = .1, may want to make this a function of distance and/or handle
     #     if win len exceeds trace len, etc
 
     fname = 'get_spectra'
-
-    #sta_meta_dict = inv_station_list_to_dict(stations)
-    #sta_meta_dict = inv_station_list_to_dict(inventory)
-    #stations = inventory[0]
 
     origin = event.preferred_origin() if event.preferred_origin() else event.origins[0]
 
@@ -257,15 +82,9 @@ def get_spectra(st, event, inventory, synthetic_picks, calc_displacement=False, 
     synthetic_dict = copy_picks_to_dict(synthetic_picks)
 
     if P_or_S == 'P':
-        arrivals = [ arr for arr in origin.arrivals if arr.phase == 'P' ]
-        #arrivals = [ arr for arr in origin.arrivals if \
-                     #arr.pick_id.get_referred_object().phase_hint == 'P' ]
+        arrivals = [arr for arr in origin.arrivals if arr.phase == 'P']
     else:
-        arrivals = [ arr for arr in origin.arrivals if arr.phase == 'S' ]
-        #arrivals = [ arr for arr in origin.arrivals if \
-                     #arr.pick_id.get_referred_object().phase_hint == 'S' ]
-
-    #print("%s: Calc [%s] spectra for [n=%d] arrivals" % (fname, P_or_S, len(arrivals)))
+        arrivals = [arr for arr in origin.arrivals if arr.phase == 'S']
 
     arr_dict = {}
     for arr in arrivals:
@@ -275,7 +94,6 @@ def get_spectra(st, event, inventory, synthetic_picks, calc_displacement=False, 
         if sta not in arr_dict:
             arr_dict[sta] = {}
         arr_dict[sta][pha] = arr
-
 
     arr_stations = set()
     for arr in arrivals:
@@ -296,12 +114,11 @@ def get_spectra(st, event, inventory, synthetic_picks, calc_displacement=False, 
     # For now, let's be explicit about our assumptions:
     # For each trace, we'll use P-.01 to S-.01 to calculate the P spectrum, so
     #   let's use the max expected S-P time (at the farthest station) to fix NFFT
-    max_S_P_time = 0.25
     dt   = st[0].stats.delta # For now, let's assume ALL traces are sampled at this rate
     npts = int(max_S_P_time/dt)
     nfft = npow2(npts) * 2 # Fix nfft for all calcs
     df   = 1/(float(nfft)*dt)
-    print("%s: Set nfft=%d --> df=%.3f" % (fname, nfft, df))
+    #print("%s: Set nfft=%d --> df=%.3f" % (fname, nfft, df))
 
 
 # 1. Create a dict of keys=sta_code for all 'P' arrivals with the necessary pick/sta info inside
@@ -329,28 +146,29 @@ def get_spectra(st, event, inventory, synthetic_picks, calc_displacement=False, 
 
         d['loc'] = sta_loc
 
-    # TODO May want to revise to use distance along raypath here
-        # Could get this from: arr_dict[sta_code]['P'].hypo_dist_in_m
-        d['R'] = np.linalg.norm(d['loc'] - origin.loc) # Dist in meters
-        sta_dict[sta_code] = d
+        # Try to use distance along ray path if set in the arrival dict,
+        #   else use Euclidean distance
+        dist = arr_dict[sta_code][P_or_S].get('hypo_dist_in_m', None)
+        if dist is None:
+            dist = np.linalg.norm(d['loc'] - origin.loc) # Dist in meters
 
-        #print("%s: loc:%s straight_dist:%f ray_dist:%f" % \
-              #(sta_code, sta_loc, d['R'], arr_dict[sta_code]['P'].hypo_dist_in_m))
+        d['R'] = dist
+        sta_dict[sta_code] = d
 
 
 # 2. Calc/save signal/noise fft spectra at all channels that have P(S) arrivals:
     for sta_code,sta in sta_dict.items():
 
         if P_or_S == 'P':
-            signal_start = sta['ptime'] - .01
-            signal_end   = sta['stime'] - .01
+            signal_start = sta['ptime'] - pre_window_start_sec
+            signal_end   = sta['stime'] - pre_window_start_sec
         else:
-            signal_start = sta['stime'] - .01
+            signal_start = sta['stime'] - pre_window_start_sec
             signal_end   = sta['stime'] + S_win_len
 
         signal_len   = signal_end - signal_start
 
-        noise_end   = sta['ptime'] - .01
+        noise_end   = sta['ptime'] - pre_window_start_sec
         noise_start = noise_end - signal_len
 
         trs = st.select(station=sta_code)
@@ -385,8 +203,10 @@ def get_spectra(st, event, inventory, synthetic_picks, calc_displacement=False, 
                     pass
                 elif sensor_type == 'DISP':
                     print("%s: Not yet set up to handle input traces = DISPLACMENT !!" % fname)
+                    continue
                 else:
                     print("%s: ERROR: sensor_type=[%s] is unknown" % (fname, sensor_type))
+                    continue
 
                 if calc_displacement:
                     signal.integrate().taper(type='cosine', max_percentage=0.05, side='both')
@@ -398,12 +218,6 @@ def get_spectra(st, event, inventory, synthetic_picks, calc_displacement=False, 
                 (signal_fft, freqs) = unpack_rfft( rfft(signal.data, n=nfft), df)
                 (noise_fft, freqs)  = unpack_rfft( rfft(noise.data, n=nfft), df)
 
-
-                #signal_fft /= damped_response(freqs, fn=14, eta=0.18)
-
-                #resp = damped_response(freqs, fn=14, eta=0.18)
-                #signal_fft[1:] /= resp[1:]
-
                 # MTH: Determine the valid freq range: fmin - fmax
                 #      To fit to model.
                 # fmin/fmax = where smoothed signal spec exceeds smoothed noise spec by snr_threshold
@@ -413,9 +227,9 @@ def get_spectra(st, event, inventory, synthetic_picks, calc_displacement=False, 
 
                     fc1 = get_corner_freq_from_pole(tr.stats.response.get_paz().poles[0])
                     fmin,fmax = find_fmin_fmax_from_spec(signal_fft, noise_fft, 1.3, 200., df)
-                    # fmin is None if signal > noise all the way to DC
-                    # Take the maximum of fc1 and fmin to use for fitting:
 
+                    # Take the maximum of fc1 and fmin to use for fitting:
+                    # fmin is None if signal > noise all the way to DC
                     if fmin is None or fc1 > fmin:
                         fmin = fc1
 
@@ -426,15 +240,14 @@ def get_spectra(st, event, inventory, synthetic_picks, calc_displacement=False, 
 
                 #plot_spec(freqs, signal_fft, noise_fft, title=None)
 
-                #plot_signal(signal, noise)
-                # 4.5Hz sensors:
-                #if sta_code in ['25', '40']:
-                    #plot_spec(freqs, signal_fft, noise_fft, title=None)
-                #exit()
-
             # np/scipy ffts are not scaled by dt
                 signal_fft *= (dt * np.sqrt(2))
                 noise_fft  *= (dt * np.sqrt(2))
+
+
+            # MTH: I have no clear reason for doing this:
+                signal_fft /= 2.
+                noise_fft  /= 2.
 
                 #plot_signal(signal, noise)
 
@@ -466,7 +279,8 @@ def brune_acc_spec(fc: float, mom: float, ts: float, f: float) -> float :
     return 2. * np.pi * f * brune_vel_spec(fc, mom, ts, f)
 
 
-def getresidfit(data_spec, model_func, fc: float, freqs: list, Lnorm='L1', weight_fr=False, fmin=1., fmax=3000.) -> float :
+def getresidfit(data_spec, model_func, fc: float, freqs: list, Lnorm='L1',
+                weight_fr=False, fmin=1., fmax=3000.) -> float :
 
     def inner(p):
         smom=p[0]
@@ -492,7 +306,9 @@ def getresidfit(data_spec, model_func, fc: float, freqs: list, Lnorm='L1', weigh
         return fit
     return inner
 
-def getresidfit2(data_spec, model_func, freqs: list, Lnorm='L1', weight_fr=False, fmin=1., fmax=3000.) -> float :
+
+def getresidfit2(data_spec, model_func, freqs: list, Lnorm='L1', weight_fr=False,
+                 fmin=1., fmax=3000.) -> float :
 
     def inner(p):
         smom=p[0]
@@ -515,7 +331,9 @@ def getresidfit2(data_spec, model_func, freqs: list, Lnorm='L1', weight_fr=False
         return fit
     return inner
 
-def getresidfit3(data_spec, model_func, freqs: list, Lnorm='L1', weight_fr=False, fmin=1., fmax=3000.) -> float :
+
+def getresidfit3(data_spec, model_func, freqs: list, Lnorm='L1', weight_fr=False,
+                 fmin=1., fmax=3000.) -> float :
 
     def inner(p):
         smom=p[0]
@@ -544,7 +362,7 @@ def getresidfit3(data_spec, model_func, freqs: list, Lnorm='L1', weight_fr=False
 
 
 def calc_fit1(spec, freqs, fmin=1., fmax=1000., Lnorm='L2', weight_fr=False, fit_displacement=False):
-    # spec = speac_amp
+    # spec = spec_amp
 
     model_func = brune_vel_spec
     if fit_displacement:
@@ -596,19 +414,21 @@ def calc_fit2(spec, freqs, fmin=10., fmax=1000., Lnorm='L2', weight_fr=False):
         plot_spec2(freqs, spec, model_spec, title="Fit to spec stack fc=%f" % sol[1])
     return fit
 
-def calc_fit(sta_dict, fc, fmin=20., fmax=1000., Lnorm='L2', weight_fr=False, use_fixed_fmin_fmax=False):
+def calc_fit(sta_dict, fc, fmin=20., fmax=1000.,
+             Lnorm='L2', weight_fr=False,
+             plot_fit=False, debug=False,
+             use_fixed_fmin_fmax=False):
 
     fit = 0.
     smom_dict = {}
     for sta_code, sta in sta_dict.items():
         #print("  calc_fit sta:%3s" % sta_code)
         if 'chan_spec' not in sta:
-            print("  sta:%3s: Has no chan_spec --> Skip" % sta_code)
+            if debug:
+                print("  sta:%3s: Has no chan_spec --> Skip" % sta_code)
             continue
         dd  = {}
         for cha_code, cha in sta['chan_spec'].items():
-            #continue
-            #print("    calc_fit Process: cha:%s" % cha_code)
             signal_fft, freqs, noise_fft = (cha['signal_fft'], cha['freqs'], cha['noise_fft'])
 
             model_func = brune_vel_spec
@@ -622,8 +442,9 @@ def calc_fit(sta_dict, fc, fmin=20., fmax=1000., Lnorm='L2', weight_fr=False, us
                 fmin = cha['fmin']
                 fmax = cha['fmax']
 
-            print("    calc_fit sta:%3s cha:%s fmin:%.1f fmax:%.1f" % \
-                  (sta_code, cha_code, fmin, fmax))
+            if debug:
+                print("    calc_fit sta:%3s cha:%s fmin:%.1f fmax:%.1f" % \
+                     (sta_code, cha_code, fmin, fmax))
 
             residfit = getresidfit(np.abs(signal_fft), model_func, fc, freqs, Lnorm=Lnorm, \
                                            weight_fr=weight_fr, fmin=fmin, fmax=fmax)
@@ -637,10 +458,7 @@ def calc_fit(sta_dict, fc, fmin=20., fmax=1000., Lnorm='L2', weight_fr=False, us
             #pp = [1e-5, tt_s/200.]
             pp = [1e-10, tt_s/200.]
             #(sol,fopt,*rest)= optimize.fmin(residfit, np.array(pp),xtol=10**-12,ftol=10**-12,disp=False, full_output=1)
-            #(sol,fopt,*rest)= optimize.fmin(residfit, np.array(pp),xtol=10**-3,ftol=10**-3,disp=False, full_output=1)
             (sol,fopt,*rest)= optimize.fmin(residfit, np.array(pp),ftol=.01, disp=False, full_output=1)
-            #(sol,fopt,*rest)= optimize.fmin(residfit, np.array(pp),xtol=10**-3,ftol=10**-3,disp=False, full_output=1)
-            #(sol,fopt,*rest)= optimize.fmin(residfit, np.array(pp),xtol=10**-6,ftol=10**-6,disp=False, full_output=1)
             if sol[0] < 0. :
                 print("Ummm smom < 0 !!!")
 
@@ -651,26 +469,26 @@ def calc_fit(sta_dict, fc, fmin=20., fmax=1000., Lnorm='L2', weight_fr=False, us
             ch_dict['smom'] = sol[0]
             ch_dict['fit'] = fopt
             ch_dict['P_or_S'] = cha['P_or_S']
-            #print("    cha:%s smom:%12.10g" % (cha_code, sol[0]))
 
-            #print("calc_fit: sta:%s cha:%s smom:%12.10g fit:%.2f" % (sta_code, cha_code, sol[0], fopt))
-            plot_fit = 1
-            plot_fit = 0
-            if plot_fit and sta_code == '15':
+            if debug:
+                print("calc_fit: sta:%s cha:%s smom:%12.10g fit:%.2f" % (sta_code, cha_code, sol[0], fopt))
+
+            if plot_fit:
                 model_spec = np.array( np.zeros(freqs.size), dtype=np.float_)
                 for i,f in enumerate(freqs):
                     model_spec[i] = model_func(fc, sol[0], sol[1], f)
-                #plot_spec(freqs, np.abs(signal_fft),  model_spec, title="sta:%s ch:%s spec fit" % \
-                plot_spec3(freqs, np.abs(signal_fft),  np.abs(noise_fft), model_spec, \
+                plot_spec3(freqs, np.abs(signal_fft),  np.abs(noise_fft), model_spec,
                            title="sta:%s ch:%s spec fit phase:%s [lambda=%12.10g]" % \
-                           (sta_code, cha_code, ch_dict['P_or_S'], sol[0]))
+                           (sta_code, cha_code, ch_dict['P_or_S'],sol[0]),
+                           subtitle="fmin:%.1f fmax:%.1f use_fixed_fmin_fmax:%s" % \
+                           (fmin, fmax, use_fixed_fmin_fmax))
 
             dd[cha_code] = ch_dict
         smom_dict[sta_code] = dd
 
     return fit, smom_dict
 
-def plot_spec3(freqs, signal_fft, noise_fft, model_spec, title=None):
+def plot_spec3(freqs, signal_fft, noise_fft, model_spec, title=None, subtitle=None):
 
     plt.loglog(freqs, np.abs(signal_fft), color='blue')
     plt.loglog(freqs, np.abs(noise_fft),  color='red')
@@ -679,8 +497,11 @@ def plot_spec3(freqs, signal_fft, noise_fft, model_spec, title=None):
     plt.xlim(1e0, 3e3)
     #plt.ylim(1e-12, 1e-6)
     plt.ylim(1e-15, 1e-9)
+    # suptitle is larger and goes on top (?!)
     if title:
-        plt.title(title)
+        plt.suptitle(title)
+    if subtitle:
+        plt.title(subtitle)
     plt.grid()
     plt.show()
 
@@ -719,7 +540,6 @@ def find_fmin_fmax_from_spec(signal_fft, noise_fft, snr_thresh, fc, df):
     return fmin, fmax
 
 
-#def plot_spec(freqs, signal_fft, noise_fft, model_spec, title=None):
 from scipy.signal import savgol_filter
 def plot_spec(freqs, signal_fft, noise_fft=None, title=None):
 

@@ -19,6 +19,10 @@ warnings.simplefilter("ignore")
 
 #1234567890123456789012345678901234567890123456789012345678901234567890123456789
 
+import logging
+logger = logging.getLogger(__name__)
+
+
 def moment_magnitude_new(st, event, vp=5300, vs=3500, ttpath=None,
                          only_triaxial=True, density=2700, min_dist=20,
                          fmin=20, fmax=1000, use_smom=False):
@@ -104,8 +108,11 @@ def calc_magnitudes_from_lambda(cat,
 
     fname = 'calc_magnitudes_from_lambda'
 
-    if 'logger' in kwargs:
-        logger = kwargs['logger']
+    global logger
+    if 'logger_name' in kwargs:
+        logger = logging.getLogger(kwargs['logger_name'])
+        kwargs.pop('logger_name', None)
+
 
 # Don't loop over event here, do it in the calling routine
 #   so that vp/vs can be set for correct source depth
@@ -180,9 +187,11 @@ def calc_magnitudes_from_lambda(cat,
                 rad = double_couple_rad_pat(takeoff_angle, takeoff_azimuth,
                                             strike, dip, rake, phase=P_or_S)
                 rad = np.abs(rad)
+                logger.debug("%s: phase=%s rad=%f" % (fname, P_or_S, rad))
                 magnitude_comment += ' rad_pat calculated for (s,d,r)=\
-                        (%.1f,%.1f,%.1f) |rad|=%f' % (strike, dip, rake, rad)
-                print(magnitude_comment)
+                        (%.1f,%.1f,%.1f) theta:%.1f az:%.1f pha:%s |rad|=%f' % \
+                        (strike, dip, rake, takeoff_angle, takeoff_azimuth, P_or_S, rad)
+                #logger.info(magnitude_comment)
             else:
                 logger.warn("%s: sta:%s cha:%s pha:%s: takeoff_angle/azimuth NOT set in arrival dict --> use default radpat" %\
                             (fname, sta, cha, arr.phase))
@@ -217,13 +226,14 @@ def calc_magnitudes_from_lambda(cat,
                           )
             station_mags.append(station_mag)
 
-        else:
-            logger.warn("arrival sta:%s cha:%s arr pha:%s lambda_key:%s is NOT \
-                  SET --> Skip" % (sta, cha, arr.phase, lambda_key))
+        #else:
+            #logger.warn("arrival sta:%s cha:%s arr pha:%s lambda_key:%s is NOT SET --> Skip" \
+                        #% (sta, cha, arr.phase, lambda_key))
 
 
     logger.info("nmags=%d avg:%.1f med:%.1f std:%.1f" % \
           (len(Mw_list), np.mean(Mw_list), np.median(Mw_list), np.std(Mw_list)))
+
 
     return np.median(Mw_list), station_mags
 

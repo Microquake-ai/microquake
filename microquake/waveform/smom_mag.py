@@ -17,13 +17,25 @@ from microquake.waveform.smom_mag_utils import get_spectra, stack_spectra, calc_
          1         2         3         4         5         6         7
 12345678901234567890123456789012345678901234567890123456789012345678901234567890
 """
+import logging
+logger = logging.getLogger(__name__)
 
 import copy
-def measure_pick_smom(st, inventory, event, synthetic_picks, 
+
+def measure_pick_smom(st, inventory, event, synthetic_picks,
                       fmin=20, fmax=1000,
                       use_fixed_fmin_fmax=False,
+                      plot_fit=False,
                       P_or_S='P',
-                      debug=False):
+                      debug_level=0, **kwargs):
+
+    fname = "measure_pick_smom"
+
+    global logger
+    if 'logger_name' in kwargs:
+        logger = logging.getLogger(kwargs['logger_name'])
+        kwargs.pop('logger_name', None)
+
 
 # Get P(S) spectra at all stations/channels that have a P(S) arrival:
     sta_dict = get_spectra(st, event, inventory, synthetic_picks, calc_displacement=False, S_win_len=.1, P_or_S=P_or_S)
@@ -35,7 +47,10 @@ def measure_pick_smom(st, inventory, event, synthetic_picks,
     stacked_spec, freqs = stack_spectra(sta_dict)
     peak_f = peak_freq(stacked_spec, freqs, fmin=25.)
 
-    plot_spec(stacked_spec, freqs, title='Stack [%s] Vel spec peak_f=%.1f' % (P_or_S, peak_f))
+    if debug_level > 0:
+        logger.debug("%s: pha:%s velocity stack corner freq fc=%.1f" % (fname, P_or_S, peak_f))
+    if debug_level > 1:
+        plot_spec(stacked_spec, freqs, title='Stack [%s] Vel spec peak_f=%.1f' % (P_or_S, peak_f))
 
 # Now recalculate the spectra as Displacment spectra:
 
@@ -52,8 +67,9 @@ def measure_pick_smom(st, inventory, event, synthetic_picks,
             cha_dict['fmax'] = vel_dict[sta_code]['chan_spec'][cha_code]['fmax']
             #print("sta:%3s cha:%s --> set fmin=%.1f fmax=%.1f" % (sta_code, cha_code, fmin, fmax))
 
-    fit,smom_dict = calc_fit(sta_dict, fc=peak_f, fmin=fmin, fmax=fmax, use_fixed_fmin_fmax=use_fixed_fmin_fmax)
-
+    fit,smom_dict = calc_fit(sta_dict, fc=peak_f, fmin=fmin, fmax=fmax,
+                             plot_fit=plot_fit,
+                             use_fixed_fmin_fmax=use_fixed_fmin_fmax)
 
     phase = P_or_S
     arr_dict = {}
@@ -73,65 +89,18 @@ def measure_pick_smom(st, inventory, event, synthetic_picks,
             fits.append(cha_dict['fit'])
             smom = cha_dict['smom']
             fit = cha_dict['fit']
-            #print("sta:%3s cha:%s smom:%12.10g pha:%s" % (sta, cha, smom, phase))
 
         smom = np.sqrt(np.sum(np.array(smoms)**2))
         fit = np.sum(np.array(fits))/float(len(fits))
+
+        if debug_level > 0:
+            logger.debug("%s: sta:%3s pha:%s smom:%12.10g nchans:%d" % (fname, sta, phase, smom, len(fits)))
 
         arr = arr_dict[sta][phase]
         arr.smom = smom
         arr.fit = fit
 
     return smom_dict, peak_f
-
-    """
-        arr = arr_dict[sta][phase]
-
-        #for cha in smom_dict[sta]:
-            #if pha in smom_dict[sta][cha]:
-                #if 'smom' in smom_dict[sta][cha]
-
-        tr.stats[key]['smom'] = smom_dict[sta][cha]['smom']
-        tr.stats[key]['fit'] = smom_dict[sta][cha]['fit']
-
-
-        phase = smom_dict[sta][cha]['P_or_S']
-
-        key = "%s_arrival" % pha
-
-    for tr in st:
-
-        sta = tr.stats.station
-        cha = tr.stats.channel
-
-        if sta in smom_dict and cha in smom_dict[sta]:
-            smom = smom_dict[sta][cha]['smom']
-            print("Found sta:%s cha:%s in smom_dict smom:%12.10g" % (sta, cha, smom))
-            pass
-        else:
-            print("NOT Found sta:%s cha:%s in smom_dict" % (sta, cha))
-            continue
-
-        phase = smom_dict[sta][cha]['P_or_S']
-
-        key = "%s_arrival" % phase
-
-        if key in tr.stats:
-            #print("Found key=%s in tr.stats --> add to it" % key)
-            pass
-        else:
-            #print("NOT Found key=%s in tr.stats --> create it" % key)
-            tr.stats[key] = {}
-
-        tr.stats[key]['smom'] = smom_dict[sta][cha]['smom']
-        tr.stats[key]['fit'] = smom_dict[sta][cha]['fit']
-
-        arr = arr_dict[sta][phase]
-        arr.smom = smom_dict[sta][cha]['smom']
-        arr.fit  = smom_dict[sta][cha]['fit']
-
-    return smom_dict, peak_f
-    """
 
 
 def plot_spec(spec, freqs, title='Stacked spec'):
