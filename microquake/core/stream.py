@@ -354,7 +354,7 @@ def check_for_dead_trace(tr):
         return 0
 
 
-def composite_traces(st):
+def composite_traces(st_in):
     """
     Requires length and sampling_rates equal for all traces
     returns a new stream object containing composite trace for all station.
@@ -369,19 +369,24 @@ def composite_traces(st):
 
     trsout = []
 
+    st = st_in.copy()
+    st.detrend('demean')
+
     for station in st.unique_stations():
         trs = st.select(station=station)
 
         if len(trs) == 1:
             trsout.append(trs[0].copy())
             continue
+
         npts = len(trs[0].data)
         buf = np.zeros(npts, dtype=trs[0].data.dtype)
+
         for tr in trs:
             dat = tr.data
             buf += (dat - np.mean(dat)) ** 2
-        buf = np.sign(trs[0].data) * np.sqrt(buf)
 
+        buf = np.sign(trs[0].data) * np.sqrt(buf)
         stats = trs[0].stats.copy()
         stats.channel = 'C'
         trsout.append(Trace(data=buf.copy(), header=stats))

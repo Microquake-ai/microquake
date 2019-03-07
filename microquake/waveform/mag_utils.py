@@ -52,6 +52,19 @@ def double_couple_rad_pat(takeoff_angle, takeoff_azimuth, strike, dip, rake, pha
                 +sin(rake)*cos(2.*dip)*cos(i_h) * cos(azd)                  \
                 -0.5*sin(rake)*sin(2.*dip)*sin(i_h) * sin(2.*azd)
 
+    elif phase == 'S':
+        radpat_SV = sin(rake)*cos(2.*dip)*cos(2.*i_h) * sin(azd)               \
+                   -cos(rake)*cos(dip)*cos(2.*i_h) * cos(azd)                  \
+                   +0.5*cos(rake)*sin(dip)*sin(2.*i_h) * sin(2.*azd)           \
+                   -0.5*sin(rake)*sin(2.*dip)*sin(2.*i_h)*(1 + sin(azd)**2)
+
+        radpat_SH = cos(rake)*cos(dip)*cos(i_h) * sin(azd)                     \
+                   +cos(rake)*sin(dip)*sin(i_h) * cos(2.*azd)                  \
+                   +sin(rake)*cos(2.*dip)*cos(i_h) * cos(azd)                  \
+                   -0.5*sin(rake)*sin(2.*dip)*sin(i_h) * sin(2.*azd)
+
+        radpat = np.sqrt(radpat_SV**2 + radpat_SH**2)
+
     else:
         print("%s: Unrecognized phase[%s] --> return None" % (fname, phase))
         return None

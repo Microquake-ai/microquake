@@ -3,7 +3,7 @@ import numpy as np
 #from microquake.core.data.inventory import inv_station_list_to_dict
 
 
-def rotate_to_P_SV_SH(st, cat):
+def rotate_to_P_SV_SH(st, cat, debug=False):
 
     fname = 'rotate_to_P_SV_SH'
 
@@ -35,7 +35,8 @@ def rotate_to_P_SV_SH(st, cat):
 
             A = np.column_stack((col1,col2,col3))
 
-            print("sta:%s az:%.1f baz:%.1f takeoff:%.1f inc:%.1f" % (sta, az, baz, takeoff, inc_angle))
+            if debug:
+                print("sta:%s az:%.1f baz:%.1f takeoff:%.1f inc:%.1f" % (sta, az, baz, takeoff, inc_angle))
 
             E = trs[0].data
             N = trs[1].data
