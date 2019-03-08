@@ -261,8 +261,12 @@ def measure_displacement_pulse(st, cat, phase_list=None, debug=False,
                       (fname, tr.get_id(), sensor_type))
                 continue
 
-            tr_dis = tr.copy().detrend("demean").detrend("linear")
-            tr_dis.integrate().detrend("linear")
+            try:
+                tr_dis = tr.copy().detrend("demean").detrend("linear")
+                tr_dis.integrate().detrend("linear")
+            except Exception as e:
+                print(e)
+                continue
             tr_dis.stats.channel = "%s.dis" % tr.stats.channel
 
             for phase in phase_list:
