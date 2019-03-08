@@ -100,8 +100,11 @@ def measure_velocity_pulse(st, cat, phase_list=None, debug=False,
                 logger.warn("%s: tr:%s units:%s NOT VEL --> Skip polarity check" %
                       (fname, tr.get_id(), sensor_type))
                 continue
-
-            tr.detrend("demean").detrend("linear")
+            try:
+                tr.detrend("demean").detrend("linear")
+            except Exception as e:
+                print(e)
+                continue
             data = tr.data.copy()
 
             for phase in phase_list:
