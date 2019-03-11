@@ -96,6 +96,8 @@ def calc_magnitudes_from_lambda(cat,
                                 use_smom=False,
                                 use_sdr_rad=False,
                                 use_free_surface_correction=False,
+                                min_dist=20.,
+                                logger_in=None,
                                 **kwargs):
     """
     Calculate the moment magnitude at each station from lambda,
@@ -109,9 +111,9 @@ def calc_magnitudes_from_lambda(cat,
     fname = 'calc_magnitudes_from_lambda'
 
     global logger
-    if 'logger_name' in kwargs:
-        logger = logging.getLogger(kwargs['logger_name'])
-        kwargs.pop('logger_name', None)
+
+    if logger_in is not None:
+        logger = logger_in
 
 
 # Don't loop over event here, do it in the calling routine
@@ -210,21 +212,23 @@ def calc_magnitudes_from_lambda(cat,
         #         to make it clear
             R = arr.hypo_dist_in_m
 
-            M0 = M0_scale * R * np.abs(_lambda)
-            Mw = 2./3. * np.log10(M0) - 6.033
+            if R >= min_dist:
 
-            Mw_list.append(Mw)
+                M0 = M0_scale * R * np.abs(_lambda)
+                Mw = 2./3. * np.log10(M0) - 6.033
 
-            station_mag = StationMagnitude(origin_id=origin_id, mag=Mw,
-                            station_magnitude_type=mag_type,
-                            comments=[Comment(text=magnitude_comment)],
-                            waveform_id=WaveformStreamID(
-                                        network_code=net,
-                                        station_code=sta,
-                                        channel_code=cha,
-                                        ),
-                          )
-            station_mags.append(station_mag)
+                Mw_list.append(Mw)
+
+                station_mag = StationMagnitude(origin_id=origin_id, mag=Mw,
+                                station_magnitude_type=mag_type,
+                                comments=[Comment(text=magnitude_comment)],
+                                waveform_id=WaveformStreamID(
+                                            network_code=net,
+                                            station_code=sta,
+                                            channel_code=cha,
+                                            ),
+                               )
+                station_mags.append(station_mag)
 
         #else:
             #logger.warn("arrival sta:%s cha:%s arr pha:%s lambda_key:%s is NOT SET --> Skip" \
