@@ -20,7 +20,7 @@ from microquake.core.data.inventory import get_sensor_type_from_trace
 import logging
 logger = logging.getLogger(__name__)
 
-def measure_pick_amps(st, cat, phase_list=None, **kwargs):
+def measure_pick_amps(st, cat, phase_list=None, logger_in=None, **kwargs):
 
     """
     For each tr in st, for each pick phase (P,S) in picks:
@@ -39,9 +39,8 @@ def measure_pick_amps(st, cat, phase_list=None, **kwargs):
     fname = "measure_pick_amps"
 
     global logger
-    if 'logger_name' in kwargs:
-        logger = logging.getLogger(kwargs['logger_name'])
-        kwargs.pop('logger_name', None)
+    if logger_in is not None:
+        logger = logger_in
 
     if phase_list is None:
         phase_list = ['P']

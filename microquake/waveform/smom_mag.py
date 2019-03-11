@@ -27,14 +27,15 @@ def measure_pick_smom(st, inventory, event, synthetic_picks,
                       use_fixed_fmin_fmax=False,
                       plot_fit=False,
                       P_or_S='P',
-                      debug_level=0, **kwargs):
+                      debug_level=0,
+                      logger_in=None,
+                      **kwargs):
 
     fname = "measure_pick_smom"
 
     global logger
-    if 'logger_name' in kwargs:
-        logger = logging.getLogger(kwargs['logger_name'])
-        kwargs.pop('logger_name', None)
+    if logger_in is not None:
+        logger = logger_in
 
 
 # Get P(S) spectra at all stations/channels that have a P(S) arrival:
