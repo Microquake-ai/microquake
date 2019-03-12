@@ -69,12 +69,12 @@ class Stream(obsstream.Stream):
         return tools.stream_to_array(self, t0, npts_fix, taplen=taplen), sr, t0
 
     def chan_groups(self):
-        chanmap = self.chanmap()
+        chanmap = self.channel_map()
         groups = [np.where(sk == chanmap)[0] for sk in np.unique(chanmap)]
 
         return groups
 
-    def chanmap(self):
+    def channel_map(self):
         stations = np.array([tr.stats.station for tr in self])
         unique = np.unique(stations)
         unique_dict = dict(zip(unique, np.arange(len(unique))))
