@@ -2,10 +2,6 @@
 import numpy as np
 import os
 
-# Imports only needed for creating OT.xml from csv files:
-from obspy.clients.nrl import NRL
-nrl = NRL('http://ds.iris.edu/NRL/')
-
 from instResp.libInst import getResponse, get_corner_freq_from_pole
 from instResp.libNom import WA, RC, Accelerometer
 from instResp.plotResp import plotResponse
@@ -233,9 +229,9 @@ def main():
     sensor_types_file = os.path.join(path,'sensor_types.csv')
     cables_file = os.path.join(path, 'cables.csv')
 
-    #success = write_OT_xml(sensor_file, sensor_types_file, cables_file, xml_outfile='OT.xml')
-    #assert success == 1
-    #exit()
+    success = write_OT_xml(sensor_file, sensor_types_file, cables_file, xml_outfile='OT.xml')
+    assert success == 1
+    exit()
 
     #test_read_xml('OT.xml')
     test_print_OT_xml_summary('OT.xml')

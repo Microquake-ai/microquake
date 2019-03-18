@@ -6,6 +6,8 @@ from obspy.core import AttribDict
 from obspy.core.utcdatetime import UTCDateTime
 import numpy as np
 
+from microquake.core.data.response_utils import read_NRL_from_dump
+
 import csv
 import copy
 import os
@@ -237,7 +239,9 @@ class Station(obspy.core.inventory.station.Station):
 # Putting the OT station long_name into obspy Station historical_code:
         sta = Station(stn['code'], 0., 0., 0., site=Site(name='Oyu Tolgoi'), \
                       historical_code=stn['long_name'], \
-                      creation_date=UTCDateTime("2015-12-31T12:23:34.5"))
+                      creation_date=UTCDateTime("2015-12-31T12:23:34.5"),
+                      start_date=UTCDateTime("2015-12-31T12:23:34.5"),
+                      end_date=UTCDateTime("2599-12-31T12:23:34.5"))
 
         sta.extra = AttribDict({'x': { 'namespace': ns, 'value': stn['x'], },
                                 'y': { 'namespace': ns, 'value': stn['y'], },
@@ -257,6 +261,8 @@ class Station(obspy.core.inventory.station.Station):
                               longitude= 0.,      # required
                               elevation= 0.,      # required
                               depth=0.,           # required
+                              start_date=UTCDateTime("2015-12-31T12:23:34.5"),
+                              end_date=UTCDateTime("2599-12-31T12:23:34.5"),
                               )
 
 
@@ -283,34 +289,8 @@ class Station(obspy.core.inventory.station.Station):
             #   response.instrument.sensitivity.input_units to either "M/S**2" or "M/S"
             # Then will have to write a microquake method to detect these and/or use them for lookups
 
-            # Temp attach a generic response to all OT channels:
-            chan_dict = {}
-
-            chan_dict['sensor'] = ['Sercel/Mark Products', 'L-22D', '325 Ohms', '1327 Ohms']
-            chan_dict['datalogger'] = ['REF TEK','RT 130 & 130-SMA','1','100']
-            response = nrl.get_response(sensor_keys=chan_dict['sensor'], datalogger_keys=chan_dict['datalogger'])
-            #print(response.get_sacpz())
-            #print(response.get_paz())
-
-            from obspy.core.inventory.response import ResponseStage
-
-            '''
-            stage1 = response.response_stages[0]
-            stage2 = response.response_stages[1]
-            stage3 = ResponseStage(3,1.0, .05, "COUNTS", "V")
-            #stage3 = ResponseStage(3,1.0, .05, "COUNTS", "V", decimation_input_sample_rate=200)
-                                   #decimation_factor=1, decimation_offset=0, decimation_delay=0,
-                                   #decimation_correction=0)
-
-            response.response_stages = [stage1, stage2]
-            #response.response_stages = [stage1, stage2, stage3]
-
-            for stage in response.response_stages:
-                print(stage)
-                print(stage.input_units, stage.output_units)
-            response.plot(output="VEL", min_freq=.01, sampling_rate=100.)
-            exit()
-            '''
+            # Temp attach a generic response to all OT channels to use as template:
+            response = read_NRL_from_dump(filename='resources/L-22D.response')
 
             if stn['motion'].upper() == 'ACCELERATION':
                 input_units = "M/S**2"
