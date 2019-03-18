@@ -230,6 +230,10 @@ def calc_magnitudes_from_lambda(cat,
                                )
                 station_mags.append(station_mag)
 
+            else:
+                logger.info("arrival sta:%s pha:%s dist=%.2f < min_dist(=%.2f) --> Skip" % \
+                            (fname, sta, arr.phase, R, min_dist))
+
         #else:
             #logger.warn("arrival sta:%s cha:%s arr pha:%s lambda_key:%s is NOT SET --> Skip" \
                         #% (sta, cha, arr.phase, lambda_key))
