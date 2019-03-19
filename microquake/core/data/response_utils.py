@@ -1,5 +1,6 @@
 
 import csv
+import os
 import pickle
 
 
@@ -75,6 +76,9 @@ def write_NRL_dump_to_file(filename='resources/L-22D.response'):
 
 
 def read_NRL_from_dump(filename='resources/L-22D.response'):
+
+    path = os.path.dirname(os.path.realpath(__file__))
+    filename = os.path.join(path, filename)
 
     with open(filename, 'rb') as f:
         response = pickle.load(f)

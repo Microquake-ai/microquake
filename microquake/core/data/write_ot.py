@@ -24,6 +24,8 @@ def write_OT_xml(sensor_file, sensor_type_file, cable_file, xml_outfile='OT.xml'
     if logger_in is not None:
         logger = logger_in
 
+    print("write_OT_xml: xml_outfile=%s" % xml_outfile)
+
     cables = read_cable_file(cable_file)
     sensor_types = read_sensor_types_file(sensor_type_file)
     inventory = load_inventory(sensor_file)
