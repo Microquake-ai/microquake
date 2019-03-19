@@ -13,16 +13,28 @@ import logging
 logger = logging.getLogger(__name__)
 
 def calc_focal_mechanisms(cat, settings, logger_in=None):
+    """
+    Prepare input arrays needed to calculate focal mechanisms
+    and pass these into hashwrap.hashwrapper
+
+    Return list of obspy focalmechanisms & list of matplotlib figs 
+
+    :param cat: obspy.core.event.Catalog
+    :type list: list of obspy.core.event.Events or microquake.core.event.Events
+    :param settings:hash settings
+    :type settings dictionary
+    :param logger_in: Optional logger to use instead of default module logger
+    :type logger_in: Handle to logger object
+
+    :returns: obsy_focal_mechanisms, matplotlib_figures
+    :rtype: list, list
+    """
 
     fname = 'calc_focal_mechanism'
 
     global logger
     if logger_in is not None:
         logger = logger_in
-
-    """
-    Prepare input arrays needed to run hashwrapper.calc_focal_mechanisms
-    """
 
     sname  = []
     p_pol  = []
@@ -83,13 +95,9 @@ def calc_focal_mechanisms(cat, settings, logger_in=None):
 
     events.append(event_dict)
 
-    """
-    for azi in sorted(events[0]['qazi']):
-        print(azi)
-    exit()
-    """
-
-    outputs = hashwrapper.calc_focal_mechanisms(events, settings, phase_format='FPFIT')
+    outputs = hashwrapper.calc_focal_mechanisms(events, settings,
+                                                phase_format='FPFIT',
+                                                logger_in=logger)
 
     focal_mechanisms = []
 
@@ -109,7 +117,7 @@ def calc_focal_mechanisms(cat, settings, logger_in=None):
                             evaluation_status = 'preliminary',
                             comments = [Comment(text="HASH v1.2 Quality=[%s]" % out['quality'])]
                            )
-        logger.info(fc)
+
         focal_mechanisms.append(fc)
 
         event = events[i]
