@@ -47,6 +47,9 @@ def read_nlloc_hypocenter_file(filename, picks=None,
     :rtype: ~microquake.core.event.Catalog
     """
     from microquake.core import event
+    from microquake.simul.eik import ray_tracer
+    from microquake.core.data.grid import read_grid
+    from glob import glob
     cat = event.Catalog()
 
     with open(filename) as hyp_file:
@@ -624,10 +627,7 @@ class NLL(object):
         self._clean_outputs()
         tmp = '%s/%s' % (self.base_folder, self.worker_folder)
         shutil.rmtree(tmp)
-<<<<<<< HEAD
-=======
 
->>>>>>> Removed debugs so back to completion
 
     def init_header_file(self):
         """
@@ -995,7 +995,7 @@ class NLL(object):
                 ray = ray_tracer(ttg, origin.loc, grid_coordinates=False)
 
                 arrival.distance = ray.length()
-                # arrival.ray = ray.nodes
+                arrival.ray = ray.nodes
         et = time()
         logger.info('completed ray tracing in %0.3f' % (et - st))
 

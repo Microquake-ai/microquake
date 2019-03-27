@@ -267,6 +267,7 @@ class Stream(obsstream.Stream):
 # st = st.composite()
 
 
+
 def is_valid(st_in, return_stream=False, STA=0.005, LTA=0.1, min_num_valid=5):
     """
         Determine if an event is valid or return valid traces in a  stream
@@ -325,15 +326,14 @@ def is_valid(st_in, return_stream=False, STA=0.005, LTA=0.1, min_num_valid=5):
         accept = True
 
         if len(i2) < 3:
-            if ratio < 7.5:
+            if ratio < 4:
                 accept = False
 
-        elif len(i2) > 4:
+        elif len(i2) >= 4:
             accept = False
-        else:
-            if ratio < 12.5:
-                accept = False
-
+        # else:
+        #     if ratio < 4:
+        #         accept = False
         if tspan > 0.1:
             accept = False
 
@@ -342,12 +342,13 @@ def is_valid(st_in, return_stream=False, STA=0.005, LTA=0.1, min_num_valid=5):
                 accept = True
 
         if accept:
-            trs_out.append(tr)
+            for tr_accepted in st_in.select(station=tr.stats.station):
+                trs_out.append(tr_accepted)
 
-    st.traces = trs_out
+    st_out = Stream(traces=trs_out)
 
     if return_stream:
-        return st
+        return st_out
     else:
         if len(st.unique_stations()) >= min_num_valid:
             return True
