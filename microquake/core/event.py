@@ -270,6 +270,10 @@ def _set_attr_handler(self, name, value, namespace='MICROQUAKE'):
             self[name] = value
         if type(value) is np.ndarray:
             value = "npy64_" + array_to_b64(value)
+        elif type(value) is str:
+            if "npy64_" in value:
+                value.replace("npy64_", "")
+                b64_to_array(value)
         self['extra'][name] = {'value': value, 'namespace': namespace}
     # recursive parse of 'extra' args when constructing uquake from obspy
     elif name == 'extra':
