@@ -175,6 +175,8 @@ class Arrival(obsevent.Arrival):
                   'dis_pulse_width', 'dis_pulse_area',
                   'smom','fit',
                   'hypo_dist_in_m',
+                  'vel_flux',
+                  'energy',
                   ]
 
     #extra_keys = ['ray', 'backazimuth', 'inc_angle', 'velocity_pulse', 'displacement_pulse']

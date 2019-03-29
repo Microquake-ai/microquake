@@ -170,15 +170,43 @@ def read_nlloc_hypocenter_file(filename, picks=None,
     # However, the NLLoc generated takeoff angles look to be incorrect (< 90 deg),
     #  likely due to how OT vertical up convention wrt NLLoc.
     # So instead, use the spp generated files *.azimuth.buf and *.takeoff.buf to overwrite these later
-                azi = float(tmp[23])
+    #      15       16       17              18  19       20          21       22     23 24
+    #  >   TTpred    Res       Weight    StaLoc(X  Y         Z)        SDist    SAzim  RAz  RDip RQual    Tcorr
+    #  >  0.209032  0.002185    1.2627  651.3046 4767.1881    0.9230    0.2578 150.58  -1.0  -1.0  0     0.0000
+
+
+                azi = float(tmp[22]) # Set to SAzim since that is guaranteed to be set
+                #azi = float(tmp[23])
                 toa = float(tmp[24])
 
                 dist = np.linalg.norm([sx * 1000 - origin.x,
                                        sy * 1000 - origin.y,
                                        sz * 1000 - origin.z])
 
+                '''
+                MTH: Some notes about the NLLOC output last.hyp phase lines:
+                    1. SDist - Is just epicentral distance so does not take into account dz (depth)
+                               So 3D Euclidean dist as calculated above will be (much) larger
+                    2. SAzim - NLLOC manual says this is measured from hypocenter CCW to station
+                               But it looks to me like it's actually clockwise!
+                    3. RAz - "Ray take−off azimuth at maximum likelihood hypocenter in degrees CCW from North"
+                              In a true 3D model (e.g., lateral heterogeneity) this could be different
+                              than SAzim.
+                              Have to set: LOCANGLES ANGLES_YES 5 to get the angles, otherwise defaults to -1
+                              Probably these are also actually measured clockwise from North
+
+                distxy = np.linalg.norm([sx * 1000 - origin.x,
+                                         sy * 1000 - origin.y])
+
                 sdist = float(tmp[21])
-                az2 = float(tmp[22])
+                sazim = float(tmp[22])
+                raz = float(tmp[23])
+                rdip = float(tmp[24])
+
+                print("Scan last.hyp: sta:%3s pha:%s dist_calc:%.1f sdist:%.1f sazim:%.1f raz:%.1f rdip:%.1f" % \
+                      (stname, phase, distxy, sdist*1e3, sazim, raz, rdip))
+
+                '''
 
                 arrival = Arrival()
                 arrival.phase = phase
@@ -619,9 +647,10 @@ class NLL(object):
     def _finishNLL(self):
         '''
         file = "%s/run/%s_%s.in" % (self.base_folder, self.base_name, self.worker_folder)
-        print("_finishNLL: Don't remove:%s" % file)
         print("_finishNLL: Don't remove tmp=%s/%s" % (self.base_folder, self.worker_folder))
+        return
         '''
+
         os.remove('%s/run/%s_%s.in' % (self.base_folder, self.base_name,
                                        self.worker_folder))
         self._clean_outputs()
@@ -840,7 +869,7 @@ class NLL(object):
                 ray = ray_tracer(ttg, coord, grid_coordinates=True,
                                  max_iter=100)
                 et = time()
-                print(et - st)
+                #print(et - st)
                 out_array[coord[0], coord[1], coord[2]] = ray.length()
 
             tmp = time_file.split('/')
@@ -993,6 +1022,12 @@ class NLL(object):
 
                 ttg = read_grid(fpath, format='NLLOC')
                 ray = ray_tracer(ttg, origin.loc, grid_coordinates=False)
+
+                '''
+                dist = arrival.distance
+                pk = arrival.pick_id.get_referred_object()
+                sta = pk.waveform_id.station_code
+                '''
 
                 arrival.distance = ray.length()
                 arrival.ray = ray.nodes

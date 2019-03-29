@@ -240,14 +240,25 @@ def get_spectra(st, event, inventory, synthetic_picks,calc_displacement=False,
 
                 #plot_spec(freqs, signal_fft, noise_fft, title=None)
 
-            # np/scipy ffts are not scaled by dt
-                signal_fft *= (dt * np.sqrt(2))
-                noise_fft  *= (dt * np.sqrt(2))
+                # np/scipy ffts are not scaled by dt
+                signal_fft *= dt
+                noise_fft  *= dt
+                '''
+                This is a 1-sided FFT (ie, we only have the +ve frequency half)
+                To conserve power a la Parseval's, we need to double
+                the power at each frequency *except* for DC & Nyquist
+                which are purely real and don't have a -ve freq.
+
+                Equivalently, we scale the FFT amps at these frequencies
+                by sqrt(2):
+                '''
+                signal_fft[1:-1] *= np.sqrt(2.)
+                noise_fft[1:-1]  *= np.sqrt(2.)
 
 
             # MTH: I have no clear reason for doing this:
-                signal_fft /= 2.
-                noise_fft  /= 2.
+                #signal_fft /= 2.
+                #noise_fft  /= 2.
 
                 #plot_signal(signal, noise)
 
