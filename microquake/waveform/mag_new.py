@@ -246,6 +246,85 @@ def calc_magnitudes_from_lambda(cat,
     return np.median(Mw_list), station_mags
 
 
+def calculate_energy_from_flux(cat,
+                               vp=5000.,
+                               vs=3500.,
+                               rho=2400.,
+                               use_sdr_rad=False,
+                               use_water_level=False,
+                               rad_min=0.2,
+                               **kwargs):
+    fname = 'calculate_energy_from_flux'
+
+    for event in cat:
+        origin = event.preferred_origin()
+        arrivals = origin.arrivals
+
+        use_sdr = False
+        if use_sdr_rad and event.preferred_focal_mechanism() is not None:
+            mech = event.preferred_focal_mechanism()
+            print(mech)
+            #print(mech.__dict__)
+            np1 = event.preferred_focal_mechanism().nodal_planes.nodal_plane_1
+            sdr = (np1.strike, np1.dip, np1.rake)
+            use_sdr = True
+
+        for phase in ['P', 'S']:
+
+            velocity = vp
+            # This is the rms rad pattern over focal sphere, squared
+            rad_pat = 4/15
+            if phase == 'S':
+                velocity = vs
+                rad_pat = 2/5
+
+            for arr in [x for x in arrivals if x.phase == phase]:
+                pk = arr.pick_id.get_referred_object()
+                sta = pk.waveform_id.station_code
+                phase = arr.phase
+
+                if arr.vel_flux is None:
+                    logger.info("%s: No vel_flux in [%s] arr for sta:%s" % (fname, phase, sta))
+                    continue
+
+                # could check for arr.hypo_dist_in_m here but it's almost identical
+                R = arr.distance
+                energy = (4.*np.pi*R**2) * rho * velocity * arr.vel_flux
+
+                scale = 1.
+                if use_sdr:
+                    if arr.get('takeoff_angle', None) and arr.get('azimuth', None):
+                        takeoff_angle = arr.takeoff_angle
+                        takeoff_azimuth = arr.azimuth
+                        strike=sdr[0]
+                        dip=sdr[1]
+                        rake=sdr[2]
+                        rad = double_couple_rad_pat(takeoff_angle, takeoff_azimuth,
+                                                    strike, dip, rake, phase=phase)
+
+                        msg=""
+                        if use_water_level and np.abs(rad) < rad_min:
+                            #rad = rad_min
+                            msg=" ** water-level"
+
+                        scale = rad_pat / rad**2
+
+                        #print("sta:%3s [%s] energy:%.5g rad**2:%.2g scaled:%.2g %s" % \
+                              #(sta, phase, energy, rad**2, energy*scale, msg))
+
+                        #energy *= scale
+
+                        #logger.debug("%s: phase=%s rad=%f" % (fname, P_or_S, rad))
+                        #magnitude_comment += ' rad_pat calculated for (s,d,r)=\
+                                #(%.1f,%.1f,%.1f) theta:%.1f az:%.1f pha:%s |rad|=%f' % \
+                                #(strike, dip, rake, takeoff_angle, takeoff_azimuth, P_or_S, rad)
+
+                arr.energy = energy
+
+    return
+
+
+
 if __name__ == '__main__':
 
     main()

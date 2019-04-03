@@ -253,7 +253,8 @@ class Stream(obsstream.Stream):
 
 
 
-def is_valid(st_in, return_stream=False, STA=0.005, LTA=0.1, min_num_valid=5):
+def is_valid(st_in, return_stream=False, STA=0.005, LTA=0.1,
+             min_num_valid=5, freqmin=100, freqmax=1000):
     """
         Determine if an event is valid or return valid traces in a  stream
         :param st_in: stream
@@ -267,6 +268,10 @@ def is_valid(st_in, return_stream=False, STA=0.005, LTA=0.1, min_num_valid=5):
         :type LTA: float
         :param min_num_valid: minimum number of valid traces to declare the
         event valid
+        :param freqmin: minimum filter frequency
+        :type freqmin: float
+        :param freqmax: maximum filter frequency
+        :type freqmax: float
         :type min_num_valid: int
         :rtype: bool or microquake.core.stream.Stream
     """
@@ -279,7 +284,8 @@ def is_valid(st_in, return_stream=False, STA=0.005, LTA=0.1, min_num_valid=5):
     trstd = []
     trmax = []
     trs_out = []
-    st_comp = composite_traces(st)
+    st_comp = st.filter('bandpass', freqmin=freqmin,
+                        freqmax=freqmax).composite()
     for tr in st_comp:
         if not np.any(tr.data):
             continue
@@ -304,22 +310,27 @@ def is_valid(st_in, return_stream=False, STA=0.005, LTA=0.1, min_num_valid=5):
         try:
             tspan = (np.max(i2) - np.min(i2)) / sampling_rate
         except:
-            from IPython.core.debugger import Tracer
-            Tracer()()
+            pass
+
+        import matplotlib.pyplot as plt
+        # plt.plot(cft)
+        # plt.show()
+
+        # import pdb; pdb.set_trace()
 
         ratio = np.max(np.abs(tr.data)) / np.std(tr.data)
 
         accept = True
 
         if len(i2) < 3:
-            if ratio < 7.5:
+            if ratio < 4:
                 accept = False
 
-        elif len(i2) > 4:
+        elif len(i2) >= 4:
             accept = False
-        else:
-            if ratio < 12.5:
-                accept = False
+        # else:
+        #     if ratio < 4:
+        #         accept = False
         if tspan > 0.1:
             accept = False
 
@@ -328,12 +339,13 @@ def is_valid(st_in, return_stream=False, STA=0.005, LTA=0.1, min_num_valid=5):
                 accept = True
 
         if accept:
-            trs_out.append(tr)
+            for tr_accepted in st_in.select(station=tr.stats.station):
+                trs_out.append(tr_accepted)
 
-    st.traces = trs_out
+    st_out = Stream(traces=trs_out)
 
     if return_stream:
-        return st
+        return st_out
     else:
         if len(st.unique_stations()) >= min_num_valid:
             return True

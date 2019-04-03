@@ -673,6 +673,145 @@ def set_pick_snrs(st, picks, pre_wl=.03, post_wl=.03):
     return
 
 
+
+from scipy.fftpack import rfft
+from microquake.waveform.smom_mag_utils import npow2, unpack_rfft
+
+def calc_velocity_flux(st_in,
+                       cat,
+                       phase_list=None,
+                       use_fixed_window=True,
+                       pre_P=.01,
+                       P_len=.05,
+                       pre_S=.01,
+                       S_len=.1,
+                       Q=1e12,
+                       correct_attenuation=False,
+                       debug=False, logger_in=logger):
+
+    fname = "calc_velocity_flux"
+
+    global logger
+    if logger_in is not None:
+        logger = logger_in
+
+    if phase_list is None:
+        phase_list = ['P']
+
+    #MTH: Try to avoid copying cat - it causes the events to lose their link to preferred_origin!
+    #cat = cat_in.copy()
+    # Defensive copy - not currently needed since we only trim on copies, still ...
+    st = st_in.copy().detrend('demean').detrend('linear')
+
+    for event in cat:
+        origin = event.preferred_origin()
+        arrivals = origin.arrivals
+        picks = [arr.pick_id.get_referred_object() for arr in arrivals]
+        pick_dict = copy_picks_to_dict(picks)
+
+        for phase in phase_list:
+
+            for sta in st.unique_stations():
+                trs = st.select(station=sta)
+                sensor_type = get_sensor_type_from_trace(trs[0])
+
+                if len(trs) != 3:
+                    logger.info("sta:%3s has %d chans --> skip" % (sta, len(trs)))
+                    continue
+                if sensor_type != "VEL":
+                    logger.info("sta:%3s sensor_type=%s != VEL --> skip" % (sta, sensor_type))
+                    continue
+
+                if sta in pick_dict and phase in pick_dict[sta]:
+                    pick = pick_dict[sta][phase]
+                    arrival = get_arrival_from_pick(arrivals, pick)
+                else:
+                    logger.info("%s: sta:%3s has no [%s] arrival --> skip" % (fname, sta, phase))
+                    continue
+
+                # ATODO: Decide if we need to bring in synthetic picks to ensure
+                #        P window closes before S
+
+                #if 'P' in pick_dict[sta] and 'S' in pick_dict[sta]:
+                    #sptime =  pick_dict[sta]['S'].time - pick_dict[sta]['P'].time
+                    #S_P_times.append( (sta, arrival.distance, sptime))
+                    #print("sta:%3s S-P:%f" % (sta, pick_dict[sta]['S'].time - pick_dict[sta]['P'].time))
+
+                if use_fixed_window:
+                    if phase == 'P':
+                        pre = pre_P
+                        win_secs = P_len
+                    else:
+                        pre = pre_S
+                        win_secs = S_len
+
+                    starttime = pick.time - pre
+                    endtime = starttime + win_secs
+
+                not_enough_trace = False
+
+                for tr in trs:
+                    if starttime < tr.stats.starttime or endtime > tr.stats.endtime:
+                        logger.warn("%s: sta:%s pha:%s tr:%s is too short to trim --> Don't use" % \
+                                    (fname, sta, phase, tr.get_id()))
+                        not_enough_trace = True
+                        break
+
+                if not_enough_trace:
+                    continue
+
+
+                tr3 = trs.copy()
+
+                tr3.trim(starttime=starttime, endtime=endtime)
+                dt= tr3[0].stats.delta
+
+                flux_t = np.sum( [tr.data**2 for tr in tr3]) * dt
+
+                if not correct_attenuation:
+                    flux = flux_t
+
+                else:
+                    print("*** %s: Correcting for Attenuation!" % fname)
+                    # travel_time: from pick_time - origin or from R/v where v={alpha,beta}
+                    travel_time = pick.time - origin.time
+
+                    flux_f = 0.
+                    for tr in tr3:
+                        data = tr.data
+                        nfft = npow2(data.size)
+                        df = 1./(dt * float(nfft))    # df is same as for 2-sided case
+                        Y,freqs = unpack_rfft(rfft(data, n=nfft), df)
+                        Y *= dt
+                    # 1-sided: N/2 -1 +ve freqs + [DC + Nyq] = N/2 + 1 values:
+                        Y[1:-1] *= np.sqrt(2.)
+                    # Correct for attenuation: For testing making Q=1e12 so that flux_f = flux_t by Parseval's
+                        tstar = travel_time / Q
+                        #Y *= np.exp(np.pi * freqs * tstar)
+                        #fsum = np.sum(np.abs(Y)*np.abs(Y))*df
+                        fsum = np.sum( np.abs(Y)*np.abs(Y) * np.exp(np.pi*freqs*tstar))*df
+
+                        flux_f += fsum
+
+                    flux = flux_f
+
+                    #print("Parseval's: nfft=%7d df=%12.6g flux_f=%12.10g flux_t=%12.10g" % \
+                          #(nfft, df, fsum, flux_t))
+
+                    #print("sta:%3s flux_t:%g flux_f:%g" % (sta, flux_t, flux_f))
+
+                arrival.vel_flux = flux
+
+
+    return
+
+
+    #foo = sorted([x for x in S_P_times], key=lambda x: x[2])
+    #for item in foo:
+        #print(item)
+
+
+
 def get_arrival_from_pick(arrivals, pick):
     """
     return arrival corresponding to pick
