@@ -3,29 +3,30 @@
 
 """
 
-import warnings
 import numpy as np
 from obspy.core.event.base import Comment, WaveformStreamID
 from obspy.core.event.base import ResourceIdentifier
 from obspy.core.event.magnitude import Magnitude, StationMagnitude, StationMagnitudeContribution
 
-#from microquake.core.event import (Origin, CreationInfo, Event)
 from microquake.waveform.amp_measures import measure_pick_amps
-from microquake.waveform.smom_mag import measure_pick_smom
+from microquake.waveform.smom_measure import measure_pick_smom
 from microquake.waveform.mag_utils import double_couple_rad_pat, free_surface_displacement_amplification
 
+import warnings
 warnings.simplefilter("ignore", UserWarning)
 warnings.simplefilter("ignore")
 
-#1234567890123456789012345678901234567890123456789012345678901234567890123456789
 
 import logging
 logger = logging.getLogger(__name__)
 
 
-def moment_magnitude_new(st, event, vp=5300, vs=3500, ttpath=None,
-                         only_triaxial=True, density=2700, min_dist=20,
-                         fmin=20, fmax=1000, use_smom=False):
+def moment_magnitude_new(st, event,
+                         vp=5300, vs=3500, density=2700,
+                         only_triaxial=True,
+                         min_dist=20,
+                         fmin=20, fmax=1000,
+                         use_smom=False):
 
     picks = event.picks
     if use_smom:
@@ -119,7 +120,7 @@ def calc_magnitudes_from_lambda(cat,
 # Don't loop over event here, do it in the calling routine
 #   so that vp/vs can be set for correct source depth
     event = cat[0]
-    origin = event.preferred_origin()
+    origin = event.preferred_origin() if event.preferred_origin() else event.origins[0]
     ev_loc = origin.loc
     origin_id = origin.resource_id
 
@@ -201,6 +202,8 @@ def calc_magnitudes_from_lambda(cat,
 
         _lambda = getattr(arr, lambda_key)
 
+        #print("phase=%s lambda=%s" % (arr.phase, _lambda))
+
         if _lambda is not None:
 
             M0_scale = 4. * np.pi * density * v**3 / (rad * fs_factor)
@@ -216,6 +219,7 @@ def calc_magnitudes_from_lambda(cat,
 
                 M0 = M0_scale * R * np.abs(_lambda)
                 Mw = 2./3. * np.log10(M0) - 6.033
+                #print("MTH: _lambda=%g R=%.1f M0=%g" % (np.abs(_lambda), R, M0))
 
                 Mw_list.append(Mw)
 
@@ -247,9 +251,9 @@ def calc_magnitudes_from_lambda(cat,
 
 
 def calculate_energy_from_flux(cat,
-                               vp=5000.,
+                               vp=5300.,
                                vs=3500.,
-                               rho=2400.,
+                               rho=2700.,
                                use_sdr_rad=False,
                                use_water_level=False,
                                rad_min=0.2,
@@ -257,69 +261,63 @@ def calculate_energy_from_flux(cat,
     fname = 'calculate_energy_from_flux'
 
     for event in cat:
-        origin = event.preferred_origin()
-        arrivals = origin.arrivals
+        origin = event.preferred_origin() if event.preferred_origin() else event.origins[0]
 
         use_sdr = False
         if use_sdr_rad and event.preferred_focal_mechanism() is not None:
             mech = event.preferred_focal_mechanism()
-            print(mech)
+            #print(mech)
             #print(mech.__dict__)
             np1 = event.preferred_focal_mechanism().nodal_planes.nodal_plane_1
             sdr = (np1.strike, np1.dip, np1.rake)
             use_sdr = True
 
-        for phase in ['P', 'S']:
+        #for phase in ['P', 'S']:
+            #for arr in [x for x in arrivals if x.phase == phase]:
+
+        for arr in origin.arrivals:
+            pk = arr.pick_id.get_referred_object()
+            sta = pk.waveform_id.station_code
+            phase = arr.phase
 
             velocity = vp
-            # This is the rms rad pattern over focal sphere, squared
-            rad_pat = 4/15
+            rad_pat = 4/15 # rms P rad pattern (squared) over focal sphere
             if phase == 'S':
                 velocity = vs
                 rad_pat = 2/5
 
-            for arr in [x for x in arrivals if x.phase == phase]:
-                pk = arr.pick_id.get_referred_object()
-                sta = pk.waveform_id.station_code
-                phase = arr.phase
+            if arr.vel_flux is None:
+                logger.info("%s: No vel_flux in [%s] arr for sta:%s" % (fname, phase, sta))
+                continue
 
-                if arr.vel_flux is None:
-                    logger.info("%s: No vel_flux in [%s] arr for sta:%s" % (fname, phase, sta))
-                    continue
+            # could check for arr.hypo_dist_in_m here but it's almost identical
+            R = arr.distance
+            energy = (4.*np.pi*R**2) * rho * velocity * arr.vel_flux
 
-                # could check for arr.hypo_dist_in_m here but it's almost identical
-                R = arr.distance
-                energy = (4.*np.pi*R**2) * rho * velocity * arr.vel_flux
+            scale = 1.
+            if use_sdr:
+                if arr.get('takeoff_angle', None) and arr.get('azimuth', None):
+                    takeoff_angle = arr.takeoff_angle
+                    takeoff_azimuth = arr.azimuth
+                    strike=sdr[0]
+                    dip=sdr[1]
+                    rake=sdr[2]
+                    rad = double_couple_rad_pat(takeoff_angle, takeoff_azimuth,
+                                                strike, dip, rake, phase=phase)
 
-                scale = 1.
-                if use_sdr:
-                    if arr.get('takeoff_angle', None) and arr.get('azimuth', None):
-                        takeoff_angle = arr.takeoff_angle
-                        takeoff_azimuth = arr.azimuth
-                        strike=sdr[0]
-                        dip=sdr[1]
-                        rake=sdr[2]
-                        rad = double_couple_rad_pat(takeoff_angle, takeoff_azimuth,
-                                                    strike, dip, rake, phase=phase)
+                    if use_water_level and np.abs(rad) < rad_min:
+                        rad = rad_min
 
-                        msg=""
-                        if use_water_level and np.abs(rad) < rad_min:
-                            #rad = rad_min
-                            msg=" ** water-level"
+                    scale = rad_pat / rad**2
 
-                        scale = rad_pat / rad**2
+            energy *= scale
 
-                        #print("sta:%3s [%s] energy:%.5g rad**2:%.2g scaled:%.2g %s" % \
-                              #(sta, phase, energy, rad**2, energy*scale, msg))
+            #logger.debug("%s: phase=%s rad=%f" % (fname, P_or_S, rad))
+            #magnitude_comment += ' rad_pat calculated for (s,d,r)=\
+            #(%.1f,%.1f,%.1f) theta:%.1f az:%.1f pha:%s |rad|=%f' % \
+            #(strike, dip, rake, takeoff_angle, takeoff_azimuth, P_or_S, rad)
 
-                        #energy *= scale
-
-                        #logger.debug("%s: phase=%s rad=%f" % (fname, P_or_S, rad))
-                        #magnitude_comment += ' rad_pat calculated for (s,d,r)=\
-                                #(%.1f,%.1f,%.1f) theta:%.1f az:%.1f pha:%s |rad|=%f' % \
-                                #(strike, dip, rake, takeoff_angle, takeoff_azimuth, P_or_S, rad)
-
-                arr.energy = energy
+            arr.energy = energy
 
     return
 

@@ -1,7 +1,8 @@
 import numpy as np
 
-#from microquake.core.data.inventory import inv_station_list_to_dict
-
+"""
+    Place to keep trace transforms - mainly rotations to ENZ, PSVSH, etc.
+"""
 
 def rotate_to_P_SV_SH(st, cat, debug=False):
 

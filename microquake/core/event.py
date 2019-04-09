@@ -164,6 +164,9 @@ class Pick(obsevent.Pick):
                self.evaluation_status, self.resource_id)
         return string
 
+    def get_sta(self):
+        if self.waveform_id is not None:
+            return self.waveform_id.station_code
 
 class Arrival(obsevent.Arrival):
     __doc__ = obsevent.Arrival.__doc__.replace('obspy', 'microquake')
@@ -173,10 +176,10 @@ class Arrival(obsevent.Arrival):
                   'peak_vel', 'tpeak_vel', 't1', 't2', 'pulse_snr',
                   'peak_dis', 'tpeak_dis', 'max_dis', 'tmax_dis',
                   'dis_pulse_width', 'dis_pulse_area',
-                  'smom','fit',
+                  'smom','fit','tstar',
                   'hypo_dist_in_m',
-                  'vel_flux',
-                  'energy',
+                  'vel_flux', 'energy',
+                  'traces',
                   ]
 
     #extra_keys = ['ray', 'backazimuth', 'inc_angle', 'velocity_pulse', 'displacement_pulse']
@@ -191,6 +194,28 @@ class Arrival(obsevent.Arrival):
         if self.pick_id is not None:
             return self.pick_id.get_referred_object()
 
+def get_arrival_from_pick(arrivals, pick):
+    """
+      return arrival corresponding to pick
+
+      :param arrivals: list of arrivals
+      :type arrivals: list of either obspy.core.event.origin.Arrival
+                      or microquake.core.event.origin.Arrival
+      :param pick: P or S pick
+      :type pick: either obspy.core.event.origin.Pick
+                      or microquake.core.event.origin.Pick
+      :return arrival
+      :rtype: obspy.core.event.origin.Arrival or
+              microquake.core.event.origin.Arrival
+    """
+
+    arrival = None
+    for arr in arrivals:
+        if arr.pick_id == pick.resource_id:
+            arrival = arr
+            break
+
+    return arrival
 
 def read_events(*args, **kwargs):
 
