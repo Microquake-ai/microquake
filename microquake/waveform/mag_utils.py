@@ -1,15 +1,9 @@
 
-import warnings
-warnings.simplefilter("ignore", UserWarning)
-warnings.simplefilter("ignore")
-
-from microquake.core.event import (Origin, CreationInfo, Event)
-
-from microquake.waveform.amp_measures import measure_pick_amps
-from microquake.waveform.smom_mag import measure_pick_smom
+#import warnings
+#warnings.simplefilter("ignore", UserWarning)
+#warnings.simplefilter("ignore")
 
 import numpy as np
-
 
 cos= np.cos
 sin= np.sin

@@ -1,4 +1,5 @@
 import numpy as np
+
 from scipy import optimize
 from scipy.fftpack import fft, fftfreq, rfft, rfftfreq
 #from scipy.optimize import fmin, fmin_powell, curve_fit
@@ -8,14 +9,132 @@ from microquake.core.data.inventory import get_sensor_type_from_trace, get_corne
 from microquake.core.util.tools import copy_picks_to_dict
 
 import matplotlib.pyplot as plt
+import copy
+import logging
+logger = logging.getLogger(__name__)
 
 """
-    mag_utils - a collection of routines to assist in the moment magnitude calculation
+    smom_measures - A collection of functions used in the calculation of 
+                     smom (long-period plateau) in the frequency domain
 """
+
+def measure_pick_smom(st, inventory, event, synthetic_picks,
+                      fmin=20, fmax=1000,
+                      use_fixed_fmin_fmax=False,
+                      plot_fit=False,
+                      P_or_S='P',
+                      debug_level=0,
+                      logger_in=None,
+                      **kwargs):
+    """
+        Calculate spectra of each channel/arrival and compare to Brune model to fit
+        for long_period plateau (smom)
+    """
+
+    fname = "measure_pick_smom"
+
+    global logger
+    if logger_in is not None:
+        logger = logger_in
+
+
+# Get P(S) spectra at all stations/channels that have a P(S) arrival:
+    sta_dict = get_spectra(st, event, inventory, synthetic_picks, calc_displacement=False,
+                           S_win_len=.1, P_or_S=P_or_S)
+
+    vel_dict = copy.deepcopy(sta_dict)
+
+# Stack vel spectra to get fc ~ peak_f
+# Note that fc_S is predicted to be < fc_P 
+    stacked_spec, freqs = stack_spectra(sta_dict)
+    peak_f = peak_freq(stacked_spec, freqs, fmin=25.)
+
+    if debug_level > 0:
+        logger.debug("%s: pha:%s velocity stack corner freq fc=%.1f" % (fname, P_or_S, peak_f))
+    if debug_level > 1:
+        plot_spec(stacked_spec, freqs, title='Stack [%s] Vel spec peak_f=%.1f' % (P_or_S, peak_f))
+
+# Now recalculate the spectra as Displacment spectra:
+
+    sta_dict = get_spectra(st, event, inventory, synthetic_picks, calc_displacement=True,
+                           S_win_len=.1, P_or_S=P_or_S)
+    stacked_spec, freqs = stack_spectra(sta_dict)
+    fit, fc_stack = calc_fit1(stacked_spec, freqs, fmin=1, fmax=fmax, fit_displacement=True)
+
+    # Calculate fmin/fmax from velocity signal/noise spec
+    #   and add into this diplacement spec dict:
+    for sta_code, sta_dd in sta_dict.items():
+        for cha_code, cha_dict in sta_dd['chan_spec'].items():
+            cha_dict['fmin'] = vel_dict[sta_code]['chan_spec'][cha_code]['fmin']
+            cha_dict['fmax'] = vel_dict[sta_code]['chan_spec'][cha_code]['fmax']
+            #print("sta:%3s cha:%s --> set fmin=%.1f fmax=%.1f" % (sta_code, cha_code, fmin, fmax))
+
+    fit,smom_dict = calc_fit(sta_dict, fc=peak_f, fmin=fmin, fmax=fmax,
+                             plot_fit=plot_fit,
+                             debug=False,
+                             use_fixed_fmin_fmax=use_fixed_fmin_fmax)
+
+    phase = P_or_S
+    arr_dict = {}
+    arrivals = [arr for arr in event.preferred_origin().arrivals if arr.phase == phase]
+    for arr in arrivals:
+        pk = arr.get_pick()
+        sta= pk.get_sta()
+        if sta not in arr_dict:
+            arr_dict[sta] = {}
+        arr_dict[sta][phase] = arr
+
+    for sta, sta_dict in smom_dict.items():
+        smoms=[]
+        fits=[]
+        ts=[]
+        for cha, cha_dict in sta_dict.items():
+            smoms.append(cha_dict['smom'])
+            fits.append(cha_dict['fit'])
+            ts.append(cha_dict['tstar'])
+
+        smom = np.sqrt(np.sum(np.array(smoms)**2))
+        fit = np.sum(np.array(fits))/float(len(fits))
+        fit = np.mean(fits)
+        tstar = np.median(ts)
+
+        if debug_level > 0:
+            logger.debug("%s: sta:%3s pha:%s smom:%12.10g ts:%.4f nchans:%d" % \
+                         (fname, sta, phase, smom, tstar, len(fits)))
+
+        arr = arr_dict[sta][phase]
+        arr.smom = smom
+        arr.fit = fit
+        arr.tstar = tstar
+
+    return smom_dict, peak_f
+
+
+def plot_spec(spec, freqs, title='Stacked spec'):
+
+    plt.loglog(freqs, spec, color='blue')
+    plt.xlim(1e0, 3e3)
+
+    if title:
+        plt.title(title)
+    plt.grid()
+    plt.show()
 
 
 def peak_freq(spec_array, freqs, fmin=0., fmax=None):
     """ Return peak_f of spec_array within bounds: fmin <= freqs <= fmax
+
+        :param spec_array: Input spectrum
+        :type  spec_array: np.array
+        :param freqs: Corresponding frequencies
+        :type  freqs: np.array
+        :param fmin: Restrict peak search above this freq
+        :type  fmin: float
+        :param fmax: Restrict peak search below this freq
+        :type  fmax: float
+
+        :return: peak frequency within bounds: fmin <= peak_frequency <= fmax
+        :rtype: float
     """
 
     if fmax is None:
@@ -27,7 +146,7 @@ def peak_freq(spec_array, freqs, fmin=0., fmax=None):
 
 
 def stack_spectra(sta_dict):
-    """ stack the pre-calculated spectra (fft) of each channel
+    """ stack the (normalized) pre-calculated spectra (fft) of each channel
 
         :param sta_dict: dictionary of pre-calculated P & S channel spectra (complex values) at each station
         :return: normalized_spectrum_stack (real modulus), freqs
@@ -37,7 +156,6 @@ def stack_spectra(sta_dict):
     stack = 0.
     n=0.
     for sta_code, sta in sta_dict.items():
-        #print("  sta:%3s" % sta_code)
         for cha_code, cha in sta['chan_spec'].items():
             signal_fft, freqs, noise_fft = (cha['signal_fft'], cha['freqs'], cha['noise_fft'])
 
@@ -77,7 +195,9 @@ def get_spectra(st, event, inventory, synthetic_picks,calc_displacement=False,
 
     origin = event.preferred_origin() if event.preferred_origin() else event.origins[0]
 
-    pick_dict = copy_picks_to_dict(event.picks)
+    # Only use picks that have an arrival used for this origin:
+    picks = [arr.pick_id.get_referred_object() for arr in origin.arrivals]
+    pick_dict = copy_picks_to_dict(picks)
 
     synthetic_dict = copy_picks_to_dict(synthetic_picks)
 
@@ -205,7 +325,8 @@ def get_spectra(st, event, inventory, synthetic_picks,calc_displacement=False,
                     print("%s: Not yet set up to handle input traces = DISPLACMENT !!" % fname)
                     continue
                 else:
-                    print("%s: ERROR: sensor_type=[%s] is unknown" % (fname, sensor_type))
+                    print("%s: ERROR: sta:%3s cha:%s sensor_type=[%s] is unknown" % \
+                          (fname, sta_code, cha_code, sensor_type))
                     continue
 
                 if calc_displacement:
@@ -233,10 +354,17 @@ def get_spectra(st, event, inventory, synthetic_picks,calc_displacement=False,
                     if fmin is None or fc1 > fmin:
                         fmin = fc1
 
+                    if fmax is None:
+                        fmax = freqs[-1]
+                        #plot_signal(signal, noise)
+                        #plot_spec(freqs, signal_fft, noise_fft, title=None)
+                        #exit()
+
                     ch['fmin'] = fmin
                     ch['fmax'] = fmax
 
-                # What to do if fmax is None ?
+                    #print("get_spectra: sta:%s cha:%s fmin:%s fmax:%s" % (sta_code, cha_code, fmin, fmax))
+
 
                 #plot_spec(freqs, signal_fft, noise_fft, title=None)
 
@@ -255,11 +383,6 @@ def get_spectra(st, event, inventory, synthetic_picks,calc_displacement=False,
                 signal_fft[1:-1] *= np.sqrt(2.)
                 noise_fft[1:-1]  *= np.sqrt(2.)
 
-
-            # MTH: I have no clear reason for doing this:
-                #signal_fft /= 2.
-                #noise_fft  /= 2.
-
                 #plot_signal(signal, noise)
 
                 ch['nfft'] = nfft
@@ -276,9 +399,15 @@ def get_spectra(st, event, inventory, synthetic_picks,calc_displacement=False,
                 chans[tr.stats.channel] = ch
             sta['chan_spec'] = chans
 
+            # end for tr in trs
+        # end if trs
+    # end for sta in sta_dict
 
     return sta_dict
 
+
+def brune_dis_spec_without_attenuation(fc: float, mom: float, f: float) -> float :
+    return mom * (fc * fc) / (fc * fc + f * f)
 
 def brune_dis_spec(fc: float, mom: float, ts: float, f: float) -> float :
     return mom * (fc * fc) / (fc * fc + f * f) * np.exp(-np.pi * ts * f)
@@ -478,11 +607,13 @@ def calc_fit(sta_dict, fc, fmin=20., fmax=1000.,
             fit += fopt
 
             ch_dict['smom'] = sol[0]
+            ch_dict['tstar'] = sol[1]
             ch_dict['fit'] = fopt
             ch_dict['P_or_S'] = cha['P_or_S']
 
             if debug:
-                print("calc_fit: sta:%s cha:%s smom:%12.10g fit:%.2f" % (sta_code, cha_code, sol[0], fopt))
+                print("calc_fit: sta:%s cha:%s smom:%12.10g fit:%.2f ts=%f" % (sta_code, cha_code, sol[0], fopt, sol[1]))
+                #print("calc_fit: sta:%s cha:%s smom:%12.10g fit:%.2f" % (sta_code, cha_code, sol[0], fopt))
 
             if plot_fit:
                 model_spec = np.array( np.zeros(freqs.size), dtype=np.float_)
@@ -571,7 +702,7 @@ def plot_spec(freqs, signal_fft, noise_fft=None, title=None):
     #plt.loglog(freqs, model_spec,  color='green')
     #plt.legend(['signal', 'noise', 'model'])
     plt.xlim(1e0, 3e3)
-    plt.ylim(1e-8, 1.2e-4)
+    #plt.ylim(1e-8, 1.2e-4)
     #plt.ylim(1e-12, 1e-4)
     if title:
         plt.title(title)
@@ -633,8 +764,6 @@ def unpack_rfft(rfft, df):
 
     return c_arr, freqs
 
-
-import numpy
 
 def smooth(x,window_len=11,window='hanning'):
     """smooth the data using a window with requested size.
