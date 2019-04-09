@@ -247,12 +247,12 @@ def get_spectra(st, event, inventory, synthetic_picks,calc_displacement=False,
 
         d = {}
 
-        if 'P' in pick_dict[sta_code]:
+        if 'P' in pick_dict[sta_code] and pick_dict[sta_code]['P'].evaluation_status != "rejected":
             d['ptime']   = pick_dict[sta_code]['P'].time
         else:
             d['ptime']   = synthetic_dict[sta_code]['P'].time
 
-        if 'S' in pick_dict[sta_code]:
+        if 'S' in pick_dict[sta_code] and pick_dict[sta_code]['S'].evaluation_status != "rejected":
             d['stime']   = pick_dict[sta_code]['S'].time
         else:
             d['stime']   = synthetic_dict[sta_code]['S'].time
@@ -290,6 +290,11 @@ def get_spectra(st, event, inventory, synthetic_picks,calc_displacement=False,
 
         noise_end   = sta['ptime'] - pre_window_start_sec
         noise_start = noise_end - signal_len
+        if signal_start > signal_end:
+            print("Signal start time larger the end time, continuing")
+            print("*** sta:%3s ptime:%s stime:%s P_or_S:%s pre_win:%f S_win:%f" % \
+                (sta_code, sta['ptime'], sta['stime'], P_or_S, pre_window_start_sec, S_win_len))
+            continue
 
         trs = st.select(station=sta_code)
         if trs:

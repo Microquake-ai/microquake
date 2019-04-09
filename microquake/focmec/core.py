@@ -12,7 +12,7 @@ from obspy.core.event.base import Comment
 import logging
 logger = logging.getLogger(__name__)
 
-def calc_focal_mechanisms(cat, settings, logger_in=None):
+def calc_focal_mechanisms(cat, settings, logger_in=None, do_plot=False):
     """
     Prepare input arrays needed to calculate focal mechanisms
     and pass these into hashwrap.hashwrapper
@@ -125,16 +125,15 @@ def calc_focal_mechanisms(cat, settings, logger_in=None):
         title = "%s (s,d,r)_1=(%.1f,%.1f,%.1f) _2=(%.1f,%.1f,%.1f)" % \
                 (event['event_info'], p1.strike, p1.dip, p1.rake, p2.strike,p2.dip,p2.rake)
 
-        gcf = test_stereo(np.array(event['qazi']),np.array(event['qthe']),np.array(event['p_pol']),\
-                    sdr=[p1.strike,p1.dip,p1.rake], title=title)
-
-        plot_figures.append(gcf)
+        if do_plot:
+            gcf = test_stereo(np.array(event['qazi']),np.array(event['qthe']),np.array(event['p_pol']),\
+                        sdr=[p1.strike,p1.dip,p1.rake], title=title)
+            plot_figures.append(gcf)
 
     return focal_mechanisms, plot_figures
 
 
 import matplotlib.pyplot as plt
-import mplstereonet
 from obspy.imaging.beachball import aux_plane
 
 def test_stereo(azimuths,takeoffs,polarities,sdr=[], title=None):
