@@ -49,6 +49,12 @@ def measure_pick_smom(st, inventory, event, synthetic_picks,
     stacked_spec, freqs = stack_spectra(sta_dict)
     peak_f = peak_freq(stacked_spec, freqs, fmin=25.)
 
+    #fit,smom_dict = calc_fit(vel_dict, fc=peak_f, fmin=fmin, fmax=fmax,
+                             #plot_fit=plot_fit,
+                             #debug=False,
+                             #use_fixed_fmin_fmax=use_fixed_fmin_fmax)
+    #exit()
+
     if debug_level > 0:
         logger.debug("%s: pha:%s velocity stack corner freq fc=%.1f" % (fname, P_or_S, peak_f))
     if debug_level > 1:
@@ -88,15 +94,26 @@ def measure_pick_smom(st, inventory, event, synthetic_picks,
         smoms=[]
         fits=[]
         ts=[]
+        fmin=[]
+        fmax=[]
         for cha, cha_dict in sta_dict.items():
             smoms.append(cha_dict['smom'])
             fits.append(cha_dict['fit'])
             ts.append(cha_dict['tstar'])
+            fmin.append(cha_dict['fmin'])
+            fmax.append(cha_dict['fmax'])
+            #print("  cha:%s smom:%s fmin:%s fmax:%s" % (cha, smoms[-1], fmin[-1], fmax[-1]))
+            #print("  cha:%s smom:%s" % (cha, cha_dict['smom']))
 
         smom = np.sqrt(np.sum(np.array(smoms)**2))
         fit = np.sum(np.array(fits))/float(len(fits))
         fit = np.mean(fits)
         tstar = np.median(ts)
+        min_f = np.max(fmin)
+        max_f = np.min(fmax)
+
+        #print("%s: sta:%3s pha:%s smom:%12.10g ts:%.4f nchans:%d fmin:%s" % \
+                         #(fname, sta, phase, smom, tstar, len(fits), fmin))
 
         if debug_level > 0:
             logger.debug("%s: sta:%3s pha:%s smom:%12.10g ts:%.4f nchans:%d" % \
@@ -106,6 +123,13 @@ def measure_pick_smom(st, inventory, event, synthetic_picks,
         arr.smom = smom
         arr.fit = fit
         arr.tstar = tstar
+        arr.fmin = min_f
+        arr.fmax = max_f
+        #arr.fmin = max(fmin)
+        #arr.fmax = min(fmax)
+        print("%s: sta:%3s pha:%s smom:%12.10g ts:%.4f nchans:%d fmin:%f fmax:%f" % \
+                         (fname, sta, phase, smom, tstar, len(fits), min_f, max_f))
+
 
     return smom_dict, peak_f
 
@@ -361,15 +385,9 @@ def get_spectra(st, event, inventory, synthetic_picks,calc_displacement=False,
 
                     if fmax is None:
                         fmax = freqs[-1]
-                        #plot_signal(signal, noise)
-                        #plot_spec(freqs, signal_fft, noise_fft, title=None)
-                        #exit()
 
                     ch['fmin'] = fmin
                     ch['fmax'] = fmax
-
-                    #print("get_spectra: sta:%s cha:%s fmin:%s fmax:%s" % (sta_code, cha_code, fmin, fmax))
-
 
                 #plot_spec(freqs, signal_fft, noise_fft, title=None)
 
@@ -410,9 +428,8 @@ def get_spectra(st, event, inventory, synthetic_picks,calc_displacement=False,
 
     return sta_dict
 
-
-def brune_dis_spec_without_attenuation(fc: float, mom: float, f: float) -> float :
-    return mom * (fc * fc) / (fc * fc + f * f)
+def brune_omega3(fc: float, mom: float, ts: float, f: float) -> float :
+    return mom * 1. / (1 + np.power(f/fc, 3.)) * np.exp(-np.pi * ts * f)
 
 def brune_dis_spec(fc: float, mom: float, ts: float, f: float) -> float :
     return mom * (fc * fc) / (fc * fc + f * f) * np.exp(-np.pi * ts * f)
@@ -615,25 +632,76 @@ def calc_fit(sta_dict, fc, fmin=20., fmax=1000.,
             ch_dict['tstar'] = sol[1]
             ch_dict['fit'] = fopt
             ch_dict['P_or_S'] = cha['P_or_S']
+            ch_dict['fmin'] = cha['fmin']
+            ch_dict['fmax'] = cha['fmax']
 
             if debug:
                 print("calc_fit: sta:%s cha:%s smom:%12.10g fit:%.2f ts=%f" % (sta_code, cha_code, sol[0], fopt, sol[1]))
                 #print("calc_fit: sta:%s cha:%s smom:%12.10g fit:%.2f" % (sta_code, cha_code, sol[0], fopt))
 
+            #if plot_fit and cha['P_or_S'] == "S":
+            plot_fit = 0
             if plot_fit:
                 model_spec = np.array( np.zeros(freqs.size), dtype=np.float_)
+                w2_no_atten = np.array( np.zeros(freqs.size), dtype=np.float_)
+                w3_no_atten = np.array( np.zeros(freqs.size), dtype=np.float_)
+                brune_vel = np.array( np.zeros(freqs.size), dtype=np.float_)
+                corrected_vel_spec = np.array( np.zeros(freqs.size), dtype=np.float_)
+                Q = 100
+                tstar = sta['R']/(5.3e3 * Q)
+                print("tstar=", tstar)
                 for i,f in enumerate(freqs):
+                    #print("i=%d f=%f" % (i, f))
                     model_spec[i] = model_func(fc, sol[0], sol[1], f)
-                plot_spec3(freqs, np.abs(signal_fft),  np.abs(noise_fft), model_spec,
+                    w2_no_atten[i] = model_func(fc, sol[0], 0, f)
+                    w3_no_atten[i] = brune_omega3(fc, sol[0], 0, f)
+                    #brune_vel[i] = brune_vel_spec(fc, sol[0], sol[1], f)
+                    brune_vel[i] = brune_vel_spec(fc, sol[0], 0, f)
+                    corrected_vel_spec[i] = signal_fft[i] * np.exp(np.pi*f*tstar)
+
+                #plot_spec5(freqs, vel_spec,  np.abs(noise_fft), model_spec,
+                #plot_spec5(freqs, np.abs(signal_fft),  np.abs(noise_fft), model_spec,
+                plot_spec5(freqs, np.abs(corrected_vel_spec),  np.abs(noise_fft), model_spec,
+                           w2_no_atten, brune_vel,
                            title="sta:%s ch:%s spec fit phase:%s [lambda=%12.10g]" % \
                            (sta_code, cha_code, ch_dict['P_or_S'],sol[0]),
                            subtitle="fmin:%.1f fmax:%.1f use_fixed_fmin_fmax:%s" % \
                            (fmin, fmax, use_fixed_fmin_fmax))
 
+
             dd[cha_code] = ch_dict
         smom_dict[sta_code] = dd
 
     return fit, smom_dict
+
+def plot_spec5(freqs, signal_fft, noise_fft, model_spec, 
+               model2_spec, model3_spec,
+               title=None, subtitle=None):
+
+    #plt.loglog(freqs, np.abs(signal_fft), color='blue')
+    plt.loglog(freqs, np.abs(signal_fft), color='blue', linestyle="--")
+    #plt.loglog(freqs, np.abs(noise_fft),  color='red')
+    plt.loglog(freqs, model2_spec,  color='black')
+    plt.loglog(freqs, model_spec,  color='green')
+    #plt.loglog(freqs, model_spec,  color='green', linewidth=.5)
+    plt.loglog(freqs, model3_spec,  color='red')
+
+    plt.legend(['signal', 'w^2', 'w^2 + ts', 'Brune vel'])
+    #plt.legend(['signal', 'w^2', 'w^2 + ts', 'w^3'])
+    #plt.legend(['signal', 'noise', 'model'])
+
+    plt.xlim(1e-3, 3e3)
+    #plt.ylim(1e-12, 1e-6)
+    #plt.ylim(1e-15, 1e-9)
+    # suptitle is larger and goes on top (?!)
+    if title:
+        plt.suptitle(title)
+    if subtitle:
+        plt.title(subtitle)
+    plt.grid()
+    plt.show()
+    return
+
 
 def plot_spec3(freqs, signal_fft, noise_fft, model_spec, title=None, subtitle=None):
 
@@ -651,6 +719,8 @@ def plot_spec3(freqs, signal_fft, noise_fft, model_spec, title=None, subtitle=No
         plt.title(subtitle)
     plt.grid()
     plt.show()
+
+    return
 
 
 from scipy.signal import savgol_filter

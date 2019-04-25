@@ -12,7 +12,7 @@ from obspy.core.event.base import Comment
 import logging
 logger = logging.getLogger(__name__)
 
-def calc_focal_mechanisms(cat, settings, logger_in=None, do_plot=False):
+def calc_focal_mechanisms(cat, settings, logger_in=None):
     """
     Prepare input arrays needed to calculate focal mechanisms
     and pass these into hashwrap.hashwrapper
@@ -31,6 +31,8 @@ def calc_focal_mechanisms(cat, settings, logger_in=None, do_plot=False):
     """
 
     fname = 'calc_focal_mechanism'
+
+    plot_focal_mechs = settings.plot_focal_mechs
 
     global logger
     if logger_in is not None:
@@ -125,9 +127,10 @@ def calc_focal_mechanisms(cat, settings, logger_in=None, do_plot=False):
         title = "%s (s,d,r)_1=(%.1f,%.1f,%.1f) _2=(%.1f,%.1f,%.1f)" % \
                 (event['event_info'], p1.strike, p1.dip, p1.rake, p2.strike,p2.dip,p2.rake)
 
-        if do_plot:
+        if plot_focal_mechs:
             gcf = test_stereo(np.array(event['qazi']),np.array(event['qthe']),np.array(event['p_pol']),\
-                        sdr=[p1.strike,p1.dip,p1.rake], title=title)
+                        sdr=[p1.strike,p1.dip,p1.rake], event_info=event['event_info'])
+                        #sdr=[p1.strike,p1.dip,p1.rake], title=title)
             plot_figures.append(gcf)
 
     return focal_mechanisms, plot_figures
@@ -135,8 +138,9 @@ def calc_focal_mechanisms(cat, settings, logger_in=None, do_plot=False):
 
 import matplotlib.pyplot as plt
 from obspy.imaging.beachball import aux_plane
+import mplstereonet
 
-def test_stereo(azimuths,takeoffs,polarities,sdr=[], title=None):
+def test_stereo(azimuths,takeoffs,polarities,sdr=[], event_info=None):
     '''
         Plots points with given azimuths, takeoff angles, and
         polarities on a stereonet. Will also plot both planes
@@ -147,23 +151,34 @@ def test_stereo(azimuths,takeoffs,polarities,sdr=[], title=None):
     ax = fig.add_subplot(111, projection='stereonet')
     up = polarities > 0
     dn = polarities < 0
-    #h_rk = ax.rake(azimuths[up]-90.,takeoffs[up],90, 'ro')
-    # MTH: this seems to put the observations in the right location
-    #  We're plotting a lower-hemisphere focal mech, and we have to convert
-    #  the up-going rays to the right az/dip quadrants:
-    h_rk = ax.rake(azimuths[up]-90.+180.,90.-takeoffs[up],90, 'ro')
-    h_rk = ax.rake(azimuths[dn]-90.+180.,90.-takeoffs[dn],90, 'b+')
-    #ax.rake(strike-90., 90.-dip, rake, 'ro', markersize=14)
 
-    #h_rk = ax.rake(azimuths[dn]-90.,takeoffs[dn],90, 'b+')
+    plot_upper_hemisphere = True
+
+# This assumes takeoffs are measured wrt vertical up
+#   so that i=0 (vertical) up has plunge=90:
+#          ax.line(plunge, trend) - where plunge=90 plots at center and plunge=0 at edge
+    h_rk = ax.line(90.-takeoffs[up], azimuths[up], 'bo') # compressional first arrivals
+    h_rk = ax.line(90.-takeoffs[dn], azimuths[dn], 'go', fillstyle='none')
+
     if sdr:
+        s1,d1,r1 = sdr[0], sdr[1], sdr[2]
         s2,d2,r2 = aux_plane(*sdr)
-        h_rk = ax.plane(sdr[0],sdr[1],'g')
-        h_rk = ax.rake(sdr[0],sdr[1],-sdr[2], 'go')
-        h_rk = ax.plane(s2,d2, 'g')
+        if plot_upper_hemisphere:
+            s1 += 180.
+            s2 += 180.
+        h_rk = ax.plane(s1,d1,'g')
+        ax.pole(s1, d1, 'gs', markersize=7)
+        h_rk = ax.plane(s2,d2, 'b')
+        ax.pole(s2, d2, 'bs', markersize=7)
+
+    ax.grid(True)
+
+    plt.title("upper hemisphere")
+
+    title = event_info + " (s,d,r)=(%.1f, %.1f, %.1f)" % (s1,d1,r1)
 
     if title:
-        plt.title(title)
+        plt.suptitle(title)
 
     #plt.show()
 

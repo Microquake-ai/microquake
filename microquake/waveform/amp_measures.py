@@ -818,15 +818,13 @@ def calc_velocity_flux(st_in,
 
             #flux_t = np.sum( [tr.data**2 for tr in tr3]) * dt
 
-            fluxes = []
+            tsum = 0
             for tr in tr3:
-                tsum = np.sum(tr.data**2)*dt
-                fluxes.append(tsum**2)
-
-            flux_t = np.sqrt(np.sum(fluxes))
+                tsum += np.sum(tr.data**2)*dt
 
             if not correct_attenuation:
-                flux = flux_t
+                flux = tsum
+                fsum = None
 
         # The only reason to do this in the freq domain is if we
         #    want to apply attenuation correction
@@ -835,62 +833,84 @@ def calc_velocity_flux(st_in,
                 # travel_time: from pick_time - origin or from R/v where v={alpha,beta}
                 travel_time = pick.time - origin.time
 
-                flux_f = 0.
-                fluxes = []
+                fsum = 0.
+
+                #fmin = 0.
+                #fmax = 3000.
+
+        # exp(pi * f * (R/v) * 1/Q) grows so fast with freq that it's out of control above f ~ 1e3 Hz
+        # We could design Q = Q(f) - e.g., make Q grow fast with f to counteract this.
+        # Alternatively, we limit the freq range of the (attenuation-corrected) energy calc:
+        #   To compare the t/f calcs using Parseval's:
+        #   1. Set Q to something like 1e12 in the settings
+        #   2. Set fmin=0 so that the low freqs are included in the summation
+                fmin = 14.
+                fmax = 900.
+        # In addition, it's necessary to locate fmin/fmax for each arrival based on
+        #   the min/max freqs where the velocity spec exceeds the noise spec
+        # Thus, we can't actually include all the radiated energy, just the energy above the noise level
+        #   so these estimates will likely be low
+                fmin = arr.fmin
+                fmax = arr.fmax
+                if fmax/fmin < 3:
+                    logger.info("%s: sta:%s fmin:%.1f fmax:%.1f too narrowband --> Skip" % (fname, sta, fmin, fmax))
+                    continue
                 for tr in tr3:
                     data = tr.data
-                    nfft = npow2(data.size)
+                    nfft = 2*npow2(data.size)
                     df = 1./(dt * float(nfft))    # df is same as for 2-sided case
                     Y,freqs = unpack_rfft(rfft(data, n=nfft), df)
                     Y *= dt
                     # 1-sided: N/2 -1 +ve freqs + [DC + Nyq] = N/2 + 1 values:
                     Y[1:-1] *= np.sqrt(2.)
-                    # Correct for attenuation: For testing making Q=1e12 so that flux_f = flux_t by Parseval's
-                    x = 0.6
-                    Qf = Q*freqs**x
-                    tstar = travel_time / Qf
-                    tstar[0] = 0.
+                    # Freq dependent Q(f) --> tstar = array:
+                    #x = 0.6
+                    #Qf = Q*freqs**x
+                    #tstar = travel_time / Qf
+                    #tstar[0] = 0.
 
-                    #fsum = np.sum( np.abs(Y)*np.abs(Y) )*df
-                    #fsum = np.sum( np.abs(Y)*np.abs(Y) * np.exp(2.*np.pi*freqs*tstar))*df
+                    # freq-independent Q --> tstar = float:
+                    tstar = travel_time / Q
 
-                    fsum = np.sum(np.abs(Y)*np.abs(Y)*np.exp(2.*np.pi*freqs*tstar)) * df
+                    #if sta in ['76', '72']:
+                        #title = 'sta:%s cha:%s [%s]' % (sta, tr.stats.channel, phase)
+                        #plot_spec(freqs, np.abs(Y), tstar, title=title)
 
-                    tsum = np.sum(tr.data**2)*dt
-                    #print("id:%s flux_f:%g flux_t:%g" % (tr.get_id(), fsum, tsum))
+                    index = [(freqs >= fmin) & (freqs <= fmax)]
+                    freqs = freqs[index]
+                    Y = Y[index]
+                    fsum += np.sum(np.abs(Y)*np.abs(Y)*np.exp(2.*np.pi*freqs*tstar)) * df
 
-                    D = np.array( np.zeros(freqs.size), dtype=np.float_)
-                    for i,f in enumerate(freqs):
-                        D[i] = np.sum(np.abs(Y[:i]**2)) * df
 
-                    title = "%s [%s]" % (tr.get_id(), phase)
-                    #plot_Df(freqs, D, title=title)
-
-                    fluxes.append(fsum**2)
-
-                    flux_f += fsum
-
-                flux_f = np.sqrt(np.sum(fluxes))
-
-                flux = flux_f
-
-                #print("Parseval's: nfft=%7d df=%12.6g flux_f=%12.10g flux_t=%12.10g" % \
-                      #(nfft, df, fsum, flux_t))
-
-                #print("sta:%3s [%s] R:%.1f flux_t:%g flux_f:%g" % (sta, phase, arr.distance, flux_t, flux_f))
+                print("arr sta:%s [%s] tsum=%g fsum=%g fmin=%f fmax=%f" % \
+                      (sta, arr.phase, tsum, fsum, fmin, fmax))
                 #exit()
 
-            arr.vel_flux = flux
+                flux = fsum
+
+                #print("Parseval's: nfft=%7d df=%12.6g flux_f=%12.10g flux_t=%12.10g" % \
+                      #(nfft, df, fsum, tsum))
+
+            # Note we are saving the "flux" but it has not (yet) been scaled by rho*vel
+            #  Instead it is just the sum of the integrals of the component velocities squared
+            #  for the corresponding arrival and scaling is done in calc_energy(..)
+
+            #arr.vel_flux = flux
+            arr.vel_flux = tsum
+            arr.vel_flux_Q = fsum
 
     return
 
 import matplotlib.pyplot as plt
 
-def plot_Df(freqs, D, title=None):
+def plot_spec(freqs, spec, tstar, title=None):
 
-    plt.plot(freqs, D, color='blue')
+    corrected_spec = spec*np.exp(2.*np.pi*freqs*tstar)
 
-    #plt.loglog(freqs, model_spec,  color='green')
+    #plt.plot(freqs, D, color='blue')
+
+    plt.loglog(freqs, spec,  color='blue')
+    plt.loglog(freqs, corrected_spec,  color='green')
     #plt.legend(['signal', 'model'])
     #plt.xlim(1e0, 3e3)
     #plt.ylim(1e-12, 1e-4)
@@ -898,8 +918,6 @@ def plot_Df(freqs, D, title=None):
         plt.title(title)
     plt.grid()
     plt.show()
-
-    #exit()
 
     return
 
