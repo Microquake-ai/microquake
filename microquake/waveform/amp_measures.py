@@ -65,12 +65,11 @@ def measure_pick_amps(st_in, cat, phase_list=None,
     for event in cat:
         for phase in phase_list:
             origin = event.preferred_origin() if event.preferred_origin() else event.origins[0]
-            arrivals = sorted([x for x in origin.arrivals if x.phase == phase],
-                            key=lambda x: int(x.get_pick().get_sta()) )
 
-            for arr in arrivals:
-
+            for arr in origin.arrivals:
                 pk=arr.get_pick()
+                if not pk:
+                    continue
                 sta=pk.get_sta()
 
                 if arr.traces is not None:
