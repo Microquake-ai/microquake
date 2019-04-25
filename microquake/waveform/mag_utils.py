@@ -5,6 +5,51 @@
 
 import numpy as np
 
+
+def calc_static_stress_drop(Mw, fc, phase='S', v=3.5, use_brune=False):
+    """
+    Calculate static stress drop from moment/corner_freq relation
+    Note the brune model (instantaneous slip) gives stress drops ~ 8 x lower
+    than the Madariaga values for fcP, fcS
+
+    :param Mw: moment magnitude
+    :type Mw: float
+    :param fc: corner frequency [Hz]
+    :type fc: float
+    :param phase: P or S phase
+    :type phase: string
+    :param v: P or S velocity [km/s] at source
+    :type v: float
+    :param use_brune: If true --> use Brune's original scaling
+    :type use_brune: boolean
+    :returns: static stress drop [MPa]
+    :rtype: float
+
+    """
+
+    if use_brune:          # Use Brune scaling
+        c = .375
+    else:                  # Use Madariaga scaling
+        if phase == 'S':
+            c = .21
+        else:
+            c = .32
+
+    v *= 1e5 # cm/s
+
+    a = c * v / fc   # radius of circular fault from corner freq
+
+    logM0 = 3/2 * Mw + 9.1 # in N-m
+    M0 = 10**logM0 * 1e7   # dyn-cm
+
+    stress_drop = 7./16. * M0 * (1/a) ** 3 # in dyn/cm^2
+    stress_drop /= 10. # convert to Pa=N/m^2
+
+    #print("calc_stress_drop: Mw:%.2f M0:%g [%s] fc:%.2f a:%.1f MPa:%.1f" % (Mw, M0, corner_phase, fc, a, stress_drop/1e6))
+
+    return stress_drop / 1e6 # MPa
+
+
 cos= np.cos
 sin= np.sin
 degs2rad = np.pi / 180.
@@ -113,6 +158,7 @@ def free_surface_displacement_amplification(inc_angle, vp, vs, incident_wave='P'
 def main():
 
 
+    """
     vp = 3.
     vs = vp/np.sqrt(3)
     inc_angle = 70.
@@ -126,6 +172,17 @@ def main():
     for inc_angle in range(50): 
         ret = free_surface_displacement_amplification(inc_angle, vp, vs, incident_wave='P')
         print(inc_angle, ret)
+    """
+    (strike, dip, rake) = (0, 45, 90)
+    (strike, dip, rake) = (320, 11, -128)
+    #for i_h in range(1, 140, 15):
+    for i_h in range(70, 80, 15):
+        for az in range(0, 360, 15):
+            rad_pat = double_couple_rad_pat(i_h, az, strike, dip, rake, phase='P')
+            rad_patS = double_couple_rad_pat(i_h, az, strike, dip, rake, phase='S')
+            print("%3d %3d %.2f %.2f" % (i_h, az, rad_pat, rad_patS))
+    exit()
+
 
     i_h = 45 + 90
     az = 45

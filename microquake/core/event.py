@@ -104,6 +104,16 @@ class Origin(obsevent.Origin):
         if self.preferred_origin_id is not None:
             return self.preferred_origin_id.get_referred_object()
 
+    def get_all_magnitudes_for_origin(self, cat):
+        magnitudes = []
+        for event in cat:
+            for mag in event.magnitudes:
+                if mag.origin_id.id == self.resource_id.id:
+                    magnitudes.append(mag)
+
+        return magnitudes
+
+
     def __str__(self, **kwargs):
         string = """
        resource_id: %s
@@ -178,7 +188,8 @@ class Arrival(obsevent.Arrival):
                   'dis_pulse_width', 'dis_pulse_area',
                   'smom','fit','tstar',
                   'hypo_dist_in_m',
-                  'vel_flux', 'energy',
+                  'vel_flux', 'vel_flux_Q', 'energy',
+                  'fmin', 'fmax',
                   'traces',
                   ]
 
