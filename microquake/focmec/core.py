@@ -138,7 +138,6 @@ def calc_focal_mechanisms(cat, settings, logger_in=None):
 
 import matplotlib.pyplot as plt
 from obspy.imaging.beachball import aux_plane
-import mplstereonet
 
 def test_stereo(azimuths,takeoffs,polarities,sdr=[], event_info=None):
     '''
