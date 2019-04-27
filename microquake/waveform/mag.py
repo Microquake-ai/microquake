@@ -295,17 +295,19 @@ def calculate_energy_from_flux(cat,
                 velocity = vs
                 rad_pat = 2/5
 
-            if arr.vel_flux is None:
-                logger.info("%s: No vel_flux in [%s] arr for sta:%s" % (fname, phase, sta))
-                continue
-            if arr.vel_flux_Q is None:
-                logger.info("%s: vel_flux exists but vel_flux_Q is None in [%s] arr for sta:%s" % (fname, phase, sta))
-                continue
-
             # could check for arr.hypo_dist_in_m here but it's almost identical
             R = arr.distance
-            #energy = (4.*np.pi*R**2) * rho * velocity * arr.vel_flux
-            energy = (4.*np.pi*R**2) * rho * velocity * arr.vel_flux_Q
+
+            if arr.vel_flux is None:
+                logger.info("%s: No vel_flux in [%s], arr for sta:%s" % (fname, phase, sta))
+                if arr.vel_flux_Q:
+                    logger.info("%s: vel_flux_Q exists in [%s], using this for energy, arr for sta:%s" % (fname, phase, sta))
+                    energy = (4.*np.pi*R**2) * rho * velocity * arr.vel_flux_Q
+            if arr.vel_flux_Q is None:
+                logger.info("%s: vel_flux exists but vel_flux_Q is None in [%s] arr for sta:%s" % (fname, phase, sta))
+                if arr.vel_flux:
+                    logger.info("%s: vel_flux exists in [%s], using this for energy, arr for sta:%s" % (fname, phase, sta))
+                    energy = (4.*np.pi*R**2) * rho * velocity * arr.vel_flux
 
             scale = 1.
             if use_sdr:
