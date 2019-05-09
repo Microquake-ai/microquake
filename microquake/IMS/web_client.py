@@ -406,6 +406,7 @@ def get_catalogue(base_url, start_datetime, end_datetime, site,
 
         magnitude.magnitude_type = 'Mw'
         magnitude.origin_id = origin.resource_id.id
+        magnitude.evaluation_mode = 'manual'
 
         event.origins.append(origin)
         event.preferred_origin_id = origin.resource_id.id
