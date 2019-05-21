@@ -22,6 +22,11 @@ def rotate_to_P_SV_SH(st, cat, debug=False):
         takeoff = arr.takeoff_angle
         inc_angle = arr.inc_angle
 
+        if inc_angle is None:
+            print("%s: sta:%s [%s] has inc_angle=None --> skip rotation!" % \
+                        (fname, sta, arr.phase))
+            continue
+
         trs = st_new.select(station=sta)
         if len(trs) == 3:
 

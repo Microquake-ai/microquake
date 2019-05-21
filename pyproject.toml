@@ -1,0 +1,38 @@
+[tool.poetry]
+name = "microquake"
+version = "0.1.0"
+description = "Python library that is an extension/expansion/adaptation ofObsPy to microseismic data"
+authors = ["Your Name <you@example.com>"]
+license = "GPL-3.0"
+keywords = [
+    "seismology",
+    "mining",
+    "microseismic",
+    "signal processing",
+    "event location"
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Developers",
+    "Natural Language :: English",
+    "License :: OSI Approved :: GNU General Public License v3",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.6",
+    "Programming Language :: Python :: 3.7",
+    "Topic :: Scientific/Engineering"
+]
+
+
+[tool.poetry.dependencies]
+python = "^3.6 || ^3.7"
+obspy = "^1.1"
+numpy = "^1.16"
+scipy = "^1.2"
+pytz = "^2019.1"
+pymongo = "^3.7"
+
+[tool.poetry.dev-dependencies]
+ipython = "^7.4"

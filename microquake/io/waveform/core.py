@@ -54,17 +54,24 @@ def decompose_mseed(mseed_bytes, mseed_reclen=4096):
 
 
 def mseed_date_from_header(block4096):
-    # mseed bytes 20 to 30 are date in header
-    # YYYY The year with the century (e.g., 1987)
-    # DDD  The julian day of the year (January 1 is 001)
-    # HH   The hour of the day UTC (00—23)
-    # MM   The minute of the day (00—59)
-    # SS   The seconds (00—60; use 60 only to note leap seconds)
-    # FFFF The fraction of a second (to .0001 seconds resolution)
+    """
+
+    :param block4096: a binary string
+    :return starttime in UTCDateTime:
+
+    mseed bytes 20 to 30 are date in header
+    YYYY The year with the century (e.g., 1987)
+    DDD  The julian day of the year (January 1 is 001)
+    HH   The hour of the day UTC (00—23)
+    MM   The minute of the day (00—59)
+    SS   The seconds (00—60; use 60 only to note leap seconds)
+    FFFF The fraction of a second (to .0001 seconds resolution)
+    """
 
     vals = unpack('>HHBBBBH', block4096[20:30])
     year, julday, hour, minute, sec, _, sec_frac = vals
-    tstamp = '%0.4d,%0.3d,%0.2d:%0.2d:%0.2d.%0.4d' % (year, julday, hour, minute, sec, sec_frac)
+    tstamp = '%0.4d,%0.3d,%0.2d:%0.2d:%0.2d.%0.4d' % (year, julday, hour,
+                                                       minute, sec, sec_frac)
     dt = datetime.strptime(tstamp, '%Y,%j,%H:%M:%S.%f')
     return UTCDateTime(dt)
 
