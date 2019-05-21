@@ -417,6 +417,8 @@ def get_catalogue(base_url, start_datetime, end_datetime, site,
 
         if row[1]['BLAST'] == 1:
             event.event_type = "explosion"
+        elif row[1]['ACCEPTED'] == 0:
+            event.event_type = 'other event'
         else:
             event.event_type = "earthquake"
 
