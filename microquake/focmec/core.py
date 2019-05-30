@@ -17,7 +17,7 @@ def calc_focal_mechanisms(cat, settings, logger_in=None):
     Prepare input arrays needed to calculate focal mechanisms
     and pass these into hashwrap.hashwrapper
 
-    Return list of obspy focalmechanisms & list of matplotlib figs 
+    Return list of obspy focalmechanisms & list of matplotlib figs
 
     :param cat: obspy.core.event.Catalog
     :type list: list of obspy.core.event.Events or microquake.core.event.Events
@@ -67,7 +67,7 @@ def calc_focal_mechanisms(cat, settings, logger_in=None):
         for arr in arrivals:
 
             if arr.pulse_snr is None:
-                logger.warn("%s P arr pulse_snr == NONE !!!" % \
+                logger.warning("%s P arr pulse_snr == NONE !!!" % \
                       arr.pick_id.get_referred_object().waveform_id.station_code)
                 continue
 
