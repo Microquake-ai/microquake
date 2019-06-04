@@ -144,10 +144,10 @@ def calc_magnitudes_from_lambda(cat,
         lambda_key = 'dis_pulse_area'
 
     if use_free_surface_correction and np.abs(ev_loc[2]) > 0.:
-        logger.warn("%s: Free surface correction requested for event [h=%.1f] > 0" % \
+        logger.warning("%s: Free surface correction requested for event [h=%.1f] > 0" % \
                     (fname, ev_loc[2]))
     if use_sdr_rad and 'sdr' not in kwargs:
-        logger.warn("%s: use_sdr_rad requested but NO [sdr] given!" % fname)
+        logger.warning("%s: use_sdr_rad requested but NO [sdr] given!" % fname)
 
     station_mags = []
     Mw_list = []
@@ -179,7 +179,7 @@ def calc_magnitudes_from_lambda(cat,
                 # MTH: The free surface corrections are returned as <x1,x2,x3>=<
                 fs_factor = 1.
             else:
-                logger.warn("%s: sta:%s cha:%s pha:%s: inc_angle NOT set in arrival dict --> use default" %\
+                logger.warning("%s: sta:%s cha:%s pha:%s: inc_angle NOT set in arrival dict --> use default" %\
                             (fname, sta, cha, arr.phase))
 
         if use_sdr_rad and 'sdr' in kwargs:
@@ -196,7 +196,7 @@ def calc_magnitudes_from_lambda(cat,
                         (strike, dip, rake, takeoff_angle, takeoff_azimuth, P_or_S, rad)
                 #logger.info(magnitude_comment)
             else:
-                logger.warn("%s: sta:%s cha:%s pha:%s: takeoff_angle/azimuth NOT set in arrival dict --> use default radpat" %\
+                logger.warnng("%s: sta:%s cha:%s pha:%s: takeoff_angle/azimuth NOT set in arrival dict --> use default radpat" %\
                             (fname, sta, cha, arr.phase))
 
 
@@ -239,7 +239,7 @@ def calc_magnitudes_from_lambda(cat,
                             (fname, sta, arr.phase, R, min_dist))
 
         #else:
-            #logger.warn("arrival sta:%s cha:%s arr pha:%s lambda_key:%s is NOT SET --> Skip" \
+            #logger.warning("arrival sta:%s cha:%s arr pha:%s lambda_key:%s is NOT SET --> Skip" \
                         #% (sta, cha, arr.phase, lambda_key))
 
 
@@ -359,9 +359,9 @@ def calculate_energy_from_flux(cat,
             event.magnitudes.append(energy_mag)
 
         else:
-            logger.warn("%s: Calculated val of Energy E=[%s] nS=%d nP=%d is not fit to keep!" % \
+            logger.warning("%s: Calculated val of Energy E=[%s] nS=%d nP=%d is not fit to keep!" % \
                         (fname, E, nvals, len(P_energy)))
-            logger.warn("%s: Energy mag not written to quakeml" % fname)
+            logger.warning("%s: Energy mag not written to quakeml" % fname)
 
     return
 

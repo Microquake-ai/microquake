@@ -26,7 +26,7 @@ def measure_pick_amps(st_in, cat, phase_list=None,
 
     """
     Attempt to measure velocity pulse parameters (polarity, peak vel, etc)
-      and displacement pulse parameters (pulse width, area) 
+      and displacement pulse parameters (pulse width, area)
       for each arrival for each event preferred_origin in cat
 
     Measures are made on individual traces, saved to arrival.traces[trace id],
@@ -182,7 +182,7 @@ def measure_velocity_pulse(st,
             trs = st.select(station=sta)
 
             if trs is None:
-                logger.warn("%s: sta:%s has a [%s] arrival but no trace in stream --> Skip" % \
+                logger.warning("%s: sta:%s has a [%s] arrival but no trace in stream --> Skip" % \
                             (fname, sta, arr.phase))
                 continue
 
@@ -324,7 +324,7 @@ def measure_displacement_pulse(st,
             trs = st.select(station=sta)
 
             if trs is None:
-                logger.warn("%s: sta:%s has a [%s] arrival but no trace in stream --> Skip" % \
+                logger.warning("%s: sta:%s has a [%s] arrival but no trace in stream --> Skip" % \
                             (fname, sta, arr.phase))
                 continue
 
@@ -416,7 +416,7 @@ def measure_displacement_pulse(st,
                             logger.debug("    dis pulse  area=%12.10g" % pulse_area)
 
                     else:
-                        logger.warn("%s: Got pulse_width=0 for tr:%s pha:%s" %
+                        logger.warning("%s: Got pulse_width=0 for tr:%s pha:%s" %
                                     (fname, tr.get_id(), phase))
 
                 arr.traces[tr.get_id()] = dict(tr_dict, **dd)
@@ -698,7 +698,7 @@ def set_pick_snrs(st, picks, pre_wl=.03, post_wl=.03):
                     tr.stats[key] = {}
                 tr.stats[key]['snr'] = snr
         else:
-            logger.warn("set_pick_snrs: sta:%s not in pick_dict" % sta)
+            logger.warning("set_pick_snrs: sta:%s not in pick_dict" % sta)
 
     return
 
@@ -773,7 +773,7 @@ def calc_velocity_flux(st_in,
             trs = st.select(station=sta)
 
             if trs is None:
-                logger.warn("%s: sta:%s has a [%s] arrival but no trace in stream --> Skip" % \
+                logger.warning("%s: sta:%s has a [%s] arrival but no trace in stream --> Skip" % \
                             (fname, sta, phase))
                 continue
 
@@ -803,7 +803,7 @@ def calc_velocity_flux(st_in,
 
             for tr in trs:
                 if starttime < tr.stats.starttime or endtime > tr.stats.endtime:
-                    logger.warn("%s: sta:%s pha:%s tr:%s is too short to trim --> Don't use" % \
+                    logger.warning("%s: sta:%s pha:%s tr:%s is too short to trim --> Don't use" % \
                                 (fname, sta, phase, tr.get_id()))
                     not_enough_trace = True
                     break
