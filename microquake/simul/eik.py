@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------
 # Filename: eik.py
-#  Purpose: Eikonal solver, ray tracer etc. 
+#  Purpose: Eikonal solver, ray tracer etc.
 #   Author: microquake development team
 #    Email: devs@microquake.org
 #
@@ -53,7 +53,7 @@ def ray_tracer(travel_time, start, grid_coordinates=False, max_iter=1000):
     """
     This function calculates the ray between a starting point (start) and an end
     point, which should be the seed of the travel_time grid, using the gradient
-    descent method. 
+    descent method.
     :param trave_time: travel time grid with a seed defined
     :type travel_time: ~microquake.core.data.grid.GridData with an additional
     seed property(travel_time.seed). Note that seed is automatically added to
@@ -71,8 +71,6 @@ def ray_tracer(travel_time, start, grid_coordinates=False, max_iter=1000):
     import numpy as np
     from microquake.core import GridData
     from microquake.core.event import Ray
-    from IPython.core.debugger import Tracer
-    from time import time
 
     if grid_coordinates:
         start = np.array(start)

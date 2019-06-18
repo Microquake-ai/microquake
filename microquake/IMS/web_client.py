@@ -20,6 +20,7 @@ module to interact IMS web API
 from logging import INFO, getLogger
 
 import numpy as np
+from logging import getLogger, INFO
 
 logger = getLogger('microquake.IMS.web_client')
 logger.level = INFO
