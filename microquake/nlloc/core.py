@@ -248,7 +248,6 @@ def calculate_uncertainty(event, base_directory, base_name, perturbation=5,
         from microquake.core.data.grid import read_grid
         from numpy import linalg, argsort, arcsin, sqrt
         from microquake.core.event import ConfidenceEllipsoid, OriginUncertainty
-        # from IPython.core.debugger import Tracer
 
         narr = len(event.preferred_origin().arrivals)
 
@@ -668,7 +667,7 @@ class NLL(object):
 
         self.ctrlfile.laymod = laymod
         self.ctrlfile.modelname = modelname
-        self.ctrlfile.basefolder = self.base_folder 
+        self.ctrlfile.basefolder = self.base_folder
 
         # hdr = "%d %d %d  %.2f %.2f %.2f  %.4f %.4f %.4f  SLOW_LEN" % (
         self.ctrlfile.locgrid = "LOCGRID  %d %d %d  %.2f %.2f %.2f  %.4f %.4f %.4f  MISFIT  SAVE" % (
@@ -928,7 +927,7 @@ class NLL(object):
         """
         Create NLLoc compatible observation file from an microquake event catalog file.
         input:
-        
+
         :param event: event containing a preferred origin with arrivals
         referring to picks
         :type event: ~microquake.core.event.Event
@@ -1159,14 +1158,14 @@ GT_PLFD  1.0e-3  0
 
 LOCSIG Microquake package
 
-LOCCOM created automatically by the microquake package 
+LOCCOM created automatically by the microquake package
 
 LOCFILES <BASEFOLDER>/<WORKERFOLDER>/obs/<MODELNAME>.obs NLLOC_OBS <BASEFOLDER>/time/<MODELNAME>  <BASEFOLDER>/<WORKERFOLDER>/loc/<MODELNAME>
 
 #LOCHYPOUT SAVE_NLLOC_ALL SAVE_HYPOINV_SUM SAVE_NLLOC_OCTREE
 LOCHYPOUT SAVE_NLLOC_ALL
 
-LOCSEARCH <LOCSEARCH> 
+LOCSEARCH <LOCSEARCH>
 
 <LOCGRID>
 
