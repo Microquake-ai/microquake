@@ -174,8 +174,7 @@ def read_nlloc_hypocenter_file(filename, picks=None,
     #  >   TTpred    Res       Weight    StaLoc(X  Y         Z)        SDist    SAzim  RAz  RDip RQual    Tcorr
     #  >  0.209032  0.002185    1.2627  651.3046 4767.1881    0.9230    0.2578 150.58  -1.0  -1.0  0     0.0000
 
-
-                azi = float(tmp[22]) # Set to SAzim since that is guaranteed to be set
+                azi = float(tmp[22])  # Set to SAzim since that is guaranteed to be set
                 #azi = float(tmp[23])
                 toa = float(tmp[24])
 
@@ -656,7 +655,6 @@ class NLL(object):
         self._clean_outputs()
         tmp = '%s/%s' % (self.base_folder, self.worker_folder)
         shutil.rmtree(tmp)
-
 
     def init_header_file(self):
         """
