@@ -155,8 +155,6 @@ class Stream(obsstream.Stream):
         :return: plot handler
         """
 
-        from IPython.core.debugger import Tracer
-
         st = self.copy()
         st.detrend('demean')
         st.taper(max_percentage=0.01)

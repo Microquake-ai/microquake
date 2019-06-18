@@ -314,7 +314,7 @@ def STALTA_picker(st, nphase=2, nsta=1e-3, nlta=4e-2, fc=50, nc=2,
         StaLtaf = gaussian_filter1d(StaLta, sigma=sigma, mode='reflect')
 
         picks = _Pick_STALTA(trs, StaLtaf, nphase)
-        SNRs = [calculate_snr(trs, p, SNR_window) for p in picks] 
+        SNRs = [calculate_snr(trs, p, SNR_window) for p in picks]
 
         # print picks[0], (picks - trs[0].stats.starttime) * trs[0].stats.sampling_rate, SNRs
 
@@ -489,7 +489,7 @@ def snr_picker(st, picks, snr_dt=None, snr_window=(1e-3, 20e-3), filter=None):
         trs = st.select(station=station)
 
         if station not in previous_picks:
-            logger.warn('SNR_detect: station:[%s] has no previous picks'
+            logger.warning('SNR_detect: station:[%s] has no previous picks'
                         % station)
             continue
 
@@ -571,7 +571,7 @@ def snr_picker(st, picks, snr_dt=None, snr_window=(1e-3, 20e-3), filter=None):
                 dt = np.abs(old_pick.time - foo[0])
                 #dt = np.abs(oldPick['time'] - foo[0])
                 scale = np.exp(-alpha * dt)
-                tmp[i,1] *= np.exp(-alpha * dt) 
+                tmp[i,1] *= np.exp(-alpha * dt)
                 #print(time, dt, snr, scale, snr*scale, tmp[i,1])
             """
 

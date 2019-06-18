@@ -19,7 +19,6 @@ module to interact IMS web API
 
 import numpy as np
 from logging import getLogger, INFO
-from IPython.core.debugger import Tracer
 
 logger = getLogger('microquake.IMS.web_client')
 logger.level = INFO
