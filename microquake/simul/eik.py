@@ -71,8 +71,6 @@ def ray_tracer(travel_time, start, grid_coordinates=False, max_iter=1000):
     import numpy as np
     from microquake.core import GridData
     from microquake.core.event import Ray
-    from IPython.core.debugger import Tracer
-    from time import time
 
     if grid_coordinates:
         start = np.array(start)
