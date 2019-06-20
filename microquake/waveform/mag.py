@@ -1,17 +1,13 @@
 import numpy as np
 from numpy.fft import fft
-from scipy.optimize import curve_fit
-from microquake.core import logger
 from scipy.ndimage.interpolation import map_coordinates
-from microquake.core.trace import Stats
-from microquake.core import Trace, Stream
-from microquake.core.event import Catalog
+from scipy.optimize import curve_fit
+
+from microquake.core import Stream, Trace, event, logger
 from microquake.core.data import GridData
-
-from microquake.core import event
-
+from microquake.core.event import Catalog
+from microquake.core.trace import Stats
 from microquake.core.util.cli import ProgressBar
-
 
 ########################################################################################
 # Function defining attenuation relationship
@@ -62,6 +58,7 @@ def anelastic_scattering_attenuation(raypath_or_distance, velocity, quality,
     slen = np.sqrt(np.sum(np.diff(raypath, axis=0) ** 2, axis=1))
 
     Att = np.zeros(f.shape)
+
     for k, segment in enumerate(ray[:-1, :]):
         Qval = np.mean(Qray[k:k + 2])
         Vval = np.mean(Vray[k:k + 2])
@@ -87,6 +84,7 @@ def radiation_pattern_attenuation():
 
     >>> (PRadiation, SRadiation) = radiation_pattern_attenuation()
     """
+
     return (0.52, 0.63)
 
 
@@ -102,6 +100,7 @@ def geometrical_spreading_attenuation(raypath, velocity=None, quality=None, Mw=-
     """
 
     Ar = geometrical_spreading(raypath)
+
     if quality:
         Aq = anelastic_scattering_attenuation(raypath, velocity, quality, Mw)
         Att = Ar * Aq
@@ -109,6 +108,7 @@ def geometrical_spreading_attenuation(raypath, velocity=None, quality=None, Mw=-
         Att = Ar
 
     return Att
+
 
 def calculate_attenuation(raypath, velocity, quality=None, Mw=-1):
     """
@@ -120,6 +120,7 @@ def calculate_attenuation(raypath, velocity, quality=None, Mw=-1):
     """
 
     Ar = geometrical_spreading(raypath)
+
     if quality:
         Aq = anelastic_scattering_attenuation(raypath, velocity, quality, Mw)
         Att = Ar * Aq
@@ -130,9 +131,9 @@ def calculate_attenuation(raypath, velocity, quality=None, Mw=-1):
 
 
 def calculate_attenuation_grid(seed, velocity, quality=None, locations=None, triaxial=True,
-                            orientation=(0, 0, 1), pwave=True, progress=True, buf=0,
-                            traveltime=None, eventSeed=False, Mw=-1., tt=None, return_tt=False,
-                            homogeneous=True):
+                               orientation=(0, 0, 1), pwave=True, progress=True, buf=0,
+                               traveltime=None, eventSeed=False, Mw=-1., tt=None, return_tt=False,
+                               homogeneous=True):
     """
     :param seed: seed (often receiver) location
     :type seed: tuple with same dimension as the grid
@@ -179,7 +180,6 @@ def calculate_attenuation_grid(seed, velocity, quality=None, locations=None, tri
 
     """
 
-
     from microquake.simul import eik
 
     A = []
@@ -199,8 +199,8 @@ def calculate_attenuation_grid(seed, velocity, quality=None, locations=None, tri
     NoNode = len(locations)
 
     c1 = velocity.origin
-    c2 = velocity.origin + (np.array(velocity.shape) - \
-    np.array([1, 1, 1])) * velocity.spacing
+    c2 = velocity.origin + (np.array(velocity.shape) -
+                            np.array([1, 1, 1])) * velocity.spacing
 
     if progress:
         pb = ProgressBar(max=NoNode)
@@ -229,10 +229,12 @@ def calculate_attenuation_grid(seed, velocity, quality=None, locations=None, tri
         att = calculate_attenuation(ray, velocity, quality, Mw=Mw)
 
         att_comp = 1
+
         if not triaxial:
 
             incidenceVector = tmp / np.linalg.norm(tmp)
             tmpatt = np.dot(incidenceVector, np.array(orientation))
+
             if pwave:
                 att_comp = tmpatt
             else:
@@ -252,11 +254,11 @@ def calculate_attenuation_grid(seed, velocity, quality=None, locations=None, tri
         import scipy.ndimage as ndimage
 
         tt_out = GridData(ndimage.map_coordinates(tt.data, tt.transform_to(locations).T),
-        spacing=velocity.shape, origin=velocity.origin)
+                          spacing=velocity.shape, origin=velocity.origin)
+
         return GridData(tmp, spacing=velocity.shape, origin=velocity.origin), tt_out
     else:
         return GridData(tmp, spacing=velocity.shape, origin=velocity.origin)
-
 
 
 ########################################################################################
@@ -389,6 +391,7 @@ def synthetic_seismogram(Mw, duration=0.1, sampling_rate=10000, vp=5000.0, vs=35
     # duration = 5 / f0p
     npts = duration * sampling_rate
     t = np.arange(npts) / sampling_rate  # to have the pulse in the middle of the seismogram
+
     if pwave:
         W0 = 2 * np.pi * f0p
         v = vp
@@ -402,7 +405,7 @@ def synthetic_seismogram(Mw, duration=0.1, sampling_rate=10000, vp=5000.0, vs=35
     data = np.roll(data, len(data)/2)
     # imax = np.argmax(data)
     # data = np.hstack((data[-1:imax:-1], data[imax:]))
-    #d[t < 0] = -d[t > 0][::-1]  # Applying heavyside function
+    # d[t < 0] = -d[t > 0][::-1]  # Applying heavyside function
 
     # Creating Trace object
 
@@ -417,10 +420,10 @@ def synthetic_seismogram(Mw, duration=0.1, sampling_rate=10000, vp=5000.0, vs=35
 
 # triaxial=True, orientation=(0, 0, 1),
 
-def detection_level_sta_lta_grid(attenuationGrid, VpGrid, VsGrid,
-    noise_level=1e-3, acceleration=True, STALTA_threshold=3, SSD=0.1,
-    minMag=-3., maxMag=2., magResolution=0.1, pwave=True):
 
+def detection_level_sta_lta_grid(attenuationGrid, VpGrid, VsGrid,
+                                 noise_level=1e-3, acceleration=True, STALTA_threshold=3, SSD=0.1,
+                                 minMag=-3., maxMag=2., magResolution=0.1, pwave=True):
     """
     Returns a grid containing the minimum magnitude detectable at the location stloc
     with the same dimensions as the attenuation grid.
@@ -454,11 +457,13 @@ def detection_level_sta_lta_grid(attenuationGrid, VpGrid, VsGrid,
     Sensitivity = attenuationGrid.copy()
     Sensitivity.data[:] = maxMag
     magnitudes = np.arange(minMag, maxMag + magResolution, magResolution)
+
     for Mw in magnitudes[-1::-1]:
         Pulse = synthetic_seismogram(Mw, duration=1.5, sampling_rate=10000, vp=5000.0, vs=3500.0,
-                                        rho=2400, SSD=SSD, pwave=pwave)  # Displacement
+                                     rho=2400, SSD=SSD, pwave=pwave)  # Displacement
 
         Pulse.differentiate()  # Velocity
+
         if acceleration:
             Pulse.differentiate()  # Acceleration
 
@@ -477,8 +482,8 @@ def detection_level_sta_lta_grid(attenuationGrid, VpGrid, VsGrid,
 
 
 def triggered_sensor_sta_lta_grid(stloc, Rho, Vp, Vs, Qp, Qs, Mw=-1,
-    STALTA_threshold=3.0, noise_level=1e-5, acceleration=True, SSD=1, evloc=None,
-    return_bool=True):
+                                  STALTA_threshold=3.0, noise_level=1e-5, acceleration=True, SSD=1, evloc=None,
+                                  return_bool=True):
     """Return a boolean grid with same dimension as an input attenuation grid
     describing whether a sensor triggers or not.
 
@@ -543,6 +548,7 @@ def triggered_sensor_sta_lta_grid(stloc, Rho, Vp, Vs, Qp, Qs, Mw=-1,
     # need to be fixed...
     # if not evloc:
     #   pass
+
     if evloc.ndim < 2:
         evloc = evloc[np.newaxis, :]
 
@@ -554,15 +560,15 @@ def triggered_sensor_sta_lta_grid(stloc, Rho, Vp, Vs, Qp, Qs, Mw=-1,
     logger.info('Calculating S-wave attenuation')
     Att_s = SRadiation * calculate_attenuation_grid(stloc, Vs, evloc, quality=Qs)
 
-
     # need to better writer the function to pass arguments to this function nargs*
     PulseP = synthetic_seismogram(Mw, duration=0.1, sampling_rate=10000, vp=5000.0, vs=3500.0,
-                                        rho=2400, SSD=SSD, pwave=True)  # Displacement
+                                  rho=2400, SSD=SSD, pwave=True)  # Displacement
     PulseS = synthetic_seismogram(Mw, duration=0.1, sampling_rate=10000, vp=5000.0, vs=3500.0,
-                                        rho=2400, SSD=SSD, pwave=False)
+                                  rho=2400, SSD=SSD, pwave=False)
 
     PulseP.differentiate()  # Velocity
     PulseS.differentiate()
+
     if acceleration:
         PulseP.differentiate()  # Acceleration
         PulseS.differentiate()  # Acceleration
@@ -625,15 +631,19 @@ def SF(f, log_Omega0, f0):
     :rtype: float
     """
     # if np.any((1.0+(f/float(f0))**2) <= 0):
+
     return log_Omega0 - np.log10((1.0 + (f / float(f0)) ** 2))
 
 # MTH
+
+
 def get_log_Omega0(f, spec, fmin, fmax):
     from numpy import linalg
-    from pylab import plot,show
+    from pylab import plot, show
 
     x = []
     y = []
+
     for i in range(f.size):
         if f[i] > fmin and f[i] < fmax:
             x.append(np.log10(f[i]))
@@ -642,8 +652,9 @@ def get_log_Omega0(f, spec, fmin, fmax):
 
     x = np.array(x)
     y = np.array(y)
-    m,b = np.polyfit(x, y, 1)
-    return m,b
+    m, b = np.polyfit(x, y, 1)
+
+    return m, b
 
 
 def MwFc(fn, m, b):
@@ -663,6 +674,7 @@ def MwFc(fn, m, b):
     :returns: the moment magnitude
     :rtype: float
     """
+
     return m * np.log10(fn) + b
 
 
@@ -683,6 +695,7 @@ def FcMw(Mw, m, b):
     :returns: the corner frequency
     :rtype: float
     """
+
     return 10 ** ((Mw - b) / m)
 
 
@@ -752,9 +765,10 @@ def PPVfn(Mw, fc, Rho, V):
     :returns: the PPV
     :rtype: float
     """
-    M0 = Mw2M0(Mw) # the seismic moment
+    M0 = Mw2M0(Mw)  # the seismic moment
     w0 = 2 * np.pi * fc
-    PPV = w0 ** 2 *  M0 / (4 * np.pi * Rho * (V ** 3))
+    PPV = w0 ** 2 * M0 / (4 * np.pi * Rho * (V ** 3))
+
     return PPV
 
 
@@ -778,6 +792,7 @@ def PPAfn(Mw, fc, Rho, V):
     PPV = PPVfn(Mw, fc, Rho, V)
     w0 = 2 * np.pi * fc
     PPA = np.abs(PPV * (1 - 2 * w0))
+
     return PPA
 
 
@@ -799,6 +814,7 @@ def Attenuation(fc, V, R, Q=100):
     :rtype: float
     """
     att = (1 / R) * np.exp(-np.pi * fc * R / (V * Q))
+
     return att
 
 
@@ -807,11 +823,11 @@ def Attenuation(fc, V, R, Q=100):
 def return_triggered_sensor(epos, spos, sorient=None, stype=None, Magnitude=-1, V=5000, Rho=2400, Fc=0.6,
                             use_sensor_orientation=False, use_sensor_type=False, PPAThreshold=0.02):
 
-# The correction for sensor orientation is the projection of the incoming wavefront with respect to the sensor orientation
-# the result is a fraction e.g., 0.2
+    # The correction for sensor orientation is the projection of the incoming wavefront with respect to the sensor orientation
+    # the result is a fraction e.g., 0.2
 
-# The correction for sensor type is related to the frequency response
-# the result will also be a fraction e.g., 0.5
+    # The correction for sensor type is related to the frequency response
+    # the result will also be a fraction e.g., 0.5
 
     popt, pcov = interpolate_Fc_Mw()
     fc = FcMw(Magnitude, popt[0], popt[1])
@@ -821,14 +837,17 @@ def return_triggered_sensor(epos, spos, sorient=None, stype=None, Magnitude=-1, 
     PPA = PPAfn(Mw, fc, Rho, V) * Attenuation(fc, V, R) * radiation_pattern_attenuation()[0]
 
     indices = np.nonzero(PPA >= PPAThreshold)[0]
+
     return indices
+
 
 class Trigger():
 
     def __init__(self, Mw, vp=5000.0, vs=3500.0, rho=2400, STALTA_threshold=3., SSD=0.02,
-             noise_level=0.02, acceleration=True):
+                 noise_level=0.02, acceleration=True):
 
-        st = synthetic_seismogram(Mw,vp=vp, vs=vs, rho=rho, SSD=SSD, pwave=True)
+        st = synthetic_seismogram(Mw, vp=vp, vs=vs, rho=rho, SSD=SSD, pwave=True)
+
         if acceleration:
             st.differentiate().differentiate()
         else:
@@ -837,7 +856,6 @@ class Trigger():
         self.amp = np.std(st.data)
         self.STALTA_threshold = STALTA_threshold
         self.noise_level = noise_level
-
 
     def Trigger(self, raypath):
         att = geometrical_spreading(raypath) * radiation_pattern_attenuation()[0]
@@ -850,8 +868,8 @@ class Trigger():
 class Sensitivity():
 
     def __init__(self, Mw_min=-3., Mw_max=3., Mw_spacing=0.1, vp=5000.0, vs=3500.0,
-                       rho=2400, STALTA_threshold=3., SSD=1,
-                       noise_level=0.02, acceleration=True, pwave=True):
+                 rho=2400, STALTA_threshold=3., SSD=1,
+                 noise_level=0.02, acceleration=True, pwave=True):
 
         nMw = (Mw_max - Mw_min) / Mw_spacing + 1
         self.Mw = np.linspace(Mw_min, Mw_max, nMw)
@@ -882,6 +900,7 @@ class Sensitivity():
             att = geometrical_spreading(raypath) * radiation_pattern_attenuation()[1]
 
         signal_energy = (self.signal_amplitude * att) ** 2
+
         if np.any(np.abs(signal_energy / (self.noise_level ** 2)) > self.STALTA_threshold):
             return self.Mw[np.abs(signal_energy / (self.noise_level ** 2)) > self.STALTA_threshold][0]
         else:
@@ -889,8 +908,8 @@ class Sensitivity():
 
 
 def trigger_sensor(raypath, Mw, vp=5000.0, vs=3500.0,
-                       rho=2400, STALTA_threshold=3., SSD=0.02,
-                       noise_level=0.02, acceleration=True):
+                   rho=2400, STALTA_threshold=3., SSD=0.02,
+                   noise_level=0.02, acceleration=True):
     """
     Calculate the sensitivity at a specific location given a series sensor locations (location of senosor within an array)
     :param raypath: coordinates of the segment endpoints along the raypath
@@ -925,6 +944,7 @@ def trigger_sensor(raypath, Mw, vp=5000.0, vs=3500.0,
 
     att = geometrical_spreading(raypath) * radiation_pattern_attenuation()[0]
     st = synthetic_seismogram(Mw, vp=vp, vs=vs, rho=rho, SSD=SSD, pwave=True)
+
     if acceleration:
         st.differentiate().differentiate()
     else:
@@ -936,9 +956,8 @@ def trigger_sensor(raypath, Mw, vp=5000.0, vs=3500.0,
 
 
 def measure_sensitivity(raypath, Mw_min=-3., Mw_max=2., Mw_spacing=0.1, vp=5000.0, vs=3500.0,
-                       rho=2400, STALTA_threshold=3., SSD=0.02,
-                       noise_level=0.02, acceleration=True):
-
+                        rho=2400, STALTA_threshold=3., SSD=0.02,
+                        noise_level=0.02, acceleration=True):
     """
     Calculate the sensitivity at a specific location given a series sensor locations (location of senosor within an array)
     :param raypath: coordinates of the segment endpoints along the raypath
@@ -980,6 +999,7 @@ def measure_sensitivity(raypath, Mw_min=-3., Mw_max=2., Mw_spacing=0.1, vp=5000.
 
     for Mw_ in zip(Mw):
         st = synthetic_seismogram(Mw_, vp=vp, vs=vs, rho=rho, SSD=SSD, pwave=True,)
+
         if acceleration:
             amp = att * np.std(st.differentiate().differentiate().data)
         else:
@@ -997,8 +1017,8 @@ def measure_sensitivity(raypath, Mw_min=-3., Mw_max=2., Mw_spacing=0.1, vp=5000.
 
 
 def moment_magnitude(stream, evt, site, vp, vs, ttpath=None,
-    only_triaxial=True, density=2700,
-    min_dist=20, win_length=0.02, len_spectrum=2 ** 14, freq=100):
+                     only_triaxial=True, density=2700,
+                     min_dist=20, win_length=0.02, len_spectrum=2 ** 14, freq=100):
     """
     Calculate the moment magnitude for the preferred origin of an event.
     :param stream: seismogram
@@ -1035,7 +1055,6 @@ def moment_magnitude(stream, evt, site, vp, vs, ttpath=None,
     if only_triaxial:
         logger.debug('only triaxial sensor will be used in magnitude calculation')
 
-
     origin = evt.preferred_origin()
     fcs = []
 
@@ -1055,6 +1074,7 @@ def moment_magnitude(stream, evt, site, vp, vs, ttpath=None,
     for k, arr in enumerate(origin.arrivals):
         pick = arr.pick_id.get_referred_object()
         # ensuring backward compatibility
+
         if not pick:
             pick = evt.picks[k]
         try:
@@ -1068,6 +1088,7 @@ def moment_magnitude(stream, evt, site, vp, vs, ttpath=None,
 
         sta_code = pick.waveform_id.station_code
         station = site.stations(station=sta_code)
+
         if not station:
             continue
 
@@ -1084,7 +1105,6 @@ def moment_magnitude(stream, evt, site, vp, vs, ttpath=None,
         signal = sttrs.copy()
 
         # creating displacement pulse
-        from IPython.core.debugger import Tracer
         try:
             signal.detrend('demean').detrend('linear')
         except:
@@ -1093,18 +1113,22 @@ def moment_magnitude(stream, evt, site, vp, vs, ttpath=None,
         csignal = np.mean([tr.data ** 2 for tr in signal], axis=0)
 
         len_max = len(csignal[csignal == np.max(csignal)]) + \
-                          len(csignal[csignal == np.min(csignal)])
+            len(csignal[csignal == np.min(csignal)])
 
         # very basic clipping detection
+
         if len_max > 0.1 * (len(csignal)):
             logger.info('Clipped waveform detected: station %s '
-                         'will not be used for magnitude calculation' %
+                        'will not be used for magnitude calculation' %
                         station.code)
+
             continue
 
         ct = signal.copy().composite()
+
         if ct[0] is None:
             logger.debug('%s.%s: ct[0] is None!' % (__name__, fname))
+
             continue
         #logger.debug('%s.%s: type(ct[0])=%s' % (__name__, fname, type(ct[0])))
         #logger.debug('%s.%s: ct[0].get_id()=%s' % (__name__, fname, ct[0].get_id()))
@@ -1112,9 +1136,10 @@ def moment_magnitude(stream, evt, site, vp, vs, ttpath=None,
         ct = ct.detrend('demean').detrend('demean')
         ct = ct.filter('highpass', freq=freq)
 
-        trim_beg = at -.01
+        trim_beg = at - .01
         trim_end = at + 2*win_length
         stats = ct[0].stats
+
         if trim_beg < stats.starttime or trim_end > stats.endtime:
             logger.warn("moment_mag: Trim window exceeds trace start/end time !!!")
 
@@ -1130,12 +1155,10 @@ def moment_magnitude(stream, evt, site, vp, vs, ttpath=None,
         elif station.sensor_type.lower() == 'geophone':
             displacement = ct.copy().integrate()
 
-
         R = np.linalg.norm(stloc - evloc)
 
-
         displacement = displacement.taper(type='cosine', max_percentage=0.5,
-                      max_length=win_length, side='right')
+                                          max_length=win_length, side='right')
 
         if R < min_dist:
             continue
@@ -1162,11 +1185,10 @@ def moment_magnitude(stream, evt, site, vp, vs, ttpath=None,
 
         signal_length = 2 * win_length + 0.01
         normalization = 2 / (signal_length * sr)
-        spectrum = np.sqrt(np.mean([np.abs(fft(tr.data, len_spectrum))\
+        spectrum = np.sqrt(np.mean([np.abs(fft(tr.data, len_spectrum))
                                     ** 2 for tr in displacement], axis=0))
         spectrum_norm = spectrum / radiation * R * 4 * \
-                        np.pi * density * vsrc ** 3 * normalization
-
+            np.pi * density * vsrc ** 3 * normalization
 
         f = np.fft.fftfreq(len_spectrum, 1 / sr)
         fi = np.nonzero((f >= .2) & (f <= 2000))[0]
@@ -1180,7 +1202,6 @@ def moment_magnitude(stream, evt, site, vp, vs, ttpath=None,
             continue
 
         M0 = np.power(10, popt[0])
-
 
         if len(sttrs) == 1:
             M0 = M0 * np.sqrt(3)  # uniaxial sensor
@@ -1199,12 +1220,12 @@ def moment_magnitude(stream, evt, site, vp, vs, ttpath=None,
         if station not in stations:
             stations.append(station)
 
-        (m,b)= get_log_Omega0(f, spectrum_norm, .001, 2.)
+        (m, b) = get_log_Omega0(f, spectrum_norm, .001, 2.)
         M0_check = np.power(10, b)
         Mw_check = 2./3.*b - 6.
 
-        logger.debug("moment_mag: sta:%s [%s] dist:%.2f M0=%g fc=%.2f Mw=%.2f [Mw_check: %.2f]" % \
-                (sta_code, phase, R, M0, fc, Mw[-1], Mw_check))
+        logger.debug("moment_mag: sta:%s [%s] dist:%.2f M0=%g fc=%.2f Mw=%.2f [Mw_check: %.2f]" %
+                     (sta_code, phase, R, M0, fc, Mw[-1], Mw_check))
         '''
         delta = ct[0].stats.delta
         spectrum_scale = spectrum * delta
@@ -1215,12 +1236,13 @@ def moment_magnitude(stream, evt, site, vp, vs, ttpath=None,
         '''
 
         debug = False
-        #if phase == 'S':
-            #debug = True
+        # if phase == 'S':
+        #debug = True
+
         if debug:
-            (m,b)= get_log_Omega0(f, spectrum_norm, .001, 2.)
-            logger.debug("get_log_Omega0 returns m=%f b=%f --> M0=%g [Mw:%.2f]" % \
-                        (m, b, np.power(10, b), 2./3.*b - 6.))
+            (m, b) = get_log_Omega0(f, spectrum_norm, .001, 2.)
+            logger.debug("get_log_Omega0 returns m=%f b=%f --> M0=%g [Mw:%.2f]" %
+                         (m, b, np.power(10, b), 2./3.*b - 6.))
 
             import matplotlib.pyplot as plt
             plt.loglog(f, spectrum_norm)
@@ -1237,7 +1259,6 @@ def moment_magnitude(stream, evt, site, vp, vs, ttpath=None,
 
     fcs = fcs[~np.isnan(Mw)]
     fcs = fcs[~np.isinf(Mw)]
-
 
     import numpy.ma as ma
     mask = ma.masked_where(fcs > 0, fcs)
@@ -1260,16 +1281,17 @@ def moment_magnitude(stream, evt, site, vp, vs, ttpath=None,
                                                   np.std(x)))
 
     mag = event.Magnitude(mag=np.median(Mw),
-                station_count=stcount, magnitude_type='Mw',
-                evaluation_mode=origin.evaluation_mode,
-                evaluation_status=origin.evaluation_status,
-                origin_id=origin.resource_id)
+                          station_count=stcount, magnitude_type='Mw',
+                          evaluation_mode=origin.evaluation_mode,
+                          evaluation_status=origin.evaluation_status,
+                          origin_id=origin.resource_id)
 
     mag.corner_frequency = fc
 
     from microquake.core.event import QuantityError
     mag.mag_errors = QuantityError(uncertainty=np.std(Mw))
     evt.magnitudes.append(mag)
+
     if origin.resource_id == evt.preferred_origin().resource_id:
         evt.preferred_magnitude_id = mag.resource_id.id
 

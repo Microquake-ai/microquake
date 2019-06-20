@@ -20,16 +20,18 @@ module to interact with the NLLoc
 
 # from microquake.nlloc.core import *
 
-from datetime import datetime
-import shutil
-import os
-import tempfile
-import numpy as np
-from microquake.core.event import Catalog, Arrival, Origin
-from microquake.core.util.attribdict import AttribDict
-from microquake.core import UTCDateTime
 import logging
+import os
+import shutil
+import tempfile
+from datetime import datetime
 from glob import glob
+
+import numpy as np
+
+from microquake.core import UTCDateTime
+from microquake.core.event import Arrival, Catalog, Origin
+from microquake.core.util.attribdict import AttribDict
 
 logger = logging.getLogger()
 
@@ -53,7 +55,7 @@ def read_nlloc_hypocenter_file(filename, picks=None,
     with open(filename) as hyp_file:
 
         #print("read_nlloc_file:%s" % filename)
-        #exit()
+        # exit()
         all_lines = hyp_file.readlines()
         hyp = [line.split() for line in all_lines if 'HYPOCENTER' in line][0]
         stat = [line.split() for line in all_lines if 'STATISTICS' in line][0]
@@ -64,8 +66,10 @@ def read_nlloc_hypocenter_file(filename, picks=None,
 
         s = int(np.floor(float(geo[7])))
         us = int((float(geo[7]) - s) * 1e6)
+
         if s < 0:
             s = 0
+
         if us < 0:
             us = 0
 
@@ -113,8 +117,10 @@ def read_nlloc_hypocenter_file(filename, picks=None,
         major_az = np.arctan2(major[0], major[1])
         major_dip = np.arctan(major[2] / np.linalg.norm(major[0:2]))
         # MTH: obspy will raise error if you try to set float attr to nan below
+
         if np.isnan(major_az):
             major_az = None
+
         if np.isnan(major_dip):
             major_dip = None
 
@@ -136,12 +142,15 @@ def read_nlloc_hypocenter_file(filename, picks=None,
         stations = []
         phases = []
         oq.associated_phase_count = 0
+
         for line in all_lines:
             if 'PHASE ' in line:
                 TravelTime = True
+
                 continue
             elif 'END_PHASE' in line:
                 TravelTime = False
+
                 continue
 
             if TravelTime:
@@ -193,7 +202,7 @@ def read_nlloc_hypocenter_file(filename, picks=None,
 
         stations = np.array(stations)
 
-        points = read_scatter_file(filename.replace('.hyp','.scat'))
+        points = read_scatter_file(filename.replace('.hyp', '.scat'))
 
         origin.arrivals = [arr for arr in arrivals]
         origin.scatter = points
@@ -211,71 +220,70 @@ def read_nlloc_hypocenter_file(filename, picks=None,
 
 def calculate_uncertainty(event, base_directory, base_name, perturbation=5,
                           pick_uncertainty=1e-3):
-        """
-        :param cat: event
-        :type cat: microquake.core.event.Event
-        :param base_directory: base directory
-        :param base_name: base name for grids
-        :param perturbation:
-        :return: microquake.core.event.Event
-        """
+    """
+    :param cat: event
+    :type cat: microquake.core.event.Event
+    :param base_directory: base directory
+    :param base_name: base name for grids
+    :param perturbation:
+    :return: microquake.core.event.Event
+    """
 
-        from microquake.core.data.grid import read_grid
-        from numpy import linalg, argsort, arcsin, sqrt
-        from microquake.core.event import ConfidenceEllipsoid, OriginUncertainty
-        # from IPython.core.debugger import Tracer
+    from microquake.core.data.grid import read_grid
+    from numpy import linalg, argsort, arcsin, sqrt
+    from microquake.core.event import ConfidenceEllipsoid, OriginUncertainty
 
-        narr = len(event.preferred_origin().arrivals)
+    narr = len(event.preferred_origin().arrivals)
 
-        # initializing the frechet derivative
-        Frechet = np.zeros([narr, 3])
+    # initializing the frechet derivative
+    Frechet = np.zeros([narr, 3])
 
-        event_loc = np.array(event.preferred_origin().loc)
+    event_loc = np.array(event.preferred_origin().loc)
 
-        for i, arrival in enumerate(event.preferred_origin().arrivals):
-            pick = arrival.pick_id.get_referred_object()
-            station_code = pick.waveform_id.station_code
-            phase = arrival.phase
+    for i, arrival in enumerate(event.preferred_origin().arrivals):
+        pick = arrival.pick_id.get_referred_object()
+        station_code = pick.waveform_id.station_code
+        phase = arrival.phase
 
-            # loading the travel time grid
-            filename = '%s/time/%s.%s.%s.time' % (base_directory,
-            base_name, phase, station_code)
+        # loading the travel time grid
+        filename = '%s/time/%s.%s.%s.time' % (base_directory,
+                                              base_name, phase, station_code)
 
-            tt = read_grid(filename, format='NLLOC')
-            spc = tt.spacing
+        tt = read_grid(filename, format='NLLOC')
+        spc = tt.spacing
 
-            # build the Frechet derivative
-            for dim in range(0,3):
-                loc_p1 = event_loc.copy()
-                loc_p2 = event_loc.copy()
-                loc_p1[dim] += perturbation
-                loc_p2[dim] -= perturbation
-                tt_p1 = tt.interpolate(loc_p1, grid_coordinate=False)
-                tt_p2 = tt.interpolate(loc_p2, grid_coordinate=False)
-                Frechet[i, dim] = (tt_p1 - tt_p2) / (2 * perturbation)
+        # build the Frechet derivative
 
-        hessian = linalg.inv(np.dot(Frechet.T, Frechet))
-        tmp = hessian * pick_uncertainty ** 2
-        w, v = linalg.eig(tmp)
-        i = argsort(w)[-1::-1]
-        # for the angle calculation see
-        # https://en.wikipedia.org/wiki/Euler_angles#Tait-Bryan_angles
-        X = v[:, i[0]]
-        Y = v[:, i[1]]
-        Z = v[:, i[2]]
-        # Tracer()()
-        major_axis_plunge = arcsin(Y[2] / sqrt(1 - X[2] ** 2))
-        major_axis_azimuth = arcsin(X[1] / sqrt(1 - X[2] ** 2))
-        major_axis_rotation = arcsin(-X[2])
-        ce = ConfidenceEllipsoid(semi_major_axis_length=w[i[0]],
-                                 semi_intermediate_axis_length=w[i[1]],
-                                 semi_minor_axis_length=w[i[2]],
-                                 major_axis_plunge=major_axis_plunge,
-                                 major_axis_azimuth=major_axis_azimuth,
-                                 major_axis_rotation=major_axis_rotation)
-        ou = OriginUncertainty(confidence_ellipsoid=ce)
+        for dim in range(0, 3):
+            loc_p1 = event_loc.copy()
+            loc_p2 = event_loc.copy()
+            loc_p1[dim] += perturbation
+            loc_p2[dim] -= perturbation
+            tt_p1 = tt.interpolate(loc_p1, grid_coordinate=False)
+            tt_p2 = tt.interpolate(loc_p2, grid_coordinate=False)
+            Frechet[i, dim] = (tt_p1 - tt_p2) / (2 * perturbation)
 
-        return ou
+    hessian = linalg.inv(np.dot(Frechet.T, Frechet))
+    tmp = hessian * pick_uncertainty ** 2
+    w, v = linalg.eig(tmp)
+    i = argsort(w)[-1::-1]
+    # for the angle calculation see
+    # https://en.wikipedia.org/wiki/Euler_angles#Tait-Bryan_angles
+    X = v[:, i[0]]
+    Y = v[:, i[1]]
+    Z = v[:, i[2]]
+    major_axis_plunge = arcsin(Y[2] / sqrt(1 - X[2] ** 2))
+    major_axis_azimuth = arcsin(X[1] / sqrt(1 - X[2] ** 2))
+    major_axis_rotation = arcsin(-X[2])
+    ce = ConfidenceEllipsoid(semi_major_axis_length=w[i[0]],
+                             semi_intermediate_axis_length=w[i[1]],
+                             semi_minor_axis_length=w[i[2]],
+                             major_axis_plunge=major_axis_plunge,
+                             major_axis_azimuth=major_axis_azimuth,
+                             major_axis_rotation=major_axis_rotation)
+    ou = OriginUncertainty(confidence_ellipsoid=ce)
+
+    return ou
 
 
 def read_scatter_file(filename):
@@ -295,6 +303,7 @@ def read_scatter_file(filename):
     struct.unpack('f', f.read(4))
 
     points = []
+
     for k in range(0, nsamples):
         x = struct.unpack('f', f.read(4))[0]
         y = struct.unpack('f', f.read(4))[0]
@@ -340,6 +349,7 @@ def _read_nll_header_file(file_name):
         dict_out.grid_type = line[9]
 
         line = fin.readline()
+
         if dict_out.grid_type in ['ANGLE', 'TIME']:
             line = line.split()
             dict_out.label = line[0]
@@ -369,6 +379,7 @@ def read_NLL_grid(base_name):
     from microquake.core import GridData
     from glob import glob
     # Testing the presence of the .buf or .hdr extension at the end of base_name
+
     if ('.buf' == base_name[-4:]) or ('.hdr' == base_name[-4:]):
         # removing the extension
         base_name = base_name[:-4]
@@ -382,10 +393,10 @@ def read_NLL_grid(base_name):
     # Read binary buffer
     gdata = np.fromfile(base_name + '.buf', dtype=np.float32)
     gdata = gdata.reshape(head.shape)
+
     if head.grid_type == 'SLOW_LEN':
         gdata = head.spacing / gdata
         head.grid_type = 'VELOCITY'
-
 
     return GridData(gdata, spacing=head.spacing, origin=head.origin,
                     seed=head.seed, seed_label=head.label,
@@ -489,6 +500,7 @@ def write_nll_grid(base_name, data, origin, spacing, grid_type, seed=None,
         logger.warning('Grid type is not a valid NLLoc type')
 
     # removing the extension if extension is part of the base name
+
     if ('.buf' == base_name[-4:]) or ('.hdr' == base_name[-4:]):
         # removing the extension
         base_name = base_name[:-4]
@@ -505,8 +517,6 @@ def write_nll_grid(base_name, data, origin, spacing, grid_type, seed=None,
 
     _write_grid_header(base_name, shape, origin, spacing,
                        grid_type, label, seed)
-
-
 
 
 # def prepare_nll(ctl_filename='input.xml', nll_base='NLL'):
@@ -567,7 +577,6 @@ class NLL(object):
         self.hdrfile.gridpar = self.gridpar.grids.vp
         self.init_control_file()
 
-
     @property
     def base_name(self):
         return '%s' % self.project_code
@@ -576,12 +585,16 @@ class NLL(object):
         try:
             if not os.path.exists(self.base_folder):
                 os.mkdir(self.base_folder)
+
             if not os.path.exists(os.path.join(self.base_folder, 'run')):
                 os.mkdir(os.path.join(self.base_folder, 'run'))
+
             if not os.path.exists(os.path.join(self.base_folder, 'model')):
                 os.mkdir(os.path.join(self.base_folder, 'model'))
+
             if not os.path.exists(os.path.join(self.base_folder, 'time')):
                 os.mkdir(os.path.join(self.base_folder, 'time'))
+
             return True
         except:
             return False
@@ -600,11 +613,10 @@ class NLL(object):
 
         os.mkdir(os.path.join(self.base_folder, self.worker_folder, 'loc'))
         os.mkdir(os.path.join(self.base_folder, self.worker_folder, 'obs'))
-        logger.debug('%s.%s: cwd=%s' % (__name__,'_prepare_project_folder',
+        logger.debug('%s.%s: cwd=%s' % (__name__, '_prepare_project_folder',
                                         os.getcwd()))
 
     def _finishNLL(self):
-
         '''
         file = "%s/run/%s_%s.in" % (self.base_folder, self.base_name, self.worker_folder)
         print("_finishNLL: Don't remove:%s" % file)
@@ -615,7 +627,6 @@ class NLL(object):
         self._clean_outputs()
         tmp = '%s/%s' % (self.base_folder, self.worker_folder)
         shutil.rmtree(tmp)
-        
 
     def init_header_file(self):
         """
@@ -642,7 +653,7 @@ class NLL(object):
 
         self.ctrlfile.laymod = laymod
         self.ctrlfile.modelname = modelname
-        self.ctrlfile.basefolder = self.base_folder 
+        self.ctrlfile.basefolder = self.base_folder
 
         # hdr = "%d %d %d  %.2f %.2f %.2f  %.4f %.4f %.4f  SLOW_LEN" % (
         self.ctrlfile.locgrid = "LOCGRID  %d %d %d  %.2f %.2f %.2f  %.4f %.4f %.4f  MISFIT  SAVE" % (
@@ -676,7 +687,7 @@ class NLL(object):
         if not self.gridpar.homogeneous:
             if self.gridpar.vp:
                 p_file = '%s/model/%s.P.mod' % (self.base_folder,
-                        self.base_name)
+                                                self.base_name)
                 self.gridpar.grids.vp.write(p_file, format='NLLOC')
                 self.gridpar.filep = self.gridpar.vs.split('/')[-1]
             else:
@@ -684,7 +695,7 @@ class NLL(object):
 
             if self.gridpar.vs:
                 s_file = '%s/model/%s.S.mod' % (self.base_folder,
-                        self.base_name)
+                                                self.base_name)
                 self.gridpar.grids.vs.write(s_file, format='NLLOC')
 
                 self.gridpar.files = self.gridpar.vs.split('/')[-1]
@@ -693,9 +704,9 @@ class NLL(object):
 
         if self.gridpar.homogeneous:
             self.ctrlfile.vgout = '%s/model/%s' % (self.base_folder,
-                    self.base_name)
+                                                   self.base_name)
             self.ctrlfile.vgout = '%s/model/%s' % (self.base_folder,
-                    self.base_name)
+                                                   self.base_name)
 
         else:
             self.ctrlfile.vgout = '%s/model/%s.P.mod.buf' % (self.base_folder,
@@ -739,11 +750,12 @@ class NLL(object):
         self.ctrlfile.phase = 'P'
         self.ctrlfile.vgtype = 'P'
         self.ctrlfile.write('%s/run/%s.in' % (self.base_folder, self.base_name))
+
         if self.gridpar.vp:
             if self.gridpar.homogeneous:
                 logger.debug('Creating P velocity grid')
                 cmd = 'Vel2Grid %s/run/%s.in' % (self.base_folder,
-                        self.base_name)
+                                                 self.base_name)
                 os.system(cmd)
 
             logger.debug('Calculating P time grids')
@@ -753,12 +765,13 @@ class NLL(object):
         if self.gridpar.vs:
             self.ctrlfile.phase = 'S'
             self.ctrlfile.vgtype = 'S'
-            self.ctrlfile.write('%s/run/%s.in' % ( self.base_folder,
-                self.base_name))
+            self.ctrlfile.write('%s/run/%s.in' % (self.base_folder,
+                                                  self.base_name))
+
             if self.gridpar.homogeneous:
                 logger.debug('Creating S velocity grid')
                 cmd = 'Vel2Grid %s/run/%s.in' % (self.base_folder,
-                        self.base_name)
+                                                 self.base_name)
                 os.system(cmd)
 
             logger.debug('Calculating S time grids')
@@ -783,14 +796,12 @@ class NLL(object):
         """
         from microquake.simul.eik import angles
         from microquake.core import read_grid
-        from IPython.core.debugger import Tracer
         # reading the travel time grid
         ifile = time_file
         ttg = read_grid(ifile, format='NLLOC')
         az, toa = angles(ttg)
         tmp = ifile.split('/')
         tmp[-1] = tmp[-1].replace('time', 'take_off')
-        # Tracer()()
         ofname = '/'.join(tmp)
         toa.write(ofname, format='NLLOC')
         az.write(ofname.replace('take_off', 'azimuth'), format='NLLOC')
@@ -822,6 +833,7 @@ class NLL(object):
 
         for time_file in time_files:
             ttg = read_grid(time_file, format='NLLOC')
+
             for coord in zip(X, Y, Z):
                 st = time()
                 ray = ray_tracer(ttg, coord, grid_coordinates=True,
@@ -861,7 +873,7 @@ class NLL(object):
 
         self._prepare_project_folder()
 
-        ### TODO
+        # TODO
         # MTH: If input event has no preferred_origin(), gen_observations
         # will (incorrectly) create one!
         event2 = self.gen_observations_from_event(evt)
@@ -873,19 +885,20 @@ class NLL(object):
         os.system('NLLoc %s' % new_in)
 
         filename = "%s/%s/loc/last.hyp" % (self.base_folder, self.worker_folder)
-        logger.debug('%s.%s: scan hypo from filename = %s' % (__name__,fname,filename))
+        logger.debug('%s.%s: scan hypo from filename = %s' % (__name__, fname, filename))
 
         if not glob(filename):
-            logger.error("%s.%s: location failed" % (__name__,fname))
+            logger.error("%s.%s: location failed" % (__name__, fname))
             return Catalog(events=[evt])
 
         if event.origins:
             if event.preferred_origin():
-                logger.debug('%s.%s: event.pref_origin exists --> set eval mode' % (__name__,fname))
+                logger.debug('%s.%s: event.pref_origin exists --> set eval mode' % (__name__, fname))
                 evaluation_mode = event.preferred_origin().evaluation_mode
                 evaluation_status = event.preferred_origin().evaluation_status
             else:
-                logger.debug('%s.%s: event.pref_origin does NOT exist --> set eval mode on origins[0]' % (__name__,fname))
+                logger.debug(
+                    '%s.%s: event.pref_origin does NOT exist --> set eval mode on origins[0]' % (__name__, fname))
                 evaluation_mode = event.origins[0].evaluation_mode
                 evaluation_status = event.origins[0].evaluation_status
 
@@ -900,7 +913,7 @@ class NLL(object):
         """
         Create NLLoc compatible observation file from an microquake event catalog file.
         input:
-        
+
         :param event: event containing a preferred origin with arrivals
         referring to picks
         :type event: ~microquake.core.event.Event
@@ -911,7 +924,7 @@ class NLL(object):
         with open('%s/%s/obs/%s.obs' % (self.base_folder, self.worker_folder,
                                         self.base_name), 'w') as out_file:
             po = event.preferred_origin()
-            logger.debug('%s.%s: pref origin=[%s]' % (__name__,fname,po))
+            logger.debug('%s.%s: pref origin=[%s]' % (__name__, fname, po))
 
             if not po:
                 logger.error('preferred origin is not set')
@@ -919,7 +932,7 @@ class NLL(object):
             for arr in po.arrivals:
 
                 pk = arr.pick_id.get_referred_object()
-                #logger.debug(pk)
+                # logger.debug(pk)
                 if pk.evaluation_status == 'rejected':
                     continue
 
@@ -983,7 +996,6 @@ class NLL(object):
         et = time()
         logger.info('completed ray tracing in %0.3f' % (et - st))
 
-
         event.origins.append(origin)
         event.preferred_origin_id = origin.resource_id
 
@@ -992,7 +1004,7 @@ class NLL(object):
     def take_off_angle(self, station):
         from microquake.core.data.grid import read_grid
         fname = '%s/time/%s.P.%s.take_off' % (self.base_folder, self.base_name,
-                                          station)
+                                              station)
         return read_grid(fname, format='NLLOC')
 
 
@@ -1043,15 +1055,15 @@ class NLLHeader(AttribDict):
 TRANSFORM  NONE
 """
 
+
 supported_nlloc_grid_type = ['VELOCITY', 'VELOCITY_METERS', 'SLOWNESS',
                              'SLOW_LEN', 'TIME', 'PROB_DENSITY', 'MISFIT',
-                             'ANGLE',]
+                             'ANGLE', ]
 
 
 valid_nlloc_grid_type = ['VELOCITY', 'VELOCITY_METERS', 'SLOWNESS', 'VEL2',
                          'SLOW2', 'SLOW2_METERS', 'SLOW_LEN', 'TIME', 'TIME2D',
                          'PROB_DENSITY', 'MISFIT', 'ANGLE', 'ANGLE2D']
-
 
 
 class NLLControl(AttribDict):
@@ -1084,7 +1096,7 @@ class NLLControl(AttribDict):
             if len(n) > 6:
                 logger.critical('NLL cannot handle station names longer than'
                                 ' 6 characters, Sensor %s currently has %d'
-                                ' characters' %(n, len(n)))
+                                ' characters' % (n, len(n)))
                 logger.warning('Sensor %s will not be processed' % n)
                 continue
             # noinspection PyStringFormat
@@ -1095,7 +1107,7 @@ class NLLControl(AttribDict):
             fout.write(str(self))
 
     __ctrl_tmpl = \
-"""
+        """
 CONTROL 0 54321
 TRANS NONE
 VGOUT  <VGOUT> #<BASEFOLDER>/model/layer
@@ -1121,14 +1133,14 @@ GT_PLFD  1.0e-3  0
 
 LOCSIG Microquake package
 
-LOCCOM created automatically by the microquake package 
+LOCCOM created automatically by the microquake package
 
 LOCFILES <BASEFOLDER>/<WORKERFOLDER>/obs/<MODELNAME>.obs NLLOC_OBS <BASEFOLDER>/time/<MODELNAME>  <BASEFOLDER>/<WORKERFOLDER>/loc/<MODELNAME>
 
 #LOCHYPOUT SAVE_NLLOC_ALL SAVE_HYPOINV_SUM SAVE_NLLOC_OCTREE
 LOCHYPOUT SAVE_NLLOC_ALL
 
-LOCSEARCH <LOCSEARCH> 
+LOCSEARCH <LOCSEARCH>
 
 <LOCGRID>
 
