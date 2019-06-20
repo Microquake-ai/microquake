@@ -37,6 +37,7 @@ def angles(travel_time):
     azimuth = travel_time.copy()
     azimuth.type = 'ANGLE'
     azimuth.data = tmp
+
     if len(travel_time.shape) == 3:
         hor = np.sqrt(gds[0] ** 2 + gds[1] ** 2)
         tmp = np.arctan2(hor, -gds[2])
@@ -44,6 +45,7 @@ def angles(travel_time):
         takeoff = travel_time.copy()
         takeoff.type = 'ANGLE'
         takeoff.data = tmp
+
         return azimuth, takeoff
     else:
         return azimuth
@@ -88,18 +90,18 @@ def ray_tracer(travel_time, start, grid_coordinates=False, max_iter=1000):
     dist = np.linalg.norm(start - end)
     cloc = start  # initializing cloc "current location" to start
     gamma = spacing / 2    # gamma is set to half the grid spacing. This
-                         # should be
-                         # sufficient. Note that gamma is fixed to reduce
-                         # processing time.
+    # should be
+    # sufficient. Note that gamma is fixed to reduce
+    # processing time.
     nodes = [start]
+
     while dist > spacing / 2:
 
         if dist < spacing * 4:
             gamma = spacing / 4
 
         gvect = np.array([gd.interpolate(cloc, grid_coordinate=False,
-                          order=1)[0] for gd in gds])
-
+                                         order=1)[0] for gd in gds])
 
         cloc = cloc - gamma * gvect / np.linalg.norm(gvect)
         nodes.append(cloc)
@@ -108,6 +110,7 @@ def ray_tracer(travel_time, start, grid_coordinates=False, max_iter=1000):
     nodes.append(end)
 
     ray = Ray(nodes=nodes)
+
     return ray
 
 
@@ -124,7 +127,6 @@ def eikonal_solver(velocity, seed, seed_label, *args, **kwargs):
     :type seed_label: basestring
     """
 
-
     import skfmm
     import numpy as np
     seed = np.array(seed)
@@ -134,7 +136,7 @@ def eikonal_solver(velocity, seed, seed_label, *args, **kwargs):
 
     phi[tuple(seed_coord.astype(int))] = 1
     tt = skfmm.travel_time(phi, velocity.data, dx=velocity.spacing, *args,
-            **kwargs)
+                           **kwargs)
     tt_grid = velocity.copy()
     tt_grid.data = tt
     tt_grid.seed = seed
@@ -167,7 +169,6 @@ def sensitivity_location(velocity, seed, location, perturbation=0.1, h=1):
 
     buf = 2
 
-
     x = np.arange(-buf, velocity.data.shape[0] + buf)
     y = np.arange(-buf, velocity.data.shape[1] + buf)
     z = np.arange(-buf, velocity.data.shape[2] + buf)
@@ -186,13 +187,12 @@ def sensitivity_location(velocity, seed, location, perturbation=0.1, h=1):
 
     h = float(h)
 
-    ndim = len(traveltime.shape)
-
     spc = traveltime.spacing
     shape = np.array(traveltime.shape)
 
     frechet = []
     end = traveltime.transform_to(location) + buf
+
     for j in range(len(seed)):
         new_end1 = end.copy()
 
@@ -201,7 +201,7 @@ def sensitivity_location(velocity, seed, location, perturbation=0.1, h=1):
         new_end2 = end.copy()
         new_end2[(end[:, j] - perturbation < shape[j]) & (end[:, j] - perturbation > 0), j] -= perturbation
 
-        perturbated_tt1 = map_coordinates(traveltime.data, new_end1.T , order=1, mode='nearest')
+        perturbated_tt1 = map_coordinates(traveltime.data, new_end1.T, order=1, mode='nearest')
         perturbated_tt2 = map_coordinates(traveltime.data, new_end2.T, order=1, mode='nearest')
 
         f = (perturbated_tt1 - perturbated_tt2) / ((new_end1[:, j] - new_end2[:, j]) * spc)
@@ -213,6 +213,7 @@ def sensitivity_location(velocity, seed, location, perturbation=0.1, h=1):
     return frechet.T
 
 
+# TODO: sensitivity_velocity is broken, travel_time undefined
 def sensitivity_velocity(velocity, seed, start_points, perturbation=0.1, h=1):
     """
     Calculate the sensitivity kernel (Frechet derivative, dt/dV)
@@ -248,11 +249,12 @@ def sensitivity_velocity(velocity, seed, start_points, perturbation=0.1, h=1):
     F = csr_matrix((n_measurement, n_node), dtype=np.float32)
 
     # adding buffer to the velocity
-    buf = 2 # related to the use of cubic spline with
+    buf = 2  # related to the use of cubic spline with
 
     csr_matrix
 
     x = []
+
     for dim in range(len(velocity.data.shape)):
         x.append(np.arange(-buf, velocity.data.shape[0] + buf))
 
@@ -271,8 +273,10 @@ def sensitivity_velocity(velocity, seed, start_points, perturbation=0.1, h=1):
     vel = velocity.copy()
     vel.data = map_coordinates(velocity.data, coords, mode='nearest').reshape(X.shape)
 
-    #travel_time = EikonalSolver(vel, seed)
+    # travel_time = EikonalSolver(vel, seed)
+
     for start in start_points:
         ray = ray_tracer(travel_time, start)
+
         for segment in ray:
             pass
