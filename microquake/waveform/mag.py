@@ -298,16 +298,22 @@ def calculate_energy_from_flux(cat,
             # could check for arr.hypo_dist_in_m here but it's almost identical
             R = arr.distance
 
-            if arr.vel_flux is None:
-                logger.info("%s: No vel_flux in [%s], arr for sta:%s" % (fname, phase, sta))
-                if arr.vel_flux_Q:
-                    logger.info("%s: vel_flux_Q exists in [%s], using this for energy, arr for sta:%s" % (fname, phase, sta))
-                    energy = (4.*np.pi*R**2) * rho * velocity * arr.vel_flux_Q
-            if arr.vel_flux_Q is None:
-                logger.info("%s: vel_flux exists but vel_flux_Q is None in [%s] arr for sta:%s" % (fname, phase, sta))
-                if arr.vel_flux:
-                    logger.info("%s: vel_flux exists in [%s], using this for energy, arr for sta:%s" % (fname, phase, sta))
-                    energy = (4.*np.pi*R**2) * rho * velocity * arr.vel_flux
+        # MTH: Setting preferred flux = vel_flux_Q = attenuation tstar corrected flux
+            flux = 0
+            if arr.vel_flux_Q is not None:
+                flux = arr.vel_flux_Q
+                logger.info("%s: vel_flux_Q exists in [%s], using this for energy, arr for sta:%s" % \
+                            (fname, phase, sta))
+            elif arr.vel_flux is not None:
+                flux = arr.vel_flux
+                logger.info("%s: vel_flux exists in [%s], using this for energy, arr for sta:%s" % \
+                            (fname, phase, sta))
+            else:
+                logger.info("%s: No vel_flux set for arr sta:%s pha:%s --> skip energy calc" % \
+                            (fname, sta, phase))
+                continue
+
+            energy = (4.*np.pi*R**2) * rho * velocity * flux
 
             scale = 1.
             if use_sdr:
