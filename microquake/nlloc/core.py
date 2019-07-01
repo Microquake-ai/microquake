@@ -47,9 +47,6 @@ def read_nlloc_hypocenter_file(filename, picks=None,
     :rtype: ~microquake.core.event.Catalog
     """
     from microquake.core import event
-    from microquake.simul.eik import ray_tracer
-    from microquake.core.data.grid import read_grid
-    from glob import glob
     cat = event.Catalog()
 
     with open(filename) as hyp_file:
@@ -1028,7 +1025,11 @@ class NLL(object):
                 '''
 
                 arrival.distance = ray.length()
-                arrival.ray = ray.nodes
+
+                # print("nlloc read_hyp_loc: arr sta:%s pha:%s dist:%f ray_dist:%f" % \
+                # (sta, arrival.phase, dist, arrival.distance))
+
+                # arrival.ray = ray.nodes
         et = time()
         logger.info('completed ray tracing in %0.3f' % (et - st))
 
