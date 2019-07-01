@@ -358,12 +358,13 @@ def get_catalogue(base_url, start_datetime, end_datetime, site,
     events = []
 
     for row in df.iterrows():
+        event_name = row[1]['EVENT_NAME']
         for k, element in enumerate(row[1]):
             if element == '-':
                 row[1][k] = None
 
         event = Event()
-        event.resource_id.id = event_name
+        event.resource_id.id = row[1]['EVENT_NAME']
         extra = row[1].to_dict()
 
         for key in extra.keys():
@@ -422,8 +423,6 @@ def get_catalogue(base_url, start_datetime, end_datetime, site,
             event.event_type = 'other event'
         else:
             event.event_type = "earthquake"
-
-        event_name = row[1]['EVENT_NAME']
 
         if get_arrivals:
             (picks, arrivals) = get_picks(base_url, event_name, site, timezone)
