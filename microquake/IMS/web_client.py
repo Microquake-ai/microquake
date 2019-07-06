@@ -115,8 +115,7 @@ def get_continuous(base_url, start_datetime, end_datetime,
         r = requests.get(url, stream=True)
 
         if r.status_code != 200:
-            raise Exception('request failed! \n %s' % url)
-
+            # raise Exception('request failed! \n %s' % url)
             continue
 
         if format == 'binary-gz':
@@ -186,9 +185,11 @@ def get_continuous(base_url, start_datetime, end_datetime,
             tr.stats.network = str(network)
             tr.stats.station = str(site)
             # it seems that the time returned by IMS is local time...
-            starttime_local = datetime.fromtimestamp(time[0]/1e9)
-            starttime_local = starttime_local.replace(tzinfo=time_zone)
-            tr.stats.starttime = UTCDateTime(starttime_local)
+            # The IMS API has changed. It was returning the time in local
+            # time, now the time is UTC.
+            starttime_utc = datetime.fromtimestamp(time[0]/1e9)
+            # starttime_local = starttime_local.replace(tzinfo=time_zone)
+            tr.stats.starttime = UTCDateTime(starttime_utc)
             tr.stats.channel = chans[i]
             stream.append(tr)
 
