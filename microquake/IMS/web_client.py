@@ -187,7 +187,7 @@ def get_continuous(base_url, start_datetime, end_datetime,
             # it seems that the time returned by IMS is local time...
             # The IMS API has changed. It was returning the time in local
             # time, now the time is UTC.
-            starttime_utc = datetime.fromtimestamp(time[0]/1e9)
+            starttime_utc = datetime.utcfromtimestamp(time[0]/1e9)
             # starttime_local = starttime_local.replace(tzinfo=time_zone)
             tr.stats.starttime = UTCDateTime(starttime_utc)
             tr.stats.channel = chans[i]
@@ -246,9 +246,9 @@ def EpochNano2UTCDateTime(timestamp, timezone):
     from microquake.core import UTCDateTime
     from datetime import datetime
 
-    time_local = datetime.fromtimestamp(timestamp / 1.e9)
+    time_utc = datetime.utcfromtimestamp(timestamp / 1.e9)
 
-    return UTCDateTime(time_local.replace(tzinfo=timezone))
+    return UTCDateTime(time_utc)
 
 
 def get_catalogue(base_url, start_datetime, end_datetime, site,
