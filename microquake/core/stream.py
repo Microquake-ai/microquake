@@ -16,13 +16,15 @@ Expansion of the obspy.core.stream module
     GNU Lesser General Public License, Version 3
     (http://www.gnu.org/copyleft/lesser.html)
 """
-import numpy as np
 from io import BytesIO
+
+import numpy as np
+from pkg_resources import load_entry_point
+
 import obspy.core.stream as obsstream
 from microquake.core.trace import Trace
-from microquake.core.util import ENTRY_POINTS
-from microquake.core.util import tools
-from pkg_resources import load_entry_point
+from microquake.core.util import ENTRY_POINTS, tools
+
 # from microquake.core.util.decorator import uncompress_file as uncompress
 # from obspy.core.utcdatetime import UTCDateTime
 
@@ -32,8 +34,10 @@ class Stream(obsstream.Stream):
 
     def __init__(self, stream=None, **kwargs):
         super(Stream, self).__init__(**kwargs)
+
         if stream:
             traces = []
+
             for tr in stream.traces:
                 traces.append(Trace(trace=tr))
 
@@ -56,6 +60,7 @@ class Stream(obsstream.Stream):
     def as_array(self, wlen_sec=None, taplen=0.05):
         t0 = np.min([tr.stats.starttime for tr in self])
         sr = self[0].stats.sampling_rate
+
         if wlen_sec is not None:
             npts_fix = int(wlen_sec * sr)
         else:
@@ -66,6 +71,7 @@ class Stream(obsstream.Stream):
     def chan_groups(self):
         chanmap = self.channel_map()
         groups = [np.where(sk == chanmap)[0] for sk in np.unique(chanmap)]
+
         return groups
 
     def channel_map(self):
@@ -73,6 +79,7 @@ class Stream(obsstream.Stream):
         unique = np.unique(stations)
         unique_dict = dict(zip(unique, np.arange(len(unique))))
         chanmap = np.array([unique_dict[chan] for chan in stations], dtype=int)
+
         return chanmap
 
     def write(self, filename, format='MSEED', **kwargs):
@@ -100,6 +107,7 @@ class Stream(obsstream.Stream):
     def write_bytes(self):
         buf = BytesIO()
         self.write(buf, format='MSEED')
+
         return buf.getvalue()
 
     def valid(self, **kwargs):
@@ -108,6 +116,7 @@ class Stream(obsstream.Stream):
     def concat(self, comp_st):
 
         c = (comp_st is not None)
+
         if c:
             for i, (t1, t2) in enumerate(zip(comp_st.traces, self.traces)):
                 self.detrend_norm(t2)
@@ -143,6 +152,7 @@ class Stream(obsstream.Stream):
         """
         from microquake.imaging.waveform import WaveformPlotting
         waveform = WaveformPlotting(stream=self, *args, **kwargs)
+
         return waveform.plotWaveform(*args, **kwargs)
 
     def distance_time_plot(self, event, site, scale=20, freq_min=100,
@@ -184,8 +194,10 @@ class Stream(obsstream.Stream):
             if not start_time:
                 start_time = tr.stats.starttime
                 end_time = tr.stats.endtime
+
             if tr.stats.starttime < start_time:
                 start_time = tr.stats.starttime
+
             if tr.stats.endtime > end_time:
                 end_time = tr.stats.endtime
 
@@ -199,44 +211,49 @@ class Stream(obsstream.Stream):
             s_pick = None
             data = (tr.data / np.max(np.abs(tr.data))) * scale
             time_delta = tr.stats.starttime - start_time
-            time = np.arange(0,len(data)) / tr.stats.sampling_rate + \
-                   time_delta
+            time = np.arange(0, len(data)) / tr.stats.sampling_rate + \
+                time_delta
+
             for arrival in origin.arrivals:
                 if arrival.get_pick().waveform_id.station_code == station_code:
                     distance = arrival.distance
+
                     if arrival.phase == 'P':
                         p_pick = arrival.get_pick().time - start_time
                     elif arrival.phase == 'S':
                         s_pick = arrival.get_pick().time - start_time
 
-            # Tracer()()
-
             ax.plot(time, data + distance, 'k')
+
             if p_pick:
                 ax.vlines(p_pick, distance - scale, distance + scale, 'r')
+
             if s_pick:
                 ax.vlines(s_pick, distance - scale, distance + scale, 'b')
 
             plt.xlabel('relative time (s)')
             plt.ylabel('distance from event (m)')
 
-
     @staticmethod
     def create_from_json_traces(traces_json_list):
         from obspy.core.trace import UTCDateTime
         traces = []
         # for tr_json in traces_json_list:
+
         for i, tr_json in enumerate(traces_json_list):
             stats = tr_json['stats']
             tr = Trace.create_from_json(tr_json)
             traces.append(tr)
+
         return Stream(traces=traces)
 
     def to_traces_json(self):
         traces = []
+
         for tr in self:
             trout = tr.to_json()
             traces.append(trout)
+
         return traces
 
 
@@ -251,8 +268,7 @@ class Stream(obsstream.Stream):
 
 
 
-def is_valid(st_in, return_stream=False, STA=0.005, LTA=0.1,
-             min_num_valid=5, freqmin=100, freqmax=1000):
+def is_valid(st_in, return_stream=False, STA=0.005, LTA=0.1, min_num_valid=5):
     """
         Determine if an event is valid or return valid traces in a  stream
         :param st_in: stream
@@ -266,10 +282,6 @@ def is_valid(st_in, return_stream=False, STA=0.005, LTA=0.1,
         :type LTA: float
         :param min_num_valid: minimum number of valid traces to declare the
         event valid
-        :param freqmin: minimum filter frequency
-        :type freqmin: float
-        :param freqmax: maximum filter frequency
-        :type freqmax: float
         :type min_num_valid: int
         :rtype: bool or microquake.core.stream.Stream
     """
@@ -282,8 +294,8 @@ def is_valid(st_in, return_stream=False, STA=0.005, LTA=0.1,
     trstd = []
     trmax = []
     trs_out = []
-    st_comp = st.filter('bandpass', freqmin=freqmin,
-                        freqmax=freqmax).composite()
+    st_comp = composite_traces(st)
+
     for tr in st_comp:
         if not np.any(tr.data):
             continue
@@ -292,14 +304,13 @@ def is_valid(st_in, return_stream=False, STA=0.005, LTA=0.1,
         trmax.append(np.max(np.abs(tr.data)))
         nsta = int(STA * sampling_rate)
         nlta = int(LTA * sampling_rate)
-        # Tracer()()
         cft = recursive_sta_lta(np.array(tr.data), nsta, nlta)
         sfreq = tr.stats['sampling_rate']
         sigma = sfreq / (2 * np.pi * 100)
         cft = gaussian_filter1d(cft, sigma=sigma, mode='reflect')
         try:
             mx = np.r_[True, cft[1:] > cft[:-1]] & \
-                 np.r_[cft[:-1] > cft[1:], True]
+                np.r_[cft[:-1] > cft[1:], True]
         except:
             continue
 
@@ -308,13 +319,7 @@ def is_valid(st_in, return_stream=False, STA=0.005, LTA=0.1,
         try:
             tspan = (np.max(i2) - np.min(i2)) / sampling_rate
         except:
-            pass
-
-        import matplotlib.pyplot as plt
-        # plt.plot(cft)
-        # plt.show()
-
-        # import pdb; pdb.set_trace()
+            raise Exception("tspan not defined")
 
         ratio = np.max(np.abs(tr.data)) / np.std(tr.data)
 
@@ -358,6 +363,7 @@ def check_for_dead_trace(tr):
     max = np.max(data) - mean
     min = np.min(data) - mean
     #print('%s: mean:%f max:%f min:%f' % (tr.get_id(), mean, max, min))
+
     if max < eps and np.abs(min) < eps:
         return 1
     else:
@@ -387,6 +393,7 @@ def composite_traces(st_in):
 
         if len(trs) == 1:
             trsout.append(trs[0].copy())
+
             continue
 
         npts = len(trs[0].data)
@@ -410,8 +417,10 @@ def read(fname, format='MSEED', **kwargs):
         read_format = load_entry_point(format_ep.dist.key,
                                        'obspy.plugin.waveform.%s' %
                                        format_ep.name, 'readFormat')
+
         return Stream(stream=read_format(fname, **kwargs))
     else:
         return Stream(stream=obsstream.read(fname, format=format, **kwargs))
+
 
 read.__doc__ = obsstream.read.__doc__.replace('obspy', 'microquake')

@@ -17,6 +17,8 @@ module to interact IMS web API
     (http://www.gnu.org/copyleft/lesser.html)
 """
 
+from logging import INFO, getLogger
+
 import numpy as np
 from logging import getLogger, INFO
 
@@ -92,10 +94,11 @@ def get_continuous(base_url, start_datetime, end_datetime,
     reqtime_start_nano = int(start_datetime_utc.timestamp * 1e6) * int(1e3)
     reqtime_end_nano = int(end_datetime_utc.timestamp * 1e6) * int(1e3)
     url_cont = base_url + '/continuous-seismogram?' + \
-               'startTimeNanos=%d&endTimeNanos=%d&siteId' + \
-               '=%d&format=%s'
+        'startTimeNanos=%d&endTimeNanos=%d&siteId' + \
+        '=%d&format=%s'
 
     stream = Stream()
+
     for site in site_ids:
         ts_processing = timer()
 
@@ -113,13 +116,16 @@ def get_continuous(base_url, start_datetime, end_datetime,
 
         if r.status_code != 200:
             raise Exception('request failed! \n %s' % url)
+
             continue
+
         if format == 'binary-gz':
             fileobj = GzipFile(fileobj=BytesIO(r.content))
         elif format == 'binary':
             fileobj = BytesIO(r.content)
         else:
             raise Exception('unsuported format!')
+
             continue
 
         fileobj.seek(0)
@@ -128,10 +134,11 @@ def get_continuous(base_url, start_datetime, end_datetime,
 
         # Reading header
         # try:
+
         if len(r.content) < 44:
             continue
         ts = timer()
-        header_size = struct.unpack('>i', fileobj.read(4) )[0]
+        header_size = struct.unpack('>i', fileobj.read(4))[0]
         net_id = struct.unpack('>i', fileobj.read(4))[0]
         site_id = struct.unpack('>i', fileobj.read(4))[0]
         starttime = struct.unpack('>q', fileobj.read(8))[0]
@@ -156,6 +163,7 @@ def get_continuous(base_url, start_datetime, end_datetime,
         time_new = np.arange(time_norm[0], time_norm[-1], 1. / sampling_rate)
 
         newsigs = np.zeros((len(sigs), len(time_new)), dtype=np.float32)
+
         for i in range(len(sigs)):
             newsigs[i] = np.interp(time_new, time_norm, sigs[i])
 
@@ -205,6 +213,7 @@ def get_nan_ranges(tnorm, sr, limit):
     miss_start = tnorm[ibad]
     miss_lens = diff[ibad] / sr
     nan_ranges = np.vstack((miss_start, miss_start + miss_lens)).T
+
     return nan_ranges
 
 
@@ -237,6 +246,7 @@ def EpochNano2UTCDateTime(timestamp, timezone):
     from datetime import datetime
 
     time_local = datetime.fromtimestamp(timestamp / 1.e9)
+
     return UTCDateTime(time_local.replace(tzinfo=timezone))
 
 
@@ -292,27 +302,30 @@ def get_catalogue(base_url, start_datetime, end_datetime, site,
     time_end = calendar.timegm(end_datetime_utc.timetuple()) * 1e9
 
     url = base_url + \
-          '/events/csv?startTimeNanos=%d&endTimeNanos=%d&blast&params='  \
-           % (time_start, time_end) \
-            + 'ACCEPTED, ASSOC_SEISMOGRAM_NAMES, AUTO_PROCESSED, BLAST,' \
-            + 'CORNER_FREQUENCY, DYNAMIC_STRESS_DROP, ENERGY, ENERGY_P,' \
-            + 'ENERGY_S, EVENT_MODIFICATION_TIME, EVENT_NAME,' \
-            + 'EVENT_TIME_FORMATTED, EVENT_TIME_NANOS, LOCAL_MAGNITUDE,' \
-            + 'LOCATION_RESIDUAL, LOCATION_X, LOCATION_Y, LOCATION_Z,' \
-            + 'MANUALLY_PROCESSED, NUM_ACCEPTED_TRIGGERS, NUM_TRIGGERS' \
-            + 'POTENCY, POTENCY_P, POTENCY_S, STATIC_STRESS_DROP, TAP_TEST' \
-            + 'TEST, TRIGGERED_SITES, USER_NAME'
+        '/events/csv?startTimeNanos=%d&endTimeNanos=%d&blast&params='  \
+        % (time_start, time_end) \
+        + 'ACCEPTED, ASSOC_SEISMOGRAM_NAMES, AUTO_PROCESSED, BLAST,' \
+        + 'CORNER_FREQUENCY, DYNAMIC_STRESS_DROP, ENERGY, ENERGY_P,' \
+        + 'ENERGY_S, EVENT_MODIFICATION_TIME, EVENT_NAME,' \
+        + 'EVENT_TIME_FORMATTED, EVENT_TIME_NANOS, LOCAL_MAGNITUDE,' \
+        + 'LOCATION_RESIDUAL, LOCATION_X, LOCATION_Y, LOCATION_Z,' \
+        + 'MANUALLY_PROCESSED, NUM_ACCEPTED_TRIGGERS, NUM_TRIGGERS' \
+        + 'POTENCY, POTENCY_P, POTENCY_S, STATIC_STRESS_DROP, TAP_TEST' \
+        + 'TEST, TRIGGERED_SITES, USER_NAME'
 
     # will need to add tags for the error ellipsoid
 
     r = requests.get(url)
 
     enable = False
+
     for line in r.iter_lines():
         line = line.decode('utf-8')
+
         if "EVENT_NAME" in line:
             enable = True
             csv_string = str(line) + '\n'
+
             continue
 
         if not enable:
@@ -343,6 +356,7 @@ def get_catalogue(base_url, start_datetime, end_datetime, site,
     df = pd.read_csv(StringIO(csv_string))
 
     events = []
+
     for row in df.iterrows():
         for k, element in enumerate(row[1]):
             if element == '-':
@@ -351,6 +365,7 @@ def get_catalogue(base_url, start_datetime, end_datetime, site,
         event = Event()
         event.resource_id.id = event_name
         extra = row[1].to_dict()
+
         for key in extra.keys():
             if key not in event.extra_keys:
                 continue
@@ -386,6 +401,7 @@ def get_catalogue(base_url, start_datetime, end_datetime, site,
         magnitude = Magnitude()
         magnitude.mag = -999
         magnitude.error = -999
+
         if row[1]['LOCAL_MAGNITUDE']:
             magnitude.mag = row[1]['LOCAL_MAGNITUDE']
 
@@ -450,19 +466,24 @@ def get_seismogram(base_url, sgram_name, network_code, site_code, timezone):
     indata = False
     data = []
     ncomponent = 0
+
     for lsgram in r.iter_lines():
         lsgram = lsgram.decode('utf-8')
+
         if 'time-sample-0-nanos' in lsgram:
             s_starttime = EpochNano2UTCDateTime(int(lsgram.split('=')[-1]),
                                                 timezone)
+
         if 'sampling-rate' in lsgram:
             sampling_rate = float(lsgram.split('=')[-1])
+
         if 'num-components' in lsgram:
             ncomponent = int(lsgram.split('=')[-1])
 
         if indata:
             if ncomponent == 1:
                 data.append(float(lsgram.split(',')[-1]))
+
             if ncomponent == 3:
                 tmp = [float(d) for d in lsgram.split(',')[1:]]
                 data.append(tmp)
@@ -483,6 +504,7 @@ def get_seismogram(base_url, sgram_name, network_code, site_code, timezone):
 
     if ncomponent == 3:
         data = np.array(data).astype(np.float32)
+
         for k, channel in enumerate(['x', 'y', 'z']):
             header = Stats()
             header.network = network_code
@@ -523,9 +545,11 @@ def get_picks(base_url, event_name, site, timezone):
     origin = Origin()
     picks = []
     arrivals = []
+
     for line in r2.iter_lines():
         line = line.decode('utf-8')
-        #if 'event-time' in line:
+        # if 'event-time' in line:
+
         if 'loc-t0-nanos' in line:
             try:
                 origin.time = EpochNano2UTCDateTime(int(line.split('=')[-1]),
@@ -548,7 +572,6 @@ def get_picks(base_url, event_name, site, timezone):
             origin.z = -float(line.split('=')[-1])
 #        elif 'local-magnitude' in line:
 
-
         elif 't.' in line:
             if 'index' in line:
                 waveform_id = WaveformStreamID()
@@ -564,8 +587,8 @@ def get_picks(base_url, event_name, site, timezone):
                                                   timezone)
                 pick.phase_hint = 'P'
                 pick.waveform_id = waveform_id
-                pick.evaluation_mode=origin.evaluation_mode
-                pick.evaluation_status=origin.evaluation_status
+                pick.evaluation_mode = origin.evaluation_mode
+                pick.evaluation_status = origin.evaluation_status
                 arrival.pick_id = pick.resource_id.id
                 arrival.phase = 'P'
 
@@ -574,11 +597,12 @@ def get_picks(base_url, event_name, site, timezone):
                     station = site.select(station=station_code).stations()[0]
                 except:
                     logging.warning("Station %s not found!\n The station object needs to be updated" % station_code)
+
                     continue
 
                 arrival.distance = np.linalg.norm(station.loc - origin.loc)
-                arrival.takeoff_angle = np.arccos((station.z - origin.z) \
-                                        / arrival.distance) * 180 / np.pi
+                arrival.takeoff_angle = np.arccos((station.z - origin.z)
+                                                  / arrival.distance) * 180 / np.pi
                 dx = station.x - origin.x
                 dy = station.y - origin.y
                 arrival.azimuth = np.arctan2(dx, dy) * 180 / np.pi
@@ -592,8 +616,8 @@ def get_picks(base_url, event_name, site, timezone):
                                                   timezone)
                 pick.phase_hint = 'S'
                 pick.waveform_id = waveform_id
-                pick.evaluation_mode=origin.evaluation_mode
-                pick.evaluation_status=origin.evaluation_status
+                pick.evaluation_mode = origin.evaluation_mode
+                pick.evaluation_status = origin.evaluation_status
                 arrival.pick_id = pick.resource_id.id
                 arrival.phase = 'S'
                 import logging
@@ -601,10 +625,11 @@ def get_picks(base_url, event_name, site, timezone):
                     station = site.select(station=station_code).stations()[0]
                 except:
                     logging.warning("Station %s not found!\n The station object needs to be updated" % station_code)
+
                     continue
 
                 arrival.distance = np.linalg.norm(station.loc - origin.loc)
-                arrival.takeoff_angle = np.arccos((station.z - origin.z) \
+                arrival.takeoff_angle = np.arccos((station.z - origin.z)
                                                   / arrival.distance) * 180 / np.pi
                 dx = station.x - origin.x
                 dy = station.y - origin.y
@@ -627,7 +652,6 @@ def get_picks_event(base_url, event, site, timezone):
     event_name = event.EVENT_NAME
 
     (picks, arrivals) = get_picks(base_url, event_name, site, timezone)
-
 
     event.preferred_origin().arrivals = arrivals
     event.picks = picks
@@ -654,9 +678,11 @@ def get_seismogram_event(base_url, event, network_code, timezone):
     seismogram_names = event.ASSOC_SEISMOGRAM_NAMES.split(';')
     station_codes = event.TRIGGERED_SITES.split(';')
     traces = []
+
     for sname, station_code in zip(seismogram_names, station_codes):
         st = get_seismogram(base_url, sname, network_code, station_code,
                             timezone)
+
         for tr in st:
             traces.append(tr)
 
@@ -664,8 +690,7 @@ def get_seismogram_event(base_url, event, network_code, timezone):
 
 
 def get_range(base_url, start_datetime, end_datetime, site, network_code,
-               blast=True, event=True, accepted=True, manual=True):
-
+              blast=True, event=True, accepted=True, manual=True):
     """
     read catalogue, picks, and seismogram for a range of date through the REST
     API provided by the IMS synapse server
@@ -695,9 +720,9 @@ def get_range(base_url, start_datetime, end_datetime, site, network_code,
     from microquake.core.event import Catalog
 
     events = get_catalogue(base_url, start_datetime, end_datetime, site,
-                            blast, event, accepted, manual)
+                           blast, event, accepted, manual)
 
-    streams = [get_seismogram_event(base_url, event, network_code) for event in \
+    streams = [get_seismogram_event(base_url, event, network_code) for event in
                events]
 
     catalogs = [Catalog(events=[event]) for event in events]

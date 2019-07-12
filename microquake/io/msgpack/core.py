@@ -2,7 +2,7 @@ from io import BytesIO
 from microquake.core import Stream
 from microquake.core import read
 from microquake.core import read_events
-from microquake.core.event import Event
+from microquake.core.event import Event, Catalog
 
 import msgpack
 
@@ -24,7 +24,7 @@ def _encode_one(obj):
         buf = BytesIO()
         obj.write(buf, format='mseed')
         return msgpack.ExtType(EXTYPES['mseed'], buf.getvalue())
-    if isinstance(obj, Event):
+    if isinstance(obj, Event) or isinstance(obj, Catalog):
         buf = BytesIO()
         obj.write(buf, format='quakeml')
         return msgpack.ExtType(EXTYPES['quakeml'], buf.getvalue())
