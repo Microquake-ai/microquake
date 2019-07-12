@@ -17,8 +17,6 @@ module to interact IMS web API
     (http://www.gnu.org/copyleft/lesser.html)
 """
 
-from logging import INFO, getLogger
-
 import numpy as np
 from logging import getLogger, INFO
 
@@ -124,7 +122,6 @@ def get_continuous(base_url, start_datetime, end_datetime,
             fileobj = BytesIO(r.content)
         else:
             raise Exception('unsuported format!')
-
             continue
 
         fileobj.seek(0)
