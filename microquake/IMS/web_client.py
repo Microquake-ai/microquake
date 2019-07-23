@@ -115,8 +115,7 @@ def get_continuous(base_url, start_datetime, end_datetime,
         r = requests.get(url, stream=True)
 
         if r.status_code != 200:
-            raise Exception('request failed! \n %s' % url)
-
+            # raise Exception('request failed! \n %s' % url)
             continue
 
         if format == 'binary-gz':
@@ -186,9 +185,11 @@ def get_continuous(base_url, start_datetime, end_datetime,
             tr.stats.network = str(network)
             tr.stats.station = str(site)
             # it seems that the time returned by IMS is local time...
-            starttime_local = datetime.fromtimestamp(time[0]/1e9)
-            starttime_local = starttime_local.replace(tzinfo=time_zone)
-            tr.stats.starttime = UTCDateTime(starttime_local)
+            # The IMS API has changed. It was returning the time in local
+            # time, now the time is UTC.
+            starttime_utc = datetime.utcfromtimestamp(time[0]/1e9)
+            # starttime_local = starttime_local.replace(tzinfo=time_zone)
+            tr.stats.starttime = UTCDateTime(starttime_utc)
             tr.stats.channel = chans[i]
             stream.append(tr)
 
@@ -245,9 +246,9 @@ def EpochNano2UTCDateTime(timestamp, timezone):
     from microquake.core import UTCDateTime
     from datetime import datetime
 
-    time_local = datetime.fromtimestamp(timestamp / 1.e9)
+    time_utc = datetime.utcfromtimestamp(timestamp / 1.e9)
 
-    return UTCDateTime(time_local.replace(tzinfo=timezone))
+    return UTCDateTime(time_utc)
 
 
 def get_catalogue(base_url, start_datetime, end_datetime, site,
@@ -358,12 +359,13 @@ def get_catalogue(base_url, start_datetime, end_datetime, site,
     events = []
 
     for row in df.iterrows():
+        event_name = row[1]['EVENT_NAME']
         for k, element in enumerate(row[1]):
             if element == '-':
                 row[1][k] = None
 
         event = Event()
-        event.resource_id.id = event_name
+        event.resource_id.id = row[1]['EVENT_NAME']
         extra = row[1].to_dict()
 
         for key in extra.keys():
@@ -422,8 +424,6 @@ def get_catalogue(base_url, start_datetime, end_datetime, site,
             event.event_type = 'other event'
         else:
             event.event_type = "earthquake"
-
-        event_name = row[1]['EVENT_NAME']
 
         if get_arrivals:
             (picks, arrivals) = get_picks(base_url, event_name, site, timezone)
