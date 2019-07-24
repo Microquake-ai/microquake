@@ -1,7 +1,8 @@
 import obspy.core.inventory
-from obspy.core.inventory import Network, Site
+from obspy.core.inventory import Network
 from obspy.core.inventory.inventory import read_inventory
-from obspy.core.inventory.util import _unified_content_strings, _textwrap
+from obspy.core.inventory.util import _unified_content_strings, _textwrap, Equipment
+from obspy.core.inventory.util import Person, Operator, Site, PhoneNumber
 from obspy.core import AttribDict
 from obspy.core.utcdatetime import UTCDateTime
 import numpy as np
@@ -26,6 +27,176 @@ ns='MICROQUAKE'
     stored in {extra} dicts (accessible directly via properties), while the expected
     lat,lon,elev on station/channel are set to 0. for io compatibility.
 """
+
+
+def load_inventory_from_excel(xls_file: str) -> 'microquake.core.data.inventory.Inventory':
+    '''
+    Read in a multi-sheet excel file with network metadata sheets:
+        Sites, Networks, Hubs, Stations, Components, Sensors, Cables, Boreholes
+    Organize these into a microquake Inventory object
+
+    Note: The returned channel responses will be *generic* (= L-22D).
+          To replace these with actual (calculated) responses, pass the inventory on to:
+          write_ot.fix_OT_responses(inventory)
+          (requires libInst module be installed!)
+
+    :param xls_file: path to excel file
+    :type: xls_file: str
+    :return: inventory
+    :rtype: microquake.core.data.inventory.Inventory
+    '''
+
+    fname = 'load_inventory_from_excel'
+
+# This function requires pandas:
+    import importlib.util
+    import sys
+
+    spec = importlib.util.find_spec('pandas')
+    if spec is None:
+        print("%s: pandas is not installed --> Install and try again" % fname)
+        return
+
+    import pandas as pd
+
+    # read_excel Returns an OrderedDict
+    df_dict = pd.read_excel(xls_file, sheet_name=None)
+
+    # Initialize Inventory object containing Network from Sites+Networks sheets:
+    '''
+Sites:
+   code coordinate_system country    description   id       name   operator timezone
+   OT   Cartesian/Local  Mongolia  Added Manually   1  Oyu Tolgoi  Rio Tinto   +08:00
+
+Networks:
+   code                contact_email           contact_name   ...    id                            name  site_id
+   HNUG  jean-philippem@riotinto.com  Jean-Philippe Mercier   ...     1  Hugo North Underground Network        1
+
+    '''
+#source (str) Network ID of the institution sending the message.
+    source  = df_dict['Sites'].iloc[0]['code']
+#sender (str, optional) Name of the institution sending this message.
+    sender  = df_dict['Sites'].iloc[0]['operator']
+    net_code = df_dict['Networks'].iloc[0]['code']
+    net_descriptions = df_dict['Networks'].iloc[0]['name']
+
+    contact_name  = df_dict['Networks'].iloc[0]['contact_name']
+    contact_email = df_dict['Networks'].iloc[0]['contact_email']
+    contact_phone = df_dict['Networks'].iloc[0]['contact_phone']
+    site_operator = df_dict['Sites'].iloc[0]['operator']
+    site_country  = df_dict['Sites'].iloc[0]['country']
+    site_name  = df_dict['Sites'].iloc[0]['name']
+    site_code  = df_dict['Sites'].iloc[0]['code']
+
+    print("source=%s" % source)
+    print("sender=%s" % sender)
+    print("net_code=%s" % net_code)
+
+    network = Network(net_code)
+    inventory = Inventory([network], source)
+
+# MTH: obspy requirements for PhoneNumber are super specific:
+# So likely this will raise an error if/when someone changes the value in Networks.contact_phone
+    '''
+    PhoneNumber(self, area_code, phone_number, country_code=None, description=None):
+        :type area_code: int
+        :param area_code: The area code.
+        :type phone_number: str
+        :param phone_number: The phone number minus the country and area code.
+            Must be in the form "[0-9]+-[0-9]+", e.g. 1234-5678.
+        :type country_code: int, optional
+        :param country_code: The country code.
+    '''
+
+    import re
+    phone = re.findall(r"[\d']+", contact_phone)
+    area_code = int(phone[0])
+    number = "%s-%s" % (phone[1], phone[2])
+    phonenumber = PhoneNumber(area_code=area_code, phone_number=number)
+
+    person = Person(names=[contact_name], agencies=[site_operator], emails=[contact_email], phones=[phonenumber])
+    operator = Operator(agencies=[site_operator], contacts=[person])
+    site = Site(name=site_name, description=site_name, country=site_country)
+
+    # Merge Stations+Components+Sensors+Cables info into sorted stations + channels dicts:
+
+    df = df_dict['Stations']
+    df_merge = pd.merge(df_dict['Stations'], df_dict['Components'], \
+                        left_on='id', right_on='station_id', \
+                        how='inner', suffixes=('','_channel'))
+
+    df_merge2 = pd.merge(df_merge, df_dict['Sensors'], \
+                        left_on='sensor_id', right_on='id', \
+                        how='inner', suffixes=('','_sensor'))
+
+    df_merge3 = pd.merge(df_merge2, df_dict['Cables'], \
+                        left_on='cable_id', right_on='id', \
+                        how='inner', suffixes=('','_cable'))
+
+    df = df_merge3.sort_values('id')
+
+    # Need to sort by unique station codes, then look through 1-3 channels to add
+    stn_codes = set(df['code'])
+    stations = []
+    for code in stn_codes:
+        chan_rows = df.loc[df['code'] == code]
+        row = chan_rows.iloc[0]
+
+        station = {}
+    # Set some keys explicitly
+        station['code'] = row['code']
+        station['x'] = row['location_x']
+        station['y'] = row['location_y']
+        station['z'] = row['location_z']
+        station['loc'] = np.array([station['x'],station['y'],station['z']])
+        station['long_name'] = row['name']
+    # MTH: 2019/07 Seem to have moved from pF to F on Cables sheet:
+        station['cable_capacitance_pF_per_meter'] = row['c'] * 1e12
+
+    # Set the rest (minus empty fields) directly from spreadsheet names:
+        renamed_keys = {'code', 'location_x', 'location_y', 'location_z', 'name'}
+        # These keys are either redundant or specific to channel, not station:
+        remove_keys = {'code_channel', 'id_channel', 'orientation_x', 'orientation_y', 'orientation_z',\
+                       'id_sensor', 'enabled_channel', 'station_id', 'id_cable'}
+        keys = row.keys()
+        empty_keys = keys[pd.isna(row)]
+        keys = set(keys) - set(empty_keys) - renamed_keys - remove_keys
+
+        for key in keys:
+            station[key] = row[key]
+
+    # Added keys:
+        station['motion'] = 'VELOCITY'
+        if row['sensor_type'].upper() == 'ACCELEROMETER':
+            station['motion'] = 'ACCELERATION'
+
+    # Attach channels:
+        station['channels'] = []
+        for index,r in chan_rows.iterrows():
+            chan = {}
+            chan['cmp'] = r['code_channel'].lower()
+            chan['orientation'] = np.array([r['orientation_x'], r['orientation_y'], r['orientation_z'] ])
+            chan['enabled'] = r['enabled_channel']
+            station['channels'].append(chan)
+        stations.append(station)
+
+    # Convert these station dicts to inventory.Station objects and attach to inventory.network:
+    obspy_stations = []
+    for station in stations:
+        # This is where namespace is first employed:
+        obspy_station = Station.from_csv_station(station)
+        obspy_station.site = site
+        obspy_station.operators = [operator]
+        obspy_stations.append(obspy_station)
+        #obspy_stations.append(Station.from_csv_station(station))
+        #print(obspy_station.operators[0].contacts[0].names)
+        #print(obspy_station.site.country)
+        #print(obspy_station.code, obspy_station.equipments[0].manufacturer, obspy_station.equipments[0].model)
+
+    network.stations = obspy_stations
+
+    return inventory
+
 
 def read_csv(csv_file: str) -> []:
     """
@@ -74,6 +245,8 @@ def read_csv(csv_file: str) -> []:
                 chan_dict['orientation'] = np.array([float(row[x]), float(row[y]), float(row[z])])
                 station['channels'].append(chan_dict)
                 ic += 1
+            print(chan_dict)
+            exit()
 
             '''
             print("sta:%3s <%.3f, %.3f> %9.3f %s" % (row['Code'], float(row['Easting']), float(row['Northing']), \
@@ -237,12 +410,27 @@ class Station(obspy.core.inventory.station.Station):
 # New obspy seems to require creation_date .. here I set it before any expected event dats:
         #sta = Station(stn['code'], 0., 0., 0., site=Site(name='Oyu Tolgoi'), creation_date=UTCDateTime("2015-12-31T12:23:34.5"))
 # Putting the OT station long_name into obspy Station historical_code:
+        '''
+        class Equipment(type=None, description=None, manufacturer=None, vendor=None, model=None, serial_number=None,.
+                    installation_date=None, removal_date=None, calibration_dates=None, resource_id=None)
+        '''
+        equipment = None
+        if 'manufacturer' in stn:
+            equipment = Equipment(type='Sensor', manufacturer=stn['manufacturer'], model=stn['model'])
+
         sta = Station(stn['code'], 0., 0., 0., site=Site(name='Oyu Tolgoi'), \
+                      equipments=[equipment], \
                       historical_code=stn['long_name'], \
                       creation_date=UTCDateTime("2015-12-31T12:23:34.5"),
                       start_date=UTCDateTime("2015-12-31T12:23:34.5"),
                       end_date=UTCDateTime("2599-12-31T12:23:34.5"))
 
+        non_extras_keys = {'code', 'long_name', 'channels', 'start_date', 'end_date'}
+        keys = stn.keys() - non_extras_keys
+        sta.extra = AttribDict()
+        for key in keys:
+            sta.extra[key] = {'namespace': ns, 'value': stn[key]}
+        '''
         sta.extra = AttribDict({'x': { 'namespace': ns, 'value': stn['x'], },
                                 'y': { 'namespace': ns, 'value': stn['y'], },
                                 'z': { 'namespace': ns, 'value': stn['z'], },
@@ -252,6 +440,7 @@ class Station(obspy.core.inventory.station.Station):
                                 'cable_type':     { 'namespace': ns, 'value': stn['cable_type']},
                                 'cable_length':   { 'namespace': ns, 'value': stn['cable_length'] },
                               })
+        '''
 
         sta.channels = []
         for cha in stn['channels']:
@@ -298,6 +487,9 @@ class Station(obspy.core.inventory.station.Station):
             elif stn['motion'].upper() == 'VELOCITY':
                 input_units = "M/S"
                 input_units_description = "Velocity in Meters per Second"
+            else:
+                print("Unknown motion=[%s]" % stn['motion'])
+                exit()
 
             response.instrument_sensitivity.input_units = input_units
             response.instrument_sensitivity.input_units_description = input_units_description
@@ -792,7 +984,11 @@ def get_cosines_from_dip_and_azimuth(_dip, _az):
 
 def main():
 
-    inventory = Inventory.load_from_xml('OT.xml')
+    inventory = load_inventory_from_excel('inventory_snapshot.xlsx')
+    #success = fix_OT_responses(inv)
+
+    #inventory = Inventory.load_from_xml('OT.xml')
+
     for station in inventory.networks[0].stations:
         print(station.code, station.loc, station.sensor_id, station.extra.damping)
 
