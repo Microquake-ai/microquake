@@ -18,10 +18,7 @@ module to interact IMS web API
 """
 
 import numpy as np
-from logging import getLogger, INFO
-
-logger = getLogger('microquake.IMS.web_client')
-logger.level = INFO
+from loguru import logger
 
 
 def get_continuous(base_url, start_datetime, end_datetime,
@@ -106,8 +103,8 @@ def get_continuous(base_url, start_datetime, end_datetime,
         url = url_cont % (reqtime_start_nano, reqtime_end_nano, site, format)
         url = url.replace('//', '/').replace('http:/', 'http://')
 
-        logger.info("Getting trace for station %d\nstarttime: %s\n"
-                    "endtime:   %s" % (site, start_datetime, end_datetime))
+        logger.info("Getting trace for station %d between %s"
+                    "%s" % (site, start_datetime, end_datetime))
 
         ts = timer()
         r = requests.get(url, stream=True)
@@ -144,7 +141,6 @@ def get_continuous(base_url, start_datetime, end_datetime,
         attenuator_id = struct.unpack('>i', fileobj.read(4))[0]
         attenuator_config_id = struct.unpack('>i', fileobj.read(4))[0]
         te = timer()
-        logger.info('Unpacking header in %f seconds' % (te - ts))
 
         ts = timer()
         # Reading data
@@ -171,8 +167,6 @@ def get_continuous(base_url, start_datetime, end_datetime,
                 chan[lims[0]:lims[1]] = np.nan
 
         te = timer()
-        logger.info("Unpacking data in %f seconds for %d points"
-                    % (te - ts, len(time_new)))
 
         chans = ['X', 'Y', 'Z']
 
@@ -191,8 +185,6 @@ def get_continuous(base_url, start_datetime, end_datetime,
             stream.append(tr)
 
         te_processing = timer()
-        logger.info("Processing completed in %f" % (te_processing -
-                                                    ts_processing))
 
     return stream
 
