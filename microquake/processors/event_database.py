@@ -2,7 +2,7 @@
 # [catalog, stream, context_stream, event_id]
 
 from loguru import logger
-from spp.utils.seismic_client import (post_data_from_objects)
+from microquake.clients.api_client import (post_data_from_objects)
 
 from microquake.core.settings import settings
 from microquake.processors.processing_unit import ProcessingUnit
