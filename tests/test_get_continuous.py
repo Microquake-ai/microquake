@@ -6,7 +6,7 @@ get_continuous(base_url, start_datetime, end_datetime,
                    sampling_rate=6000., nan_limit=10):
 """
 
-from microquake.IMS import web_client
+from microquake.clients.ims import web_client
 from microquake.core import UTCDateTime
 from importlib import reload
 reload(web_client)
