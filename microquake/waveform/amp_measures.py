@@ -8,22 +8,25 @@
 1234567890123456789012345678901234567890123456789012345678901234567890123456789
 """
 
-import numpy as np
-
-from microquake.core.util.tools import copy_picks_to_dict
-from microquake.core.stream import Stream
-from microquake.waveform.pick import calculate_snr
-from microquake.core.data.inventory import get_sensor_type_from_trace
-from microquake.core.event import get_arrival_from_pick
-
 # default logger
 import logging
+
+import matplotlib.pyplot as plt
+import numpy as np
+from scipy.fftpack import rfft
+
+from microquake.core.data.inventory import get_sensor_type_from_trace
+from microquake.core.stream import Stream
+from microquake.core.util.tools import copy_picks_to_dict
+from microquake.waveform.parseval_utils import npow2, unpack_rfft
+from microquake.waveform.pick import calculate_snr
+
 logger = logging.getLogger(__name__)
+
 
 def measure_pick_amps(st_in, cat, phase_list=None,
                       logger_in=None, triaxial_only=False,
                       **kwargs):
-
     """
     Attempt to measure velocity pulse parameters (polarity, peak vel, etc)
       and displacement pulse parameters (pulse width, area)
@@ -46,6 +49,7 @@ def measure_pick_amps(st_in, cat, phase_list=None,
     fname = "measure_pick_amps"
 
     global logger
+
     if logger_in is not None:
         logger = logger_in
 
@@ -54,6 +58,7 @@ def measure_pick_amps(st_in, cat, phase_list=None,
     measure_velocity_pulse(st, cat, phase_list=phase_list, **kwargs)
 
     debug = False
+
     if 'debug' in kwargs:
         debug = kwargs['debug']
 
@@ -67,23 +72,25 @@ def measure_pick_amps(st_in, cat, phase_list=None,
             origin = event.preferred_origin() if event.preferred_origin() else event.origins[0]
 
             for arr in origin.arrivals:
-                pk=arr.get_pick()
+                pk = arr.get_pick()
+
                 if not pk:
                     continue
-                sta=pk.get_sta()
+                sta = pk.get_sta()
 
                 if arr.traces is not None:
                     dis_area = []
                     dis_width = []
 
-                    for tr_id,v in arr.traces.items():
-                        #print("arr: sta:%s [%s] tr:%s pol:%d peak_vel:%s disp_area:%s" % \
-                            #(sta, arr.phase, tr_id, v['polarity'], v['peak_vel'], v['dis_pulse_area']))
+                    for tr_id, v in arr.traces.items():
+                        # print("arr: sta:%s [%s] tr:%s pol:%d peak_vel:%s disp_area:%s" % \
+                        # (sta, arr.phase, tr_id, v['polarity'], v['peak_vel'], v['dis_pulse_area']))
 
-            # For now, since this is primarily going to be used for P-arrivals
-            #   Set arrival values from the vertical (Z) or P (if rotated) component:
+                        # For now, since this is primarily going to be used for P-arrivals
+                        #   Set arrival values from the vertical (Z) or P (if rotated) component:
+
                         if v['polarity'] != 0 and tr_id[-1].upper() in ['Z', 'P']:
-                            #print("Set polarity=%d from tr:%s" % (v['polarity'], tr_id))
+                            # print("Set polarity=%d from tr:%s" % (v['polarity'], tr_id))
                             arr.polarity = v['polarity']
                             arr.t1 = v['t1']
                             arr.t2 = v['t2']
@@ -91,7 +98,7 @@ def measure_pick_amps(st_in, cat, phase_list=None,
                             arr.tpeak_vel = v['tpeak_vel']
                             arr.pulse_snr = v['pulse_snr']
 
-                        if v['peak_dis'] != None and tr_id[-1].upper() in ['Z', 'P']:
+                        if v['peak_dis'] is not None and tr_id[-1].upper() in ['Z', 'P']:
                             arr.peak_dis = v['peak_dis']
                             arr.max_dis = v['max_dis']
                             arr.tpeak_dis = v['tpeak_dis']
@@ -100,6 +107,7 @@ def measure_pick_amps(st_in, cat, phase_list=None,
             # But average vector quantities distributed over components:
                         if v['dis_pulse_area'] is not None:
                             dis_area.append(v['dis_pulse_area'])
+
                         if v['dis_pulse_width'] is not None:
                             dis_width.append(v['dis_pulse_width'])
 
@@ -107,7 +115,7 @@ def measure_pick_amps(st_in, cat, phase_list=None,
             #  but this will filter out not only 1-chan stations, but
             #  any stations where peak finder did not locate peak on
             #  *all* 3 channels
-                    #if triaxial_only and len(dis_area) == 3:
+                    # if triaxial_only and len(dis_area) == 3:
 
                     if triaxial_only and len(dis_area) == 3:
                         arr.dis_pulse_area = np.sqrt(np.sum(np.array(dis_area)**2))
@@ -115,11 +123,11 @@ def measure_pick_amps(st_in, cat, phase_list=None,
                         arr.dis_pulse_area = np.sqrt(np.sum(np.array(dis_area)**2))
 
                     if len(dis_width) > 0:
-                        arr.dis_pulse_width =  np.mean(dis_width)
+                        arr.dis_pulse_width = np.mean(dis_width)
 
-                    #print()
+                    # print()
                 else:
-                    #print("sta:%3s pha:%s pk.time:%s --> Has no traces dict ****" % (sta, arr.phase, pk.time))
+                    # print("sta:%3s pha:%s pk.time:%s --> Has no traces dict ****" % (sta, arr.phase, pk.time))
                     pass
 
     return
@@ -172,24 +180,28 @@ def measure_velocity_pulse(st,
             if phase not in phase_list:
                 continue
 
-            pk  = arr.get_pick()
+            pk = arr.get_pick()
+
             if pk is None:
-                logger.error("%s: arr pha:%s id:%s --> Lost reference to pick id:%s --> SKIP" % \
+                logger.error("%s: arr pha:%s id:%s --> Lost reference to pick id:%s --> SKIP" %
                              (fname, arr.phase, arr.resource_id.id, arr.pick_id.id))
+
                 continue
             sta = pk.get_sta()
 
             trs = st.select(station=sta)
 
             if trs is None:
-                logger.warning("%s: sta:%s has a [%s] arrival but no trace in stream --> Skip" % \
-                            (fname, sta, arr.phase))
+                logger.warning("%s: sta:%s has a [%s] arrival but no trace in stream --> Skip" %
+                               (fname, sta, arr.phase))
+
                 continue
 
             sensor_type = get_sensor_type_from_trace(trs[0])
 
             if sensor_type != "VEL":
                 logger.info("%s: sta:%s sensor_type != VEL --> Skip" % (fname, sta))
+
                 continue
 
             arr.traces = {}
@@ -199,20 +211,21 @@ def measure_velocity_pulse(st,
                     tr.detrend("demean").detrend("linear")
                 except Exception as e:
                     print(e)
+
                     continue
                 data = tr.data.copy()
                 ipick = int((pk.time - tr.stats.starttime) * tr.stats.sampling_rate)
 
                 polarity, vel_zeros = _find_signal_zeros(
-                                               tr, ipick,
-                                               nzeros_to_find=3,
-                                               min_pulse_width=pulse_min_width,
-                                               min_pulse_snr=min_pulse_snr,
-                                               debug=debug
-                                               )
+                    tr, ipick,
+                    nzeros_to_find=3,
+                    min_pulse_width=pulse_min_width,
+                    min_pulse_snr=min_pulse_snr,
+                    debug=debug
+                )
 
                 dd = {}
-                #dd['pick_time'] = pk.time
+                # dd['pick_time'] = pk.time
                 dd['polarity'] = 0
                 dd['t1'] = None
                 dd['t2'] = None
@@ -222,6 +235,7 @@ def measure_velocity_pulse(st,
 
                 # A good pick will have the first velocity pulse located
                 #    between i1 and i2
+
                 if vel_zeros is not None:
                     i1 = vel_zeros[0]
                     i2 = vel_zeros[1]
@@ -249,16 +263,15 @@ def measure_velocity_pulse(st,
 
                     if pulse_snr < pulse_thresh:
                         logger.debug("%s: tr:%s pha:%s t1:%s t2:%s pulse_snr=%.1f \
-                               < thresh" % \
-                               (fname, tr.get_id(), phase, t1, t2, pulse_snr))
+                               < thresh" %
+                                     (fname, tr.get_id(), phase, t1, t2, pulse_snr))
                         polarity = 0
 
                     if pulse_width < pulse_min_width:
                         logger.debug("%s: tr:%s pha:%s t1:%s t2:%s pulse_width=%f \
-                               < .0014" % \
-                             (fname, tr.get_id(), phase, t1, t2, pulse_width))
+                               < .0014" %
+                                     (fname, tr.get_id(), phase, t1, t2, pulse_width))
                         polarity = 0
-
 
                     dd['polarity'] = polarity
                     dd['peak_vel'] = peak_vel
@@ -268,8 +281,8 @@ def measure_velocity_pulse(st,
                     dd['pulse_snr'] = pulse_snr
 
                 else:
-                    logger.debug("%s: Unable to locate zeros for tr:%s pha:%s" % \
-                          (fname, tr.get_id(), phase))
+                    logger.debug("%s: Unable to locate zeros for tr:%s pha:%s" %
+                                 (fname, tr.get_id(), phase))
 
                 arr.traces[tr.get_id()] = dd
 
@@ -314,26 +327,29 @@ def measure_displacement_pulse(st,
             if phase not in phase_list:
                 continue
 
-            pk  = arr.get_pick()
+            pk = arr.get_pick()
+
             if pk is None:
-                logger.error("%s: arr pha:%s id:%s --> Lost reference to pick id:%s --> SKIP" % \
+                logger.error("%s: arr pha:%s id:%s --> Lost reference to pick id:%s --> SKIP" %
                              (fname, arr.phase, arr.resource_id.id, arr.pick_id.id))
+
                 continue
             sta = pk.get_sta()
 
             trs = st.select(station=sta)
 
             if trs is None:
-                logger.warning("%s: sta:%s has a [%s] arrival but no trace in stream --> Skip" % \
-                            (fname, sta, arr.phase))
+                logger.warning("%s: sta:%s has a [%s] arrival but no trace in stream --> Skip" %
+                               (fname, sta, arr.phase))
+
                 continue
 
             sensor_type = get_sensor_type_from_trace(trs[0])
 
             if sensor_type != "VEL":
                 logger.info("%s: sta:%s sensor_type != VEL --> Skip" % (fname, sta))
-                continue
 
+                continue
 
             for tr in trs:
                 try:
@@ -341,6 +357,7 @@ def measure_displacement_pulse(st,
                     tr_dis.integrate().detrend("linear")
                 except Exception as e:
                     print(e)
+
                     continue
                 tr_dis.stats.channel = "%s.dis" % tr.stats.channel
 
@@ -358,13 +375,14 @@ def measure_displacement_pulse(st,
                 t1 = tr_dict.get('t1', None)
                 t2 = tr_dict.get('t2', None)
 
-                #print("tr:%s pol:%d t1:%s t2:%s" % (tr.get_id(), polarity, t1, t2))
+                # print("tr:%s pol:%d t1:%s t2:%s" % (tr.get_id(), polarity, t1, t2))
 
                 if polarity != 0:
 
                     if t1 is None or t2 is None:
-                        logger.error("%s: t1 or t2 is None --> You shouldn't be here!" \
+                        logger.error("%s: t1 or t2 is None --> You shouldn't be here!"
                                      % (fname))
+
                         continue
 
                     i1 = int((t1 - tr.stats.starttime) * tr.stats.sampling_rate)
@@ -374,7 +392,7 @@ def measure_displacement_pulse(st,
 
                     icross = i2
                     tr_dis.data = tr_dis.data - tr_dis.data[i1]
-                    #tr_dis.data = tr_dis.data - tr_dis.data[ipick]
+                    # tr_dis.data = tr_dis.data - tr_dis.data[ipick]
 
                     dis_polarity = np.sign(tr_dis.data[icross])
                     pulse_width, pulse_area = _get_pulse_width_and_area(tr_dis, i1, icross)
@@ -390,7 +408,7 @@ def measure_displacement_pulse(st,
                                                         ipick + npulse)
                         # max_dis = max within max_pulse_duration of pick time
                         imax, max_dis = _get_peak_amp(tr_dis, ipick,
-                                                        ipick + nmax_len)
+                                                      ipick + nmax_len)
 
                         tmax_dis = tr.stats.starttime + float(imax * tr.stats.delta)
                         tpeak_dis = tr.stats.starttime + float(ipeak * tr.stats.delta)
@@ -403,21 +421,20 @@ def measure_displacement_pulse(st,
                         dd['dis_pulse_width'] = pulse_width
                         dd['dis_pulse_area'] = pulse_area
 
-
                         if debug:
-                            logger.debug("[%s] Dis pol=%d tpick=%s" % \
-                                (phase, dis_polarity, pk.time))
+                            logger.debug("[%s] Dis pol=%d tpick=%s" %
+                                         (phase, dis_polarity, pk.time))
                             logger.debug("              tpeak=%s peak_dis=%12.10g" %
-                                (tpeak_dis, peak_dis))
+                                         (tpeak_dis, peak_dis))
                             logger.debug("             tcross=%s" % tcross_dis)
                             logger.debug("               tmax=%s max_dis=%12.10g" %
-                                (tmax_dis, max_dis))
+                                         (tmax_dis, max_dis))
                             logger.debug("    dis pulse width=%.5f" % pulse_width)
                             logger.debug("    dis pulse  area=%12.10g" % pulse_area)
 
                     else:
                         logger.warning("%s: Got pulse_width=0 for tr:%s pha:%s" %
-                                    (fname, tr.get_id(), phase))
+                                       (fname, tr.get_id(), phase))
 
                 arr.traces[tr.get_id()] = dict(tr_dict, **dd)
 
@@ -433,7 +450,6 @@ def measure_displacement_pulse(st,
 def _find_signal_zeros(tr, istart, max_pulse_duration=.1, nzeros_to_find=3,
                        second_try=False, debug=False,
                        min_pulse_width=.00167, min_pulse_snr=5):
-
     """
     Locate zero crossing of velocity trace to locate first pulse(s)
     All measurements are added to the *arrival* extras dict
@@ -474,7 +490,7 @@ def _find_signal_zeros(tr, istart, max_pulse_duration=.1, nzeros_to_find=3,
     noise_tlen = .05
     noise_npts = int(noise_tlen * tr.stats.sampling_rate)
     noise_end = istart - int(.005 * tr.stats.sampling_rate)
-    #noise_level = np.mean(data[noise_end - noise_npts: noise_end])
+    # noise_level = np.mean(data[noise_end - noise_npts: noise_end])
     noise = data[noise_end - noise_npts: noise_end]
     noise1 = np.abs(np.mean(noise))
     noise2 = np.abs(np.median(noise))
@@ -482,7 +498,7 @@ def _find_signal_zeros(tr, istart, max_pulse_duration=.1, nzeros_to_find=3,
     noise_level = np.max([noise1, noise2, noise3])
     noise_level = noise1
 
-    #pick_snr = np.abs(data[istart]/noise_level)
+    # pick_snr = np.abs(data[istart]/noise_level)
 
     nmax_look = int(max_pulse_duration * tr.stats.sampling_rate)
 
@@ -495,10 +511,12 @@ def _find_signal_zeros(tr, istart, max_pulse_duration=.1, nzeros_to_find=3,
     s0 = 0
     i0 = 0
     snr_thresh = 10.
+
     for i in range(istart, istart + nmax_look):
         if np.abs(data[i]) >= snr_thresh * np.abs(noise_level):
             s0 = sign[i]
             i0 = i
+
             break
 
 # Stage 1: Back up from this first high SNR point to find the earliest point
@@ -506,20 +524,24 @@ def _find_signal_zeros(tr, istart, max_pulse_duration=.1, nzeros_to_find=3,
     i1 = i0
     s1 = s0
     snr_scale = 1.4
+
     if s0 and i0:
         for i in range(i0, istart - 3, -1):
             snr = np.abs(data[i]/noise_level)
+
             if sign[i] == s0 and snr >= snr_scale:
-                #print("  sign matches --> set i1=i=%d" % i)
+                # print("  sign matches --> set i1=i=%d" % i)
                 i1 = i
             else:
-                #print("  sign NO match --> break")
+                # print("  sign NO match --> break")
+
                 break
 
     if i1 <= 0:
         logger.debug("%s: tr:%s pick_time:%s Didn't pass first test" %
-              (fname, tr.get_id(), pick_time))
-        #tr.plot()
+                     (fname, tr.get_id(), pick_time))
+        # tr.plot()
+
         return 0, None
 
     first_sign = s1
@@ -532,24 +554,27 @@ def _find_signal_zeros(tr, istart, max_pulse_duration=.1, nzeros_to_find=3,
     zeros[0] = i1
 
     t1 = tr.stats.starttime + float(i1)*tr.stats.delta
-    #print("i1=%d --> t=%s" % (i1, t1))
+    # print("i1=%d --> t=%s" % (i1, t1))
 
 
 # TODO: Need to catch flag edge cases where we reach end of range with
 #       no zero set!
     for j in range(1, nzeros_to_find):
-        #for i in range(i1, i1 + 200):
+        # for i in range(i1, i1 + 200):
+
         for i in range(i1, i1 + nmax_look):
-            #print("j=%d i=%d sign=%d" % (j,i,sign[i]))
+            # print("j=%d i=%d sign=%d" % (j,i,sign[i]))
+
             if sign[i] != s1:
-                #half_per = float( (i - i1) * tr.stats.delta)
-                #f = .5 / half_per
-                #ipeak,peak = get_peak_amp(tr, i1, i)
-                #print("sign:[%2s] t1:%s - t2:%s (T/2:%.6f f:%f) peak:%g" % \
-                      #(s1, t1, t2, half_per, f, peak))
+                # half_per = float( (i - i1) * tr.stats.delta)
+                # f = .5 / half_per
+                # ipeak,peak = get_peak_amp(tr, i1, i)
+                # print("sign:[%2s] t1:%s - t2:%s (T/2:%.6f f:%f) peak:%g" % \
+                # (s1, t1, t2, half_per, f, peak))
                 i1 = i
                 s1 = sign[i]
                 zeros[j] = i
+
                 break
     t1 = tr.stats.starttime + float(zeros[0])*tr.stats.delta
     t2 = tr.stats.starttime + float(zeros[1])*tr.stats.delta
@@ -562,9 +587,9 @@ def _find_signal_zeros(tr, istart, max_pulse_duration=.1, nzeros_to_find=3,
     pulse_snr = np.abs(peak_vel / noise_level)
 
     logger.debug("find_zeros: sta:%s cha:%s First pulse t1:%s t2:%s [polarity:%d] \
-           pulse_width:%f peak:%g snr:%f" % \
-           (tr.stats.station, tr.stats.channel, t1, t2, first_sign,
-            pulse_width, peak_vel, pulse_snr))
+           pulse_width:%f peak:%g snr:%f" %
+                 (tr.stats.station, tr.stats.channel, t1, t2, first_sign,
+                  pulse_width, peak_vel, pulse_snr))
 
 # Final gate = try to catch case of early pick on small bump preceding main
 #              arrival move istart to end of precursor bump and retry
@@ -572,15 +597,16 @@ def _find_signal_zeros(tr, istart, max_pulse_duration=.1, nzeros_to_find=3,
             and not second_try):
 
         logger.debug("Let's RUN THIS ONE AGAIN ============== tr_id:%s" % tr.get_id())
-    #if pulse_width < min_pulse_width and not second_try:
+    # if pulse_width < min_pulse_width and not second_try:
         istart = zeros[1]
+
         return _find_signal_zeros(tr, istart,
                                   max_pulse_duration=max_pulse_duration,
                                   nzeros_to_find=nzeros_to_find,
                                   second_try=True)
 
-    #if debug:
-        #tr.plot()
+    # if debug:
+        # tr.plot()
 
     return first_sign, zeros
 
@@ -599,6 +625,7 @@ def _get_peak_amp(tr, istart, istop):
     """
 
     abs_max = -1e12
+
     if istop < istart:
         logger.error("_get_peak_amp: istart=%d < istop=%d !" % (istart, istop))
         exit()
@@ -643,15 +670,18 @@ def _get_pulse_width_and_area(tr, ipick, icross, max_pulse_duration=.08):
 
     epsilon = 1e-10
 
-    i = 0 # Just to shut pylint up
+    i = 0  # Just to shut pylint up
+
     for i in range(icross, iend):
         diff = np.abs(data[i] - data[ipick])
-        #print("%d %12.10g %12.10g %d" % (i, data[i], diff, sign[i]))
+
         if diff < epsilon or sign[i] != sign[icross]:
             break
+
         if i == iend - 1:
             logger.info("%s: Unable to locate termination of displacement pulse for \
                   tr:%s!" % (fname, tr.get_id()))
+
             return 0, 0
 
     istop = i
@@ -683,17 +713,19 @@ def set_pick_snrs(st, picks, pre_wl=.03, post_wl=.03):
 
     for tr in st:
         sta = tr.stats.station
+
         if sta in pick_dict:
             for phase in pick_dict[sta]:
                 pick_time = pick_dict[sta][phase].time
+
                 if phase == 'S':
                     snr = calculate_snr(Stream(traces=[tr]), pick_time,
                                         pre_wl=pre_wl, post_wl=post_wl)
                 else:
                     snr = calculate_snr(Stream(traces=[tr]), pick_time,
                                         pre_wl=pre_wl, post_wl=post_wl)
-                #print("set snr: tr:%s pha:%s" % (tr.get_id(), phase))
                 key = "%s_arrival" % phase
+
                 if key not in tr.stats:
                     tr.stats[key] = {}
                 tr.stats[key]['snr'] = snr
@@ -702,11 +734,6 @@ def set_pick_snrs(st, picks, pre_wl=.03, post_wl=.03):
 
     return
 
-
-
-from scipy.fftpack import rfft
-#from microquake.waveform.smom_mag_utils import npow2, unpack_rfft
-from microquake.waveform.parseval_utils import npow2, unpack_rfft
 
 def calc_velocity_flux(st_in,
                        cat,
@@ -739,18 +766,18 @@ def calc_velocity_flux(st_in,
     :type correct_attenuation: boolean
     """
 
-
     fname = "calc_velocity_flux"
 
     global logger
+
     if logger_in is not None:
         logger = logger_in
 
     if phase_list is None:
         phase_list = ['P']
 
-    #MTH: Try to avoid copying cat - it causes the events to lose their link to preferred_origin!
-    #cat = cat_in.copy()
+    # MTH: Try to avoid copying cat - it causes the events to lose their link to preferred_origin!
+    # cat = cat_in.copy()
     # Defensive copy - not currently needed since we only trim on copies, still ...
     st = st_in.copy().detrend('demean').detrend('linear')
 
@@ -760,33 +787,38 @@ def calc_velocity_flux(st_in,
         for arr in origin.arrivals:
 
             phase = arr.phase
+
             if phase not in phase_list:
                 continue
 
             pick = arr.get_pick()
+
             if pick is None:
-                logger.error("%s: arr pha:%s id:%s --> Lost reference to pick id:%s --> SKIP" % \
+                logger.error("%s: arr pha:%s id:%s --> Lost reference to pick id:%s --> SKIP" %
                              (fname, arr.phase, arr.resource_id.id, arr.pick_id.id))
+
                 continue
-            sta  = pick.get_sta()
+            sta = pick.get_sta()
 
             trs = st.select(station=sta)
 
             if trs is None:
-                logger.warning("%s: sta:%s has a [%s] arrival but no trace in stream --> Skip" % \
-                            (fname, sta, phase))
+                logger.warning("%s: sta:%s has a [%s] arrival but no trace in stream --> Skip" %
+                               (fname, sta, phase))
+
                 continue
 
             if triaxial_only and len(trs) != 3:
                 logger.info("%s: sta:%s is not 3-comp --> Skip" % (fname, sta))
+
                 continue
 
             sensor_type = get_sensor_type_from_trace(trs[0])
 
             if sensor_type != "VEL":
                 logger.info("%s: sta:%s sensor_type != VEL --> Skip" % (fname, sta))
-                continue
 
+                continue
 
             if use_fixed_window:
                 if phase == 'P':
@@ -803,9 +835,10 @@ def calc_velocity_flux(st_in,
 
             for tr in trs:
                 if starttime < tr.stats.starttime or endtime > tr.stats.endtime:
-                    logger.warning("%s: sta:%s pha:%s tr:%s is too short to trim --> Don't use" % \
-                                (fname, sta, phase, tr.get_id()))
+                    logger.warning("%s: sta:%s pha:%s tr:%s is too short to trim --> Don't use" %
+                                   (fname, sta, phase, tr.get_id()))
                     not_enough_trace = True
+
                     break
 
             if not_enough_trace:
@@ -814,11 +847,12 @@ def calc_velocity_flux(st_in,
             tr3 = trs.copy()
 
             tr3.trim(starttime=starttime, endtime=endtime)
-            dt= tr3[0].stats.delta
+            dt = tr3[0].stats.delta
 
-            #flux_t = np.sum( [tr.data**2 for tr in tr3]) * dt
+            # flux_t = np.sum( [tr.data**2 for tr in tr3]) * dt
 
             tsum = 0
+
             for tr in tr3:
                 tsum += np.sum(tr.data**2)*dt
 
@@ -829,14 +863,14 @@ def calc_velocity_flux(st_in,
         # The only reason to do this in the freq domain is if we
         #    want to apply attenuation correction
             else:
-                #logger.info("%s: Correcting for Attenuation [Q=%f]" % (fname, Q))
+                # logger.info("%s: Correcting for Attenuation [Q=%f]" % (fname, Q))
                 # travel_time: from pick_time - origin or from R/v where v={alpha,beta}
                 travel_time = pick.time - origin.time
 
                 fsum = 0.
 
-                #fmin = 0.
-                #fmax = 3000.
+                # fmin = 0.
+                # fmax = 3000.
 
         # exp(pi * f * (R/v) * 1/Q) grows so fast with freq that it's out of control above f ~ 1e3 Hz
         # We could design Q = Q(f) - e.g., make Q grow fast with f to counteract this.
@@ -852,76 +886,73 @@ def calc_velocity_flux(st_in,
         #   so these estimates will likely be low
                 fmin = arr.fmin
                 fmax = arr.fmax
+
                 if fmax/fmin < 3:
                     logger.info("%s: sta:%s fmin:%.1f fmax:%.1f too narrowband --> Skip" % (fname, sta, fmin, fmax))
+
                     continue
+
                 for tr in tr3:
                     data = tr.data
                     nfft = 2*npow2(data.size)
                     df = 1./(dt * float(nfft))    # df is same as for 2-sided case
-                    Y,freqs = unpack_rfft(rfft(data, n=nfft), df)
+                    Y, freqs = unpack_rfft(rfft(data, n=nfft), df)
                     Y *= dt
                     # 1-sided: N/2 -1 +ve freqs + [DC + Nyq] = N/2 + 1 values:
                     Y[1:-1] *= np.sqrt(2.)
                     # Freq dependent Q(f) --> tstar = array:
-                    #x = 0.6
-                    #Qf = Q*freqs**x
-                    #tstar = travel_time / Qf
-                    #tstar[0] = 0.
+                    # x = 0.6
+                    # Qf = Q*freqs**x
+                    # tstar = travel_time / Qf
+                    # tstar[0] = 0.
 
                     # freq-independent Q --> tstar = float:
                     tstar = travel_time / Q
 
-                    #if sta in ['76', '72']:
-                        #title = 'sta:%s cha:%s [%s]' % (sta, tr.stats.channel, phase)
-                        #plot_spec(freqs, np.abs(Y), tstar, title=title)
+                    # if sta in ['76', '72']:
+                    # title = 'sta:%s cha:%s [%s]' % (sta, tr.stats.channel, phase)
+                    # plot_spec(freqs, np.abs(Y), tstar, title=title)
 
                     index = [(freqs >= fmin) & (freqs <= fmax)]
                     freqs = freqs[index]
                     Y = Y[index]
                     fsum += np.sum(np.abs(Y)*np.abs(Y)*np.exp(2.*np.pi*freqs*tstar)) * df
 
-
-                print("arr sta:%s [%s] tsum=%g fsum=%g fmin=%f fmax=%f" % \
+                print("arr sta:%s [%s] tsum=%g fsum=%g fmin=%f fmax=%f" %
                       (sta, arr.phase, tsum, fsum, fmin, fmax))
-                #exit()
+                # exit()
 
                 flux = fsum
 
-                #print("Parseval's: nfft=%7d df=%12.6g flux_f=%12.10g flux_t=%12.10g" % \
-                      #(nfft, df, fsum, tsum))
+                # print("Parseval's: nfft=%7d df=%12.6g flux_f=%12.10g flux_t=%12.10g" % \
+                # (nfft, df, fsum, tsum))
 
             # Note we are saving the "flux" but it has not (yet) been scaled by rho*vel
             #  Instead it is just the sum of the integrals of the component velocities squared
             #  for the corresponding arrival and scaling is done in calc_energy(..)
 
-            #arr.vel_flux = flux
+            # arr.vel_flux = flux
             arr.vel_flux = tsum
             arr.vel_flux_Q = fsum
 
     return
 
-import matplotlib.pyplot as plt
 
 def plot_spec(freqs, spec, tstar, title=None):
 
     corrected_spec = spec*np.exp(2.*np.pi*freqs*tstar)
 
-    #plt.plot(freqs, D, color='blue')
+    # plt.plot(freqs, D, color='blue')
 
     plt.loglog(freqs, spec,  color='blue')
     plt.loglog(freqs, corrected_spec,  color='green')
-    #plt.legend(['signal', 'model'])
-    #plt.xlim(1e0, 3e3)
-    #plt.ylim(1e-12, 1e-4)
+    # plt.legend(['signal', 'model'])
+    # plt.xlim(1e0, 3e3)
+    # plt.ylim(1e-12, 1e-4)
+
     if title:
         plt.title(title)
     plt.grid()
     plt.show()
 
     return
-
-    #foo = sorted([x for x in S_P_times], key=lambda x: x[2])
-
-
-

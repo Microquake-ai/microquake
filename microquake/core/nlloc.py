@@ -172,7 +172,7 @@ def read_nlloc_hypocenter_file(filename, picks=None,
     #  >  0.209032  0.002185    1.2627  651.3046 4767.1881    0.9230    0.2578 150.58  -1.0  -1.0  0     0.0000
 
                 azi = float(tmp[22])  # Set to SAzim since that is guaranteed to be set
-                #azi = float(tmp[23])
+                # azi = float(tmp[23])
                 toa = float(tmp[24])
 
                 dist = np.linalg.norm([sx * 1000 - origin.x,
@@ -899,7 +899,7 @@ class NLL(object):
         event2 = self.gen_observations_from_event(evt)
 
         new_in = '%s/run/%s_%s.in' % (self.base_folder, self.base_name, self.worker_folder)
-        #print("new_in=%s" % new_in)
+        # print("new_in=%s" % new_in)
 
         self.ctrlfile.workerfolder = self.worker_folder
         self.ctrlfile.write(new_in)

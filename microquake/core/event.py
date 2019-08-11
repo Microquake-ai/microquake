@@ -17,20 +17,16 @@ Expansion of the obspy.core.event module
     (http://www.gnu.org/copyleft/lesser.html)
 """
 
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
+from __future__ import absolute_import, division, print_function, unicode_literals
 
-import obspy.core.event as obsevent
-from obspy.core import AttribDict
-from obspy.core.event import ResourceIdentifier
-import warnings
-import numpy as np
-import io
 import base64
-from copy import deepcopy
-from obspy.core.event import *
-
+import io
 import logging
+import warnings
+
+import numpy as np
+import obspy.core.event as obsevent
+
 logger = logging.getLogger()
 log_level = logging.getLogger().getEffectiveLevel()
 
@@ -65,6 +61,7 @@ class Event(obsevent.Event):
 
     def short_str(self):
         out = ''
+
         if self.origins:
             og = self.preferred_origin() or self.origins[0]
             out += '%s | %s, %s, %s | %s' % (og.time, og.x, og.y, og.z, og.evaluation_mode)
@@ -73,6 +70,7 @@ class Event(obsevent.Event):
             magnitude = self.preferred_magnitude() or self.magnitudes[0]
             out += ' | %s %-2s' % (magnitude.mag,
                                    magnitude.magnitude_type)
+
         return out
 
         self.picks += picks
@@ -107,13 +105,13 @@ class Origin(obsevent.Origin):
 
     def get_all_magnitudes_for_origin(self, cat):
         magnitudes = []
+
         for event in cat:
             for mag in event.magnitudes:
                 if mag.origin_id.id == self.resource_id.id:
                     magnitudes.append(mag)
 
         return magnitudes
-
 
     def __str__(self, **kwargs):
         string = """
@@ -129,9 +127,9 @@ class Origin(obsevent.Origin):
           arrivals: %d Elements
         """ \
             % (self.resource_id, self.time.strftime("%Y/%m/%d %H:%M:%S.%f"),
-            self.x, self.y, self.z, self.uncertainty, self.evaluation_mode,
-            self.evaluation_status,
-            len(self.arrivals))
+               self.x, self.y, self.z, self.uncertainty, self.evaluation_mode,
+               self.evaluation_status,
+               len(self.arrivals))
         return string
 
 
@@ -179,22 +177,23 @@ class Pick(obsevent.Pick):
         if self.waveform_id is not None:
             return self.waveform_id.station_code
 
+
 class Arrival(obsevent.Arrival):
     __doc__ = obsevent.Arrival.__doc__.replace('obspy', 'microquake')
 
-    #extra_keys = ['ray', 'backazimuth', 'inc_angle']
+    # extra_keys = ['ray', 'backazimuth', 'inc_angle']
     extra_keys = ['ray', 'backazimuth', 'inc_angle', 'polarity',
                   'peak_vel', 'tpeak_vel', 't1', 't2', 'pulse_snr',
                   'peak_dis', 'tpeak_dis', 'max_dis', 'tmax_dis',
                   'dis_pulse_width', 'dis_pulse_area',
-                  'smom','fit','tstar',
+                  'smom', 'fit', 'tstar',
                   'hypo_dist_in_m',
                   'vel_flux', 'vel_flux_Q', 'energy',
                   'fmin', 'fmax',
                   'traces',
                   ]
 
-    #extra_keys = ['ray', 'backazimuth', 'inc_angle', 'velocity_pulse', 'displacement_pulse']
+    # extra_keys = ['ray', 'backazimuth', 'inc_angle', 'velocity_pulse', 'displacement_pulse']
 
     def __init__(self, obspy_obj=None, **kwargs):
         _init_handler(self, obspy_obj, **kwargs)
@@ -205,6 +204,7 @@ class Arrival(obsevent.Arrival):
     def get_pick(self):
         if self.pick_id is not None:
             return self.pick_id.get_referred_object()
+
 
 def get_arrival_from_pick(arrivals, pick):
     """
@@ -228,6 +228,7 @@ def get_arrival_from_pick(arrivals, pick):
             break
 
     return arrival
+
 
 def read_events(*args, **kwargs):
 
