@@ -23,9 +23,13 @@ import base64
 import io
 import logging
 import warnings
+from copy import deepcopy
 
 import numpy as np
 import obspy.core.event as obsevent
+from obspy.core import AttribDict
+from obspy.core.event import *
+from obspy.core.event import ResourceIdentifier
 
 logger = logging.getLogger()
 log_level = logging.getLogger().getEffectiveLevel()
