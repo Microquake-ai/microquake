@@ -44,8 +44,8 @@ from microquake.core import Stream, Trace, UTCDateTime
 from obspy.geodetics import (flinnengdahl, kilometer2degrees,
                                   locations2degrees)
 from microquake.core.util.decorator import deprecated_keywords
-from microquake.imaging.util import (ObsPyAutoDateFormatter, _timestring)
-from microquake.imaging.util import _id_key as _ID_key
+from obspy.imaging.util import (ObsPyAutoDateFormatter, _timestring)
+from obspy.imaging.util import _id_key as _ID_key
 
 MINMAX_ZOOMLEVEL_WARNING_TEXT = "Warning: Zooming into MinMax Plot!"
 SECONDS_PER_DAY = 3600.0 * 24.0
