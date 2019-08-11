@@ -12,7 +12,7 @@ from obspy.core.event.base import Comment
 import logging
 logger = logging.getLogger(__name__)
 
-def calc_focal_mechanisms(cat, settings, logger_in=None):
+def calc(cat, settings, logger_in=None):
     """
     Prepare input arrays needed to calculate focal mechanisms
     and pass these into hashwrap.hashwrapper
