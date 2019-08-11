@@ -27,7 +27,7 @@ def trigger(st, STALTA_on=1.5, STALTA_off=1.0, STA=10e-3, LTA=100e-3,
     """
     return triggers in continuous recordings
     """
-    from microquake.signal.trigger import recursive_sta_lta
+    from obspy.signal.trigger import recursive_sta_lta
     from microquake.signal.trigger import trigger_onset
     from microquake.core.stream import composite_traces
     import matplotlib.pyplot as plt
