@@ -18,7 +18,7 @@ module to interact with the NLLoc
 """
 
 
-# from microquake.nlloc.core import *
+# from microquake.core.nlloc.core import *
 
 import logging
 import os
@@ -30,7 +30,7 @@ from glob import glob
 import numpy as np
 
 from microquake.core import UTCDateTime
-from microquake.core.event import Arrival, Catalog, Origin
+from microquake.core.event import Arrival, Catalog
 from microquake.core.util.attribdict import AttribDict
 
 logger = logging.getLogger()
@@ -401,7 +401,6 @@ def read_NLL_grid(base_name):
     """
 
     from microquake.core import GridData
-    from glob import glob
     # Testing the presence of the .buf or .hdr extension at the end of base_name
 
     if ('.buf' == base_name[-4:]) or ('.hdr' == base_name[-4:]):
@@ -808,7 +807,6 @@ class NLL(object):
         calculate and write angle grids from travel time grids
         """
 
-        from glob import glob
         time_files = glob('%s/time/*time*.hdr' % self.base_folder)
 
         for time_file in time_files:
@@ -819,7 +817,7 @@ class NLL(object):
         """
         calculate and save take off angle grid
         """
-        from microquake.simul.eik import angles
+        from microquake.core.simul.eik import angles
         from microquake.core import read_grid
         # reading the travel time grid
         ifile = time_file
@@ -837,10 +835,9 @@ class NLL(object):
         Returns:
 
         """
-        from glob import glob
         from microquake.core.data.grid import read_grid
         from numpy import arange, meshgrid, zeros_like
-        from microquake.simul.eik import ray_tracer
+        from microquake.core.simul.eik import ray_tracer
         from time import time
         time_files = glob('%s/time/*time*.hdr' % self.base_folder)
 
@@ -891,8 +888,6 @@ class NLL(object):
 
     def run_event(self, event, silent=True):
         fname = 'run_event'
-
-        from glob import glob
 
         evt = event
 
@@ -997,7 +992,7 @@ class NLL(object):
         :rtype: ~microquake.core.event.Catalog
         """
         from microquake.core import read_grid
-        from microquake.simul.eik import ray_tracer
+        from microquake.core.simul.eik import ray_tracer
         from time import time
 
         origin = read_nlloc_hypocenter_file(hypfile, event.picks,

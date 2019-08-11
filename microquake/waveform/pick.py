@@ -18,7 +18,7 @@
 # along with microquake.  If not, see <http://www.gnu.org/licenses/>.
 
 import numpy as np
-from microquake.core import Stream, Trace, event
+from microquake.core import Stream, Trace
 from obspy.signal.trigger import recursive_sta_lta, pk_baer, \
     classic_sta_lta, coincidence_trigger
 from obspy.realtime.signal import kurtosis
@@ -26,16 +26,13 @@ from scipy.signal import detrend
 from scipy.ndimage.filters import gaussian_filter1d
 from microquake.core import event
 from microquake.core.util.decorator import deprecated
-import microquake.nlloc.core as nll
+import microquake.core.nlloc as nll
 #from microquake.core.util.decorator import logger
 import logging
 logger = logging.getLogger()
 
 from microquake.core.event import make_pick
 from microquake.core.util.tools import copy_picks_to_dict
-
-
-import matplotlib.pyplot as plt
 
 
 def measure_polarity(st, catalog, site, average_time_window=1e-3,

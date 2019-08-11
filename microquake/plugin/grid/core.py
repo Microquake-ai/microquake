@@ -25,7 +25,7 @@ def read_nll(filename, **kwargs):
     :type filename: str
     :rtype: ~microquake.core.data.grid.GridData
     """
-    from microquake.nlloc import read_NLL_grid
+    from microquake.core.nlloc import read_NLL_grid
     return read_NLL_grid(filename)
 
 
@@ -59,7 +59,7 @@ def write_nll(grid, filename, **kwargs):
     :type grid: ~microquake.core.data.grid.GridData
     """
 
-    from microquake.nlloc import write_nll_grid
+    from microquake.core.nlloc import write_nll_grid
     data = grid.data
     origin = grid.origin
     spacing = grid.spacing

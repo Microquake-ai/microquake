@@ -3,7 +3,7 @@
 project
 ** Base project in a virtual machine with all server and services set-up?
 
-* Database 
+* Database
 ** Establishing the structure of the database, which database and how the data
 will be stored and retreive from the database
 ** Perhaps the database schema can be much simpler than the QuakeML schema. For
@@ -11,13 +11,13 @@ instance, we need to store only event location, magnitude, uncertainty
 (something similar to what ESG or IMS are providing). The for comprehensive
 information, the database can point to QuakeML file.
 ** if the QuakeML schema is adopted, a mechanism will be required to ensure that
-the database and the QuakeML files are synchronized. This might be difficult. 
+the database and the QuakeML files are synchronized. This might be difficult.
 *** Preferrence for a SQL database following the QuakeML schema.
 ** Fixing the SQL module and making sure the Catalog object can be written
 directly and losslessly to the SQL database
 ** Potentially completing the mongodb module
 
-* Potential management of multiple events, multiple origin: How do we manage 
+* Potential management of multiple events, multiple origin: How do we manage
 multiple events, origins etc.?
 
 * User interface
@@ -36,6 +36,5 @@ distribution of sensor with respect to the event hypocenter location
 
 * Focal mechanism
 ** completing the focal mechanism module
-
-
-
+*** Adding the FOCMEC code to the repository and have the code compiled and added to the path at setup.
+*** Possibly using the internal functions rather than the program interfaced using proc.

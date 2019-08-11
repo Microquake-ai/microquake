@@ -234,7 +234,7 @@ class GridData(object):
         self.type = grid_type.upper()
 
     def __setattr__(self, attr, value):
-        from microquake.nlloc import valid_nlloc_grid_type
+        from microquake.core.nlloc import valid_nlloc_grid_type
         if attr == "type":
             self.__dict__[attr] = str(value).upper()
             if value not in valid_nlloc_grid_type:
