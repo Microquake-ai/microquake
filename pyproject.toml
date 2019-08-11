@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "microquake"
-version = "0.1.0"
+version = "0.1.1"
 description = "Python library that is an extension/expansion/adaptation of ObsPy to microseismic data"
 authors = ["Your Name <you@example.com>"]
 license = "GPL-3.0"
@@ -36,3 +36,80 @@ pymongo = "^3.7"
 
 [tool.poetry.dev-dependencies]
 ipython = "^7.4"
+
+[tool.poetry.scripts]
+MQ-simulation = "microquake.core.scripts.simulation:main"
+MQ-autoprocess = "microquake.core.scripts.autoprocess:main"
+MQ-init_project = "microquake.core.scripts.init_project:main"
+MQ-init_db = "microquake.core.scripts.init_db:main"
+MQ-import_ESG_SEGY = "microquake.core.scripts.import_ESG_SEGY:main"
+MQ-wave = "microquake.ui.picker.picker:picker"
+
+[tool.poetry.plugins] # Optional super table
+[tool.poetry.plugins."microquake.io.waveform"]
+ESG_SEGY = "microquake.io.waveform"
+HSF = "micorquake.io.waveform"
+TEXCEL_CSV = "microquake.io.waveform"
+IMS_CONTINUOUS = "microquake.io.waveform"
+IMS_ASCII = "microquake.io.waveform"
+
+[tool.poetry.plugins."microquake.io.event"]
+QUAKEML = "microquake.io.quakeml"
+NLLOC = "microquake.io.nlloc"
+
+[tool.poetry.plugins."microquake.io.waveform.ESG_SEGY"]
+readFormat = "microquake.io.waveform:read_ESG_SEGY"
+
+[tool.poetry.plugins."microquake.io.waveform.HSF"]
+readFormat = "microquake.io.waveform:read_HSF"
+
+[tool.poetry.plugins."microquake.io.waveform.TEXCEL_CSV"]
+readFormat = "microquake.io.waveform:read_TEXCEL_CSV"
+
+[tool.poetry.plugins."microquake.io.waveform.IMS_CONTINUOUS"]
+readFormat = "microquake.io.waveform:read_IMS_CONTINUOUS"
+
+[tool.poetry.plugins."microquake.io.waveform.IMS_ASCII"]
+readFormat = "microquake.io.waveform:read_IMS_ASCII"
+
+[tool.poetry.plugins."microquake.io.nlloc.NLLOC"]
+NLLOC = "microquake.io.nlloc"
+readFormat = "microquake.plugin.waveform:read_nlloc_hypo"
+
+[tool.poetry.plugins."microquake.plugin.grid"]
+NLLOC = "microquake.plugin.grid"
+VTK = "microquake.plugin.grid"
+PICKLE = "microquake.plugin.grid"
+
+[tool.poetry.plugins."microquake.plugin.site"]
+CSV = "microquake.plugin.site"
+VTK = "microquake.plugin.site"
+PICKLE = "microquake.plugin.site"
+
+[tool.poetry.plugins."microquake.plugin.grid.NLLOC"]
+readFormat = "microquake.plugin.grid:read_nll"
+writeFormat = "microquake.plugin.grid:write_nll"
+
+[tool.poetry.plugins."microquake.plugin.grid.VTK"]
+writeFormat = "microquake.plugin.grid:write_vtk"
+
+[tool.poetry.plugins."microquake.plugin.grid.PICKLE"]
+readFormat = "microquake.plugin.grid:read_pickle"
+writeFormat = "microquake.plugin.grid:write_pickle"
+
+[tool.poetry.plugins."microquake.plugin.site.CSV"]
+readFormat = "microquake.plugin.site:read_csv"
+writeFormat = "microquake.plugin.site:write_csv"
+
+[tool.poetry.plugins."microquake.plugin.site.PICKLE"]
+readFormat = "microquake.plugin.site:read_pickle"
+writeFormat = "microquake.plugin.site:write_pickle"
+
+[tool.poetry.plugins."microquake.plugin.site.VTK"]
+writeFormat = "microquake.plugin.site:write_vtk"
+
+[tool.poetry.plugins."microquake.io.nlloc"]
+NLLOC = "microquake.io.nlloc"
+
+[tool.poetry.plugins."microquake.plugin.event.NLLOC"]
+readFormat = "microquake.io.nlloc.core:read_nll_event_file"

@@ -120,10 +120,7 @@ ENTRY_POINTS = {
     ],
 
     'microquake.io.nlloc.NLLOC': [
-        'NLLOC = microquake.io.nlloc'
-    ],
-
-    'microquake.io.nlloc.NLLOC': [
+        'NLLOC = microquake.io.nlloc',
         'readFormat = microquake.plugin.waveform:read_nlloc_hypo'
     ],
 
@@ -140,12 +137,14 @@ ENTRY_POINTS = {
         'VTK = microquake.plugin.grid',
         'PICKLE = microquake.plugin.grid'
     ],
-     'microquake.plugin.site': [
+
+    'microquake.plugin.site': [
         'CSV = microquake.plugin.site',
         'VTK = microquake.plugin.site',
         'PICKLE = microquake.plugin.site'
     ],
-     'microquake.plugin.grid.NLLOC': [
+
+    'microquake.plugin.grid.NLLOC': [
         'readFormat = microquake.plugin.grid:read_nll',
         'writeFormat = microquake.plugin.grid:write_nll'
     ],
@@ -179,7 +178,7 @@ setup(
     name='microquake',
     version=version,
     description=('Python library that is an extension/expansion/adaptation of'
-                'ObsPy to microseismic data'),
+                 'ObsPy to microseismic data'),
     long_description=long_description,
     author='microquake development team',
     author_email='devs@microquake.org',
