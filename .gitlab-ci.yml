@@ -1,0 +1,35 @@
+stages:
+# - build
+- release
+
+# build:
+#   stage: build
+#   image: python:3.7
+#   script:
+#   - pip install poetry
+#   - poetry install
+#   - poetry build
+#   artifacts:
+#     expire_in: 6 months
+#     paths:
+#     - dist/
+#   trigger:
+#     rio-tinto/seismic-processing-platform
+
+release:tag:
+  stage: release
+  image: python:3.7
+  only:
+  - tags
+  script:
+  - pip3 install gitlab-release
+  - pip3 install twine
+  - echo -e '[pypi]' >> ~/.pypirc
+  - echo -e 'repository = https://pkg.microquake.org' >> ~/.pypirc
+  - echo -e 'username = micro' >> ~/.pypirc
+  - echo -e 'password = quake' >> ~/.pypirc
+  - twine upload --verbose dist/*whl
+  - gitlab-release --link-artifact ./dist/*whl
+  artifacts:
+    paths:
+    - dist/*whl
