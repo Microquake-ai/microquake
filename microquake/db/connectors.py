@@ -13,8 +13,7 @@ from redis import ConnectionPool, Redis
 from rq import Queue
 from microquake.db.models import Recording
 from microquake.core.settings import settings
-from spp.stats_collector import db_models
-from spp.stats_collector.db_models import processing_logs
+from microquake.db.models import processing_logs, metadata
 
 db_name = settings.POSTGRES_DB_NAME
 postgres_url = settings.POSTGRES_URL + db_name
@@ -67,7 +66,7 @@ def connect_postgres():
     engine = db.create_engine(postgres_url)
     connection = engine.connect()
     # Create tables if they do not exist
-    db_models.metadata.create_all(engine)
+    metadata.create_all(engine)
 
     return connection
 
