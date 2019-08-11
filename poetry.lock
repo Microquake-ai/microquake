@@ -7,6 +7,11 @@ optional = false
 python-versions = "*"
 version = "0.1.0"
 
+[package.source]
+reference = "microquake"
+type = "legacy"
+url = "https://pkg.microquake.org/simple"
+
 [[package]]
 category = "dev"
 description = "Specifications for callback functions passed in to an API"
@@ -14,6 +19,11 @@ name = "backcall"
 optional = false
 python-versions = "*"
 version = "0.1.0"
+
+[package.source]
+reference = "microquake"
+type = "legacy"
+url = "https://pkg.microquake.org/simple"
 
 [[package]]
 category = "main"
@@ -23,6 +33,11 @@ optional = false
 python-versions = "*"
 version = "2019.6.16"
 
+[package.source]
+reference = "microquake"
+type = "legacy"
+url = "https://pkg.microquake.org/simple"
+
 [[package]]
 category = "main"
 description = "Universal encoding detector for Python 2 and 3"
@@ -30,6 +45,11 @@ name = "chardet"
 optional = false
 python-versions = "*"
 version = "3.0.4"
+
+[package.source]
+reference = "microquake"
+type = "legacy"
+url = "https://pkg.microquake.org/simple"
 
 [[package]]
 category = "dev"
@@ -39,6 +59,11 @@ name = "colorama"
 optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 version = "0.4.1"
+
+[package.source]
+reference = "microquake"
+type = "legacy"
+url = "https://pkg.microquake.org/simple"
 
 [[package]]
 category = "main"
@@ -51,6 +76,11 @@ version = "0.10.0"
 [package.dependencies]
 six = "*"
 
+[package.source]
+reference = "microquake"
+type = "legacy"
+url = "https://pkg.microquake.org/simple"
+
 [[package]]
 category = "main"
 description = "Better living through Python with decorators"
@@ -58,6 +88,11 @@ name = "decorator"
 optional = false
 python-versions = ">=2.6, !=3.0.*, !=3.1.*"
 version = "4.4.0"
+
+[package.source]
+reference = "microquake"
+type = "legacy"
+url = "https://pkg.microquake.org/simple"
 
 [[package]]
 category = "main"
@@ -67,6 +102,11 @@ optional = false
 python-versions = ">=2.6, !=3.0.*, !=3.1.*, !=3.2.*"
 version = "0.17.1"
 
+[package.source]
+reference = "microquake"
+type = "legacy"
+url = "https://pkg.microquake.org/simple"
+
 [[package]]
 category = "main"
 description = "Internationalized Domain Names in Applications (IDNA)"
@@ -74,6 +114,11 @@ name = "idna"
 optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 version = "2.8"
+
+[package.source]
+reference = "microquake"
+type = "legacy"
+url = "https://pkg.microquake.org/simple"
 
 [[package]]
 category = "dev"
@@ -96,6 +141,11 @@ pygments = "*"
 setuptools = ">=18.5"
 traitlets = ">=4.2"
 
+[package.source]
+reference = "microquake"
+type = "legacy"
+url = "https://pkg.microquake.org/simple"
+
 [[package]]
 category = "dev"
 description = "Vestigial utilities from IPython"
@@ -103,6 +153,11 @@ name = "ipython-genutils"
 optional = false
 python-versions = "*"
 version = "0.2.0"
+
+[package.source]
+reference = "microquake"
+type = "legacy"
+url = "https://pkg.microquake.org/simple"
 
 [[package]]
 category = "dev"
@@ -115,6 +170,11 @@ version = "0.14.1"
 [package.dependencies]
 parso = ">=0.5.0"
 
+[package.source]
+reference = "microquake"
+type = "legacy"
+url = "https://pkg.microquake.org/simple"
+
 [[package]]
 category = "main"
 description = "A fast implementation of the Cassowary constraint solver"
@@ -126,6 +186,11 @@ version = "1.1.0"
 [package.dependencies]
 setuptools = "*"
 
+[package.source]
+reference = "microquake"
+type = "legacy"
+url = "https://pkg.microquake.org/simple"
+
 [[package]]
 category = "main"
 description = "Powerful and Pythonic XML processing library combining libxml2/libxslt with the ElementTree API."
@@ -133,6 +198,11 @@ name = "lxml"
 optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, != 3.4.*"
 version = "4.4.1"
+
+[package.source]
+reference = "microquake"
+type = "legacy"
+url = "https://pkg.microquake.org/simple"
 
 [[package]]
 category = "main"
@@ -149,6 +219,11 @@ numpy = ">=1.11"
 pyparsing = ">=2.0.1,<2.0.4 || >2.0.4,<2.1.2 || >2.1.2,<2.1.6 || >2.1.6"
 python-dateutil = ">=2.1"
 
+[package.source]
+reference = "microquake"
+type = "legacy"
+url = "https://pkg.microquake.org/simple"
+
 [[package]]
 category = "main"
 description = "NumPy is the fundamental package for array computing with Python."
@@ -156,6 +231,11 @@ name = "numpy"
 optional = false
 python-versions = ">=3.5"
 version = "1.17.0"
+
+[package.source]
+reference = "microquake"
+type = "legacy"
+url = "https://pkg.microquake.org/simple"
 
 [[package]]
 category = "main"
@@ -176,6 +256,11 @@ scipy = ">=0.9.0"
 setuptools = "*"
 sqlalchemy = "*"
 
+[package.source]
+reference = "microquake"
+type = "legacy"
+url = "https://pkg.microquake.org/simple"
+
 [[package]]
 category = "dev"
 description = "A Python Parser"
@@ -183,6 +268,11 @@ name = "parso"
 optional = false
 python-versions = "*"
 version = "0.5.1"
+
+[package.source]
+reference = "microquake"
+type = "legacy"
+url = "https://pkg.microquake.org/simple"
 
 [[package]]
 category = "dev"
@@ -196,6 +286,11 @@ version = "4.7.0"
 [package.dependencies]
 ptyprocess = ">=0.5"
 
+[package.source]
+reference = "microquake"
+type = "legacy"
+url = "https://pkg.microquake.org/simple"
+
 [[package]]
 category = "dev"
 description = "Tiny 'shelve'-like database with concurrency support"
@@ -203,6 +298,11 @@ name = "pickleshare"
 optional = false
 python-versions = "*"
 version = "0.7.5"
+
+[package.source]
+reference = "microquake"
+type = "legacy"
+url = "https://pkg.microquake.org/simple"
 
 [[package]]
 category = "dev"
@@ -216,6 +316,11 @@ version = "2.0.9"
 six = ">=1.9.0"
 wcwidth = "*"
 
+[package.source]
+reference = "microquake"
+type = "legacy"
+url = "https://pkg.microquake.org/simple"
+
 [[package]]
 category = "dev"
 description = "Run a subprocess in a pseudo terminal"
@@ -225,6 +330,11 @@ optional = false
 python-versions = "*"
 version = "0.6.0"
 
+[package.source]
+reference = "microquake"
+type = "legacy"
+url = "https://pkg.microquake.org/simple"
+
 [[package]]
 category = "dev"
 description = "Pygments is a syntax highlighting package written in Python."
@@ -232,6 +342,11 @@ name = "pygments"
 optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
 version = "2.4.2"
+
+[package.source]
+reference = "microquake"
+type = "legacy"
+url = "https://pkg.microquake.org/simple"
 
 [[package]]
 category = "main"
@@ -241,6 +356,11 @@ optional = false
 python-versions = "*"
 version = "3.8.0"
 
+[package.source]
+reference = "microquake"
+type = "legacy"
+url = "https://pkg.microquake.org/simple"
+
 [[package]]
 category = "main"
 description = "Python parsing module"
@@ -248,6 +368,11 @@ name = "pyparsing"
 optional = false
 python-versions = ">=2.6, !=3.0.*, !=3.1.*, !=3.2.*"
 version = "2.4.2"
+
+[package.source]
+reference = "microquake"
+type = "legacy"
+url = "https://pkg.microquake.org/simple"
 
 [[package]]
 category = "main"
@@ -260,6 +385,11 @@ version = "2.8.0"
 [package.dependencies]
 six = ">=1.5"
 
+[package.source]
+reference = "microquake"
+type = "legacy"
+url = "https://pkg.microquake.org/simple"
+
 [[package]]
 category = "main"
 description = "World timezone definitions, modern and historical"
@@ -267,6 +397,11 @@ name = "pytz"
 optional = false
 python-versions = "*"
 version = "2019.2"
+
+[package.source]
+reference = "microquake"
+type = "legacy"
+url = "https://pkg.microquake.org/simple"
 
 [[package]]
 category = "main"
@@ -282,6 +417,11 @@ chardet = ">=3.0.2,<3.1.0"
 idna = ">=2.5,<2.9"
 urllib3 = ">=1.21.1,<1.25.0 || >1.25.0,<1.25.1 || >1.25.1,<1.26"
 
+[package.source]
+reference = "microquake"
+type = "legacy"
+url = "https://pkg.microquake.org/simple"
+
 [[package]]
 category = "main"
 description = "SciPy: Scientific Library for Python"
@@ -290,8 +430,10 @@ optional = false
 python-versions = ">=3.5"
 version = "1.3.1"
 
-[package.dependencies]
-numpy = ">=1.13.3"
+[package.source]
+reference = "microquake"
+type = "legacy"
+url = "https://pkg.microquake.org/simple"
 
 [[package]]
 category = "main"
@@ -301,6 +443,11 @@ optional = false
 python-versions = ">=2.6, !=3.0.*, !=3.1.*"
 version = "1.12.0"
 
+[package.source]
+reference = "microquake"
+type = "legacy"
+url = "https://pkg.microquake.org/simple"
+
 [[package]]
 category = "main"
 description = "Database Abstraction Library"
@@ -308,6 +455,11 @@ name = "sqlalchemy"
 optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 version = "1.3.6"
+
+[package.source]
+reference = "microquake"
+type = "legacy"
+url = "https://pkg.microquake.org/simple"
 
 [[package]]
 category = "dev"
@@ -322,6 +474,11 @@ decorator = "*"
 ipython-genutils = "*"
 six = "*"
 
+[package.source]
+reference = "microquake"
+type = "legacy"
+url = "https://pkg.microquake.org/simple"
+
 [[package]]
 category = "main"
 description = "HTTP library with thread-safe connection pooling, file post, and more."
@@ -329,6 +486,11 @@ name = "urllib3"
 optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, <4"
 version = "1.25.3"
+
+[package.source]
+reference = "microquake"
+type = "legacy"
+url = "https://pkg.microquake.org/simple"
 
 [[package]]
 category = "dev"
@@ -338,8 +500,29 @@ optional = false
 python-versions = "*"
 version = "0.1.7"
 
+[package.source]
+reference = "microquake"
+type = "legacy"
+url = "https://pkg.microquake.org/simple"
+
+[[package]]
+category = "main"
+description = ""
+name = "xseis2"
+optional = false
+python-versions = "*"
+version = "0.1.7"
+
+[package.dependencies]
+numpy = "*"
+
+[package.source]
+reference = "microquake"
+type = "legacy"
+url = "https://pkg.microquake.org/simple"
+
 [metadata]
-content-hash = "a571f33bc89e63db7d2e7fd7278f369d94d50a851d5e2fa68d66944b625c80c5"
+content-hash = "64e678c34aafcf0eae4b8944e3fec75da2bc5b1b8d52061b7e4031f2a32dccbe"
 python-versions = "^3.6 || ^3.7"
 
 [metadata.hashes]
@@ -366,7 +549,7 @@ pickleshare = ["87683d47965c1da65cdacaf31c8441d12b8044cdec9aca500cd78fc2c683afca
 prompt-toolkit = ["11adf3389a996a6d45cc277580d0d53e8a5afd281d0c9ec71b28e6f121463780", "2519ad1d8038fd5fc8e770362237ad0364d16a7650fb5724af6997ed5515e3c1", "977c6583ae813a37dc1c2e1b715892461fcbdaa57f6fc62f33a528c4886c8f55"]
 ptyprocess = ["923f299cc5ad920c68f2bc0bc98b75b9f838b93b599941a6b63ddbc2476394c0", "d7cc528d76e76342423ca640335bd3633420dc1366f258cb31d05e865ef5ca1f"]
 pygments = ["71e430bc85c88a430f000ac1d9b331d2407f681d6f6aec95e8bcfbc3df5b0127", "881c4c157e45f30af185c1ffe8d549d48ac9127433f2c380c24b84572ad66297"]
-pymongo = ["32421df60d06f479d71b6b539642e410ece3006e8910688e68df962c8eb40a21", "324b22a8443e11faca44c96b20e7ec8a9e59a1e664457edeeb4f796080b31cde", "3b6336b1d2a1ac2fcc8f629070016f3c76ad7dc969f269232471953d6dd17c0d", "4505ff8b7923dd7a8bed1bf25c9c4d0df5ab0b8b2821f2296533f2149a55f401", "460b224681ea711e48e3638d15be2249024031b7dcb9622ba19c2e85bd5a26cc", "47473b70c5f3cd5ddd2c49ab3b9ceafdafbbed5bc963f147df22a9343d7978f5", "49375839af76834e9c5c3cc78c78386873fd0b2ad9a0860a7dc4ec9fe73af9dd", "4a65f0f71ece86c860d30a1436b646db8ea32aec518845ef2903ca569faec32e", "530621906c5dd6d27305b39c4e017701e5f4299aa68b93cde70eb985f94ca26f", "54f4770b5810e8dc3cbeed675874195f02bb2bc4e95a9d665068edfb3baff4f7", "5ed9382410e938b0ff76041c34018210504729a83bcf4f6a70c7092c28169f6f", "61cad83637ae12c1c825130d7f9325cd6c162e3a64e8747a8144866020be3ff4", "61e8e1c58b4fdf47ab79b7c7db8bb022c1e40b3b5fcbbaeea5fc94dc5c75638d", "6e04e496af7d156b66cce70460011c621ecbadf5dcdce325c7acbb3cd6ea245d", "74838f04da0b3995b830fe1f00f9b200831582cbc42a22b77e04dfb717cb0d56", "7ef89ec435e89da902451dde6845066fe2770befaf0301fe2a1ac426b51fced3", "854e8425e5eb775ccfffad04ecd094c99923d60a2c2d49babb5c435e836a91fa", "9569796d48498e4db4e1d56284b626a8ed15f641ce3a8b2085f06bb03f4c2c88", "9d50c99c6388863cbfdc5db9bad62e3a7c2e5fc151554a07c7f3c2530334a34f", "9ea016c2c011df21f77c1f806ce45129a344ba2d414bd50f9e065b13a4a134be", "a8421f0823174888fb12a5fa675322e756499d71e77ff712b4412d4b8f3c6503", "aef7d88384ada699976350a285c7a333f96ebc959e98e7d2c98589f47bbf3b7f", "b4d7ff9957ee770cf03bd7156a68a2f2e838e60712d9608eadc8741c15d01e72", "c1db85c39e6a60588f855dbc7bd68fb0dab796096148ab5aa4abecaff19e1c6e", "c3e813b1bd0b883639e30170dc9daccb9b6ef7e81836188b88d3fc7364892b35", "cee2fc0b94e66e7230da12fc4b3d34793c49957e16ee04f6468a94e264a1e41d", "cf1dea28379a16b23e47db312883f07b3ba8d9d6abc1c59e51d4c8ae1820ab43", "d1cd175df7c8b5fc976bade78bf4d9fb5aa7ab465c0f59931e380bbe188ef8fc", "d48a94edf3cdd34524936a72ea01b352682b337f33a42db10ba29a96c37147d3", "d9cc103a4e97f78bc77a1d72759ab3722f6cdf0374ad4fb4b0c53bd3238bdf98", "fcb9ae8aa9158106c5d98a4349ec0d90b68f052d620b2d24622ba03b91e4d81d"]
+pymongo = ["32421df60d06f479d71b6b539642e410ece3006e8910688e68df962c8eb40a21", "324b22a8443e11faca44c96b20e7ec8a9e59a1e664457edeeb4f796080b31cde", "4505ff8b7923dd7a8bed1bf25c9c4d0df5ab0b8b2821f2296533f2149a55f401", "460b224681ea711e48e3638d15be2249024031b7dcb9622ba19c2e85bd5a26cc", "47473b70c5f3cd5ddd2c49ab3b9ceafdafbbed5bc963f147df22a9343d7978f5", "49375839af76834e9c5c3cc78c78386873fd0b2ad9a0860a7dc4ec9fe73af9dd", "4a65f0f71ece86c860d30a1436b646db8ea32aec518845ef2903ca569faec32e", "530621906c5dd6d27305b39c4e017701e5f4299aa68b93cde70eb985f94ca26f", "54f4770b5810e8dc3cbeed675874195f02bb2bc4e95a9d665068edfb3baff4f7", "5ed9382410e938b0ff76041c34018210504729a83bcf4f6a70c7092c28169f6f", "61cad83637ae12c1c825130d7f9325cd6c162e3a64e8747a8144866020be3ff4", "61e8e1c58b4fdf47ab79b7c7db8bb022c1e40b3b5fcbbaeea5fc94dc5c75638d", "6e04e496af7d156b66cce70460011c621ecbadf5dcdce325c7acbb3cd6ea245d", "7ef89ec435e89da902451dde6845066fe2770befaf0301fe2a1ac426b51fced3", "854e8425e5eb775ccfffad04ecd094c99923d60a2c2d49babb5c435e836a91fa", "9569796d48498e4db4e1d56284b626a8ed15f641ce3a8b2085f06bb03f4c2c88", "9d50c99c6388863cbfdc5db9bad62e3a7c2e5fc151554a07c7f3c2530334a34f", "9ea016c2c011df21f77c1f806ce45129a344ba2d414bd50f9e065b13a4a134be", "a8421f0823174888fb12a5fa675322e756499d71e77ff712b4412d4b8f3c6503", "aef7d88384ada699976350a285c7a333f96ebc959e98e7d2c98589f47bbf3b7f", "b4d7ff9957ee770cf03bd7156a68a2f2e838e60712d9608eadc8741c15d01e72", "c1db85c39e6a60588f855dbc7bd68fb0dab796096148ab5aa4abecaff19e1c6e", "cee2fc0b94e66e7230da12fc4b3d34793c49957e16ee04f6468a94e264a1e41d", "cf1dea28379a16b23e47db312883f07b3ba8d9d6abc1c59e51d4c8ae1820ab43", "d1cd175df7c8b5fc976bade78bf4d9fb5aa7ab465c0f59931e380bbe188ef8fc", "d48a94edf3cdd34524936a72ea01b352682b337f33a42db10ba29a96c37147d3", "d9cc103a4e97f78bc77a1d72759ab3722f6cdf0374ad4fb4b0c53bd3238bdf98", "fcb9ae8aa9158106c5d98a4349ec0d90b68f052d620b2d24622ba03b91e4d81d"]
 pyparsing = ["6f98a7b9397e206d78cc01df10131398f1c8b8510a2f4d97d9abd82e1aacdd80", "d9338df12903bbf5d65a0e4e87c2161968b10d2e489652bb47001d82a9b028b4"]
 python-dateutil = ["7e6584c74aeed623791615e26efd690f29817a27c73085b78e4bad02493df2fb", "c89805f6f4d64db21ed966fda138f8a5ed7a4fdbc1a8ee329ce1b74e3c74da9e"]
 pytz = ["26c0b32e437e54a18161324a2fca3c4b9846b74a8dccddd843113109e1116b32", "c894d57500a4cd2d5c71114aaab77dbab5eabd9022308ce5ac9bb93a60a6f0c7"]
@@ -377,3 +560,4 @@ sqlalchemy = ["217e7fc52199a05851eee9b6a0883190743c4fb9c8ac4313ccfceaffd852b0ff"
 traitlets = ["9c4bd2d267b7153df9152698efb1050a5d84982d3384a37b2c1f7723ba3e7835", "c6cb5e6f57c5a9bdaa40fa71ce7b4af30298fbab9ece9815b5d995ab6217c7d9"]
 urllib3 = ["b246607a25ac80bedac05c6f282e3cdaf3afb65420fd024ac94435cabe6e18d1", "dbe59173209418ae49d485b87d1681aefa36252ee85884c31346debd19463232"]
 wcwidth = ["3df37372226d6e63e1b1e1eda15c594bca98a22d33a23832a90998faa96bc65e", "f4ebe71925af7b40a864553f761ed559b43544f8f71746c2d756c7fe788ade7c"]
+xseis2 = ["md5:a5ac1a1d21ec4843955ac63c8928aaed"]
