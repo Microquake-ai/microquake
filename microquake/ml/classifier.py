@@ -1,13 +1,15 @@
 from pathlib import Path
-import os
+
 import matplotlib.pyplot as plt
 import numpy as np
-from keras.models import Model
-from keras.layers import (Add, BatchNormalization, Conv2D, Dense, Flatten, Input, concatenate,
-                          MaxPooling2D, Embedding)
-from keras import applications
+
 import librosa as lr
+from keras import applications
+from keras.layers import Add, BatchNormalization, Conv2D, Dense, Embedding, Flatten, Input, MaxPooling2D, concatenate
+from keras.models import Model
 from loguru import logger
+from microquake.core.settings import settings
+
 
 class SeismicModel:
     '''
@@ -16,6 +18,7 @@ class SeismicModel:
     '''
     REF_HEIGHT = 900.00
     REF_MAGNITUDE = -1.2
+
     def __enter__(self):
         return self
 
@@ -26,8 +29,8 @@ class SeismicModel:
         '''
             :param model_name: Name of the model weight file name.
         '''
-        self.base_directory = Path(os.path.dirname(os.path.realpath(__file__)))/'../../data/weights'
-        #Model was trained at these dimensions
+        self.base_directory = Path(settings.common_dir)/'../data/weights'
+        # Model was trained at these dimensions
         self.D = (128, 128, 1)
         self.microquake_class_names = ['anthropogenic event', 'explosion', 'earthquake', 'quarry blast']
         self.num_classes = len(self.microquake_class_names)
@@ -49,11 +52,12 @@ class SeismicModel:
         '''
         data = self.get_norm_trace(tr).data
         signal = data*255
-        hl = int(signal.shape[0]//(width*1.1)) #this will cut away 5% from start and end
+        hl = int(signal.shape[0]//(width*1.1))  # this will cut away 5% from start and end
         spec = lr.feature.melspectrogram(signal, n_mels=height,
                                          hop_length=int(hl))
         img = lr.amplitude_to_db(spec)
         start = (img.shape[1] - width) // 2
+
         return img[:, start:start+width]
 
     #############################################
@@ -69,7 +73,7 @@ class SeismicModel:
 
         # c = tr[0]
         c = tr.composite()
-        c[0].data = c[0].data / np.abs(c[0].data).max() #we only interested in c[0]
+        c[0].data = c[0].data / np.abs(c[0].data).max()  # we only interested in c[0]
         c = c.detrend(type='demean')
 
         nan_in_context = np.any(np.isnan(c[0].data))
@@ -98,7 +102,7 @@ class SeismicModel:
         fig.subplots_adjust(left=0, right=1, bottom=0, top=1)
         ax.axis('off')
         _, _, _, _ = ax.specgram(x=data, Fs=rate,
-                                        noverlap=noverlap, NFFT=nfft)
+                                 noverlap=noverlap, NFFT=nfft)
         ax.axis('off')
         fig.set_size_inches(.64, .64)
 
@@ -109,6 +113,7 @@ class SeismicModel:
 
         imarray = np.reshape(mplimage, (int(height), int(width), 3))
         plt.close(fig)
+
         return imarray
 
     @staticmethod
@@ -118,6 +123,7 @@ class SeismicModel:
         :param rgb: RGB image array
         :return: Gray scaled image array
         """
+
         return np.dot(rgb[..., :3], [0.299, 0.587, 0.114])
 
     @staticmethod
@@ -126,12 +132,14 @@ class SeismicModel:
         :param array: Gray colored image array
         :return: Normalized gray colored image
         """
+
         return (array - array.min()) / (array.max() - array.min())
 
     @staticmethod
     def resnet50_layers(i):
         '''
-            wrapper around the resnet 50 model, it starts by converting the one channel input to 3 channgels and then load resnet50 model
+            wrapper around the resnet 50 model, it starts by converting the one channel input to 3 channgels and then
+            load resnet50 model
             :param i: input layer in this case the context trace
             :retun the flattend layer after the resent50 block
         '''
@@ -139,7 +147,9 @@ class SeismicModel:
 
         x = applications.ResNet50(weights=None, include_top=False)(x)
         x = Flatten()(x)
+
         return x
+
     @staticmethod
     def conv_layers(i):
         '''
@@ -157,16 +167,17 @@ class SeismicModel:
         x = MaxPooling2D(pool_size=2)(x)
 
         X_shortcut = BatchNormalization()(x)
+
         for _ in range(4):
             y = Conv2D(filters=dim, kernel_size=kern_size, activation='relu', padding='same')(X_shortcut)
             y = BatchNormalization()(y)
-            #y = Conv2D(filters = dim, kernel_size = kern_size, activation='relu', padding='same')(y)
+            # y = Conv2D(filters = dim, kernel_size = kern_size, activation='relu', padding='same')(y)
             y = Conv2D(filters=dim, kernel_size=kern_size, activation='relu', padding='same')(y)
-            X_shortcut = Add()([y,X_shortcut])
+            X_shortcut = Add()([y, X_shortcut])
         x = Flatten()(x)
         x = Dense(500, activation='relu')(x)
         x = BatchNormalization()(x)
-        #x = Dense(128, activation='relu')(x)
+        # x = Dense(128, activation='relu')(x)
 
         return x
 
@@ -179,9 +190,9 @@ class SeismicModel:
         i2 = Input(shape=(1,), name='height', dtype='int32')
         i3 = Input(shape=input_shape, name='context_trace')
         i4 = Input(shape=(1,), name='magnitude', dtype='int32')
-        emb = Embedding(3,2)(i2)
+        emb = Embedding(3, 2)(i2)
         flat1 = Flatten()(emb)
-        emb = Embedding(3,2)(i4)
+        emb = Embedding(3, 2)(i4)
         flat2 = Flatten()(emb)
 
         x1 = self.conv_layers(i1)
@@ -195,7 +206,6 @@ class SeismicModel:
         self.model = Model([i1, i2, i3, i4], x)
         self.model.load_weights(self.model_file)
 
-
     def predict(self, tr, context_trace, height, magnitude):
         """
         :param tr: Obspy stream object (2 s) that is good for descriminating between events
@@ -207,26 +217,30 @@ class SeismicModel:
         contxt_img = self.normalize_gray(spectrogram)
         spectrogram = self.librosa_spectrogram(tr)
         normgram = self.normalize_gray(spectrogram)
-        img = normgram[None, ..., None] # Needed to in the form of batch with one channel.
+        img = normgram[None, ..., None]  # Needed to in the form of batch with one channel.
         contxt = contxt_img[None, ..., None]
         h = []
         m = []
-        #We use the height as a category, greater than 900 or not
+        # We use the height as a category, greater than 900 or not
+
         if height >= self.REF_HEIGHT:
             h.append(1)
         else:
             h.append(0)
+
         if magnitude >= self.REF_MAGNITUDE:
             m.append(1)
         else:
             m.append(0)
 
-        data = {'spectrogram': img, 'context_trace':contxt,
-                'height': np.asarray(h), 'magnitude':np.asarray(m)}
+        data = {'spectrogram': img, 'context_trace': contxt,
+                'height': np.asarray(h), 'magnitude': np.asarray(m)}
         a = self.model.predict(data)
 
         classes = {}
+
         for p, n in zip(a.reshape(-1), self.microquake_class_names):
             classes[n] = p
         classes['other event'] = 1-np.max(a.reshape(-1))
+
         return classes
