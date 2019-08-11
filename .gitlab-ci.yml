@@ -7,6 +7,8 @@ build:
   image: python:3.7
   script:
   - pip install poetry
+  - poetry config repositories.microquake https://pkg.microquake.org
+  - poetry config http-basic.microquake $PYPI_USER $PYPI_PASS
   - poetry install
   - poetry build
   artifacts:
@@ -20,6 +22,7 @@ release:tag:
   only:
   - tags
   script:
+  - pip install poetry
   - pip3 install gitlab-release
   - poetry config repositories.microquake https://pkg.microquake.org
   - poetry config http-basic.microquake $PYPI_USER $PYPI_PASS
