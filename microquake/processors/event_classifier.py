@@ -1,4 +1,4 @@
-from spp.classifier.seismic_classifier import SeismicClassifierModel
+from microquake.ml.classifier import SeismicModel
 from microquake.processors.processing_unit import ProcessingUnit
 
 
@@ -11,7 +11,7 @@ class Processor(ProcessingUnit):
         return "event_classifier"
 
     def initializer(self):
-        self.seismic_model = SeismicClassifierModel()
+        self.seismic_model = SeismicModel()
         self.seismic_model.create_model()
 
     def process(self, **kwargs):
