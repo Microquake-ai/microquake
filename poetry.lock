@@ -511,7 +511,7 @@ description = ""
 name = "xseis2"
 optional = false
 python-versions = "*"
-version = "0.1.7"
+version = "0.1.8"
 
 [package.dependencies]
 numpy = "*"
@@ -560,4 +560,4 @@ sqlalchemy = ["217e7fc52199a05851eee9b6a0883190743c4fb9c8ac4313ccfceaffd852b0ff"
 traitlets = ["9c4bd2d267b7153df9152698efb1050a5d84982d3384a37b2c1f7723ba3e7835", "c6cb5e6f57c5a9bdaa40fa71ce7b4af30298fbab9ece9815b5d995ab6217c7d9"]
 urllib3 = ["b246607a25ac80bedac05c6f282e3cdaf3afb65420fd024ac94435cabe6e18d1", "dbe59173209418ae49d485b87d1681aefa36252ee85884c31346debd19463232"]
 wcwidth = ["3df37372226d6e63e1b1e1eda15c594bca98a22d33a23832a90998faa96bc65e", "f4ebe71925af7b40a864553f761ed559b43544f8f71746c2d756c7fe788ade7c"]
-xseis2 = ["md5:a5ac1a1d21ec4843955ac63c8928aaed"]
+xseis2 = ["md5:66e63b703f5329d23e44184fc2d3fed8"]
