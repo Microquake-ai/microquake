@@ -4,7 +4,7 @@ from scipy import optimize
 from scipy.fftpack import fft, fftfreq, rfft, rfftfreq
 #from scipy.optimize import fmin, fmin_powell, curve_fit
 
-from spp.utils.application import Application
+# from spp.utils.application import Application
 from microquake.core.data.inventory import get_sensor_type_from_trace, get_corner_freq_from_pole
 from microquake.core.util.tools import copy_picks_to_dict
 
