@@ -10,7 +10,8 @@ from microquake.core.settings import settings
 from microquake.db.connectors import RedisQueue
 from microquake.processors import (clean_data, focal_mechanism, magnitude, measure_amplitudes, measure_energy,
                                    measure_smom, nlloc, picker)
-from spp.core.serializers.seismic_objects import deserialize_message, serialize
+from microquake.db.serializers.seismic_objects import deserialize_message
+from microquake.db.models.redis import set_event
 
 api_base_url = settings.get('api_base_url')
 
@@ -85,11 +86,10 @@ def put_data_api(catalogue=None, fixed_length=None, **kwargs):
         dict_out = {'catalogue': catalogue,
                     'fixed_length': fixed_length}
 
-        message = serialize(**dict_out)
+        set_event(event_id, **dict_out)
 
         result = api_queue.submit_task(put_data_api,
-                                       kwargs={'data': message,
-                                               'serialized': True})
+                                       kwargs={'event_id': event_id})
 
         return result
 
@@ -166,10 +166,9 @@ def automatic_pipeline(catalogue=None, fixed_length=None, **kwargs):
     # send to data base
     cat_nlloc[0].resource_id = event_id
 
-    message = serialize(catalogue=cat_nlloc)
+    set_event(event_id, catalogue=cat_nlloc)
 
-    api_queue.submit_task(put_data_api, kwargs={'data': message,
-                                                'serialized': True})
+    api_queue.submit_task(put_data_api, kwargs={'event_id': event_id})
 
     # put_event_from_objects(api_base_url, event_id, event=cat_nlloc,
     #                        waveform=fixed_length)
@@ -200,9 +199,8 @@ def automatic_pipeline(catalogue=None, fixed_length=None, **kwargs):
 
     cat_magnitude_f[0].resource_id = event_id
 
-    message = serialize(catalogue=cat_magnitude_f)
-    api_queue.submit_task(put_data_api, kwargs={'data': message,
-                                                'serialized': True})
+    set_event(event_id, catalogue=cat_magnitude_f)
+    api_queue.submit_task(put_data_api, kwargs={'event_id': event_id})
     # put_event_from_objects(api_base_url, event_id, event=cat_magnitude_f)
 
     return cat_magnitude_f
