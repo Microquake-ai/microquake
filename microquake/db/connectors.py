@@ -30,9 +30,12 @@ class RedisWrapper(object):
         self.__dict__ = self.shared_state
 
     def redis_connect(self, url):
-        connection_pool = ConnectionPool(redis_url)
+        try:
+            self.connection_pool
+        except AttributeError:
+            self.connection_pool = ConnectionPool.from_url(redis_url)
 
-        return Redis(connection_pool=connection_pool)
+        return Redis(connection_pool=self.connection_pool)
 
 
 class RedisQueue:
