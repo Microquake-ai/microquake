@@ -40,6 +40,7 @@ xseis2 = "^0.1.7"
 loguru = "^0.3.0"
 microquake-hashwrap = "^0.0.4"
 dynaconf = "^2.0"
+rom = "^0.42.6"
 
 [tool.poetry.dev-dependencies]
 ipython = "^7.4"
