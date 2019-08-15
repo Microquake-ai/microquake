@@ -11,9 +11,8 @@ from obspy.core import UTCDateTime
 from microquake.core.stream import Stream, Trace
 from redis import ConnectionPool, Redis
 from rq import Queue
-from microquake.db.models import Recording
+from microquake.db.models.alchemy import Recording, processing_logs, metadata
 from microquake.core.settings import settings
-from microquake.db.models import processing_logs, metadata
 
 db_name = settings.POSTGRES_DB_NAME
 postgres_url = settings.POSTGRES_URL + db_name
