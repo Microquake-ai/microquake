@@ -3,20 +3,21 @@ from time import time
 
 import numpy as np
 import sqlalchemy as db
+from obspy.core import UTCDateTime
 from pytz import utc
 from sqlalchemy.orm import sessionmaker
 
 from loguru import logger
-from obspy.core import UTCDateTime
+from microquake.core.settings import settings
 from microquake.core.stream import Stream, Trace
+from microquake.db.models.alchemy import Recording, metadata, processing_logs
 from redis import ConnectionPool, Redis
 from rq import Queue
-from microquake.db.models.alchemy import Recording, processing_logs, metadata
-from microquake.core.settings import settings
 
 db_name = settings.POSTGRES_DB_NAME
 postgres_url = settings.POSTGRES_URL + db_name
 redis_url = settings.REDIS_URL
+redis_rq_url = settings.REDIS_RQ_URL
 
 
 def connect_redis():
@@ -33,14 +34,14 @@ class RedisWrapper(object):
         try:
             self.connection_pool
         except AttributeError:
-            self.connection_pool = ConnectionPool.from_url(redis_url)
+            self.connection_pool = ConnectionPool.from_url(url)
 
         return Redis(connection_pool=self.connection_pool)
 
 
 class RedisQueue:
     def __init__(self, queue, timeout=600):
-        self.redis = connect_redis()
+        self.redis = Redis.from_url(url=redis_rq_url)
         self.timeout = timeout
         self.queue = queue
         self.rq_queue = Queue(self.queue, connection=self.redis,
