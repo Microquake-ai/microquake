@@ -41,11 +41,13 @@ loguru = "^0.3.0"
 microquake-hashwrap = "^0.0.4"
 dynaconf = "^2.0"
 rom = "^0.42.6"
+rq = "^1.1"
 
 [tool.poetry.dev-dependencies]
 ipython = "^7.5"
 pytest = "^3.0"
 autopep8 = "^1.4"
+fakeredis = "^1.0"
 
 [tool.poetry.scripts]
 MQ-simulation = "microquake.core.scripts.simulation:main"
