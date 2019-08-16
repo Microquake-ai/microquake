@@ -20,7 +20,7 @@ postgres_url = settings.POSTGRES_URL + db_name
 
 
 def connect_redis():
-    return RedisWrapper().redis_connect(url=settings.REDIS_ROM_URL)
+    return RedisWrapper().redis_connect(url=settings.REDIS_WALRUS_URL)
 
 
 class RedisWrapper(object):
