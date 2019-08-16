@@ -43,7 +43,9 @@ dynaconf = "^2.0"
 rom = "^0.42.6"
 
 [tool.poetry.dev-dependencies]
-ipython = "^7.4"
+ipython = "^7.5"
+pytest = "^3.0"
+autopep8 = "^1.4"
 
 [tool.poetry.scripts]
 MQ-simulation = "microquake.core.scripts.simulation:main"
