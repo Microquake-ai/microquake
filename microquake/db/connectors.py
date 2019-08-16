@@ -16,12 +16,10 @@ from rq import Queue
 
 db_name = settings.POSTGRES_DB_NAME
 postgres_url = settings.POSTGRES_URL + db_name
-redis_url = settings.REDIS_URL
-redis_rq_url = settings.REDIS_RQ_URL
 
 
 def connect_redis():
-    return RedisWrapper().redis_connect(url=redis_url)
+    return RedisWrapper().redis_connect(url=settings.REDIS_ROM_URL)
 
 
 class RedisWrapper(object):
@@ -41,7 +39,7 @@ class RedisWrapper(object):
 
 class RedisQueue:
     def __init__(self, queue, timeout=600):
-        self.redis = Redis.from_url(url=redis_rq_url)
+        self.redis = Redis.from_url(url=settings.REDIS_RQ_URL)
         self.timeout = timeout
         self.queue = queue
         self.rq_queue = Queue(self.queue, connection=self.redis,
