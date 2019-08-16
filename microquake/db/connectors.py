@@ -13,6 +13,7 @@ from microquake.core.stream import Stream, Trace
 from microquake.db.models.alchemy import Recording, metadata, processing_logs
 from redis import ConnectionPool, Redis
 from rq import Queue
+from walrus import Walrus
 
 db_name = settings.POSTGRES_DB_NAME
 postgres_url = settings.POSTGRES_URL + db_name
@@ -34,7 +35,7 @@ class RedisWrapper(object):
         except AttributeError:
             self.connection_pool = ConnectionPool.from_url(url)
 
-        return Redis(connection_pool=self.connection_pool)
+        return Walrus(connection_pool=self.connection_pool)
 
 
 class RedisQueue:
