@@ -33,12 +33,12 @@ class Settings(LazySettings):
         # otherwise you will not be able to modify the settings downstream
         default_paths = (
             f"{os.path.join(os.path.dirname(os.path.realpath(__file__)), 'settings.toml')},"
-            "connectors.toml,connectors.tml,.connectors.toml,.connectors.tml,"
-            "connectors.json,"
             "settings.py,.secrets.py,"
             "settings.toml,settings.tml,.secrets.toml,.secrets.tml,"
             "settings.yaml,settings.yml,.secrets.yaml,.secrets.yml,"
             "settings.ini,settings.conf,settings.properties,"
+            "connectors.toml,connectors.tml,.connectors.toml,.connectors.tml,"
+            "connectors.json,"
             ".secrets.ini,.secrets.conf,.secrets.properties,"
             "settings.json,.secrets.json"
         )
