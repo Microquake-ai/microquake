@@ -29,7 +29,10 @@ class Settings(LazySettings):
             os.environ.get(env_prefix, 'DEVELOPMENT').upper()
         )
 
+        # This was an incredibly odd fix, the base settings.toml needs to be on top of the list
+        # otherwise you will not be able to modify the settings downstream
         default_paths = (
+            f"{os.path.join(os.path.dirname(os.path.realpath(__file__)), 'settings.toml')},"
             "connectors.toml,connectors.tml,.connectors.toml,.connectors.tml,"
             "connectors.json,"
             "settings.py,.secrets.py,"
@@ -37,8 +40,7 @@ class Settings(LazySettings):
             "settings.yaml,settings.yml,.secrets.yaml,.secrets.yml,"
             "settings.ini,settings.conf,settings.properties,"
             ".secrets.ini,.secrets.conf,.secrets.properties,"
-            "settings.json,.secrets.json",
-            os.path.join(os.path.dirname(os.path.realpath(__file__)), "/settings.toml")
+            "settings.json,.secrets.json"
         )
 
         dconf['SETTINGS_FILE_FOR_DYNACONF'] = default_paths
