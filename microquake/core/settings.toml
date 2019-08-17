@@ -1,4 +1,5 @@
 [default]
+api_base_url = 'https://api.microquake.org/api/v1/'
 project_code = 'OT'
 site = 'Oyu Tolgoi'
 site_code = 'OT'
