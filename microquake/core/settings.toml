@@ -1,0 +1,245 @@
+[default]
+project_code = 'OT'
+site = 'Oyu Tolgoi'
+site_code = 'OT'
+network = 'Hugo North Ungerground Network'
+network_code = 'OTHN'
+
+# nlloc
+nlloc.nll_base = 'NLL'
+nlloc.locsig = 'Oyu Tolgoi Geotechnical Monitoring Team'
+nlloc.loccom = 'Prototype'
+nlloc.residual_tolerance = 10e-3
+# locsearch = 'OCT 20 20 30 1e-6 50000 1000 0 1'
+# locsearch = 'OCT 10 10 10 1e-6 20000 1000 0 1'
+nlloc.locsearch = 'OCT 5 5 5 1e-6 5000 500 0 1'
+nlloc.locmeth = 'EDT_OT_WT 9999.0 4 -1 -1 -1 0'
+nlloc.locgau = ''
+nlloc.picking_error = 0.005
+
+time_zone.type = 'UTC_offset'                # either 'UTC_offset or 'time_zone'
+time_zone.time_zone_code = 'ULN'             # time zone code. If type=time_zone, time_zone_code must be a valid pytz timezone
+time_zone.offset = 8                         # time offset in hours, ignored if type=time_zone
+
+pre_processing_message_queue = 'event_connector.pre_processing'
+automatic_pipeline_message_queue = 'workflow.automatic'
+api_message_queue = 'api'
+
+grids.units = 'meter'
+grids.method = 'ODS'
+grids.origin = [650200, 4766170, -500]
+grids.dimensions = [100, 101, 68]
+grids.spacing = 25
+
+grids.velocities.source = 'local'
+grids.velocities.homogeneous = false
+grids.velocities.vp = 'velocities/vp'
+grids.velocities.vs = 'velocities/vs'
+grids.velocities.format = 'NLLOC'
+
+grids.travel_time_h5.fname = 'travel_time_tables.h5f'
+
+
+sensors.source     = 'local'
+sensors.units      = 'meter'
+sensors.format     = 'csv'
+sensors.path       = 'sensors.csv'
+sensors.stationXML = 'OT.xml'
+sensors.black_list = ['7', '9', '10', '23', '25', '31', '32', '54', '91', '96', '99', '100', '102', '107', '88', '90', '77']
+
+ug_blast_windows_local_time = [7, 19]
+ug_blast_windows_tolerance_minutes = 30
+quakeml_ug_blast_type = 'explosion'
+
+data_connector.minimum_recovery_fraction = 0.85
+data_connector.maximum_attempts = 10 # maximum number of attempts at retrieving the data
+data_connector.minimum_delay_minutes = 30
+data_connector.context_trace.filter.freqmin = 60
+data_connector.context_trace.filter.freqmax = 500
+data_connector.likelihood_threshold = 0.50
+data_connector.reconciliation_delay_minutes = 60
+data_connector.reconciliation_interval_hours = 72
+data_connector.maximum_event_elevation = 900
+data_connector.request_range_hours = 48
+data_connector.closing_window_time_seconds = 2700 # time after which we
+# consider the continuous data window closed after the event occurred
+data_connector.context_trace_forbiden_sensor = ['7', '9']
+
+interloc.nthreads = 4
+interloc.samplerate_decimated = 3000.0
+interloc.fixed_wlen_sec = 2.0
+interloc.whiten_corner_freqs = [40.0, 50.0, 350.0, 360.0]
+interloc.pair_dist_min = 0.0
+interloc.pair_dist_max = 2000.0
+interloc.cc_smooth_length_sec = 0.005
+interloc.detection_threshold = 0.2
+
+compute_xcorrs.cclen_sec = 10
+compute_xcorrs.stepsize = 10
+compute_xcorrs.onebit = true
+compute_xcorrs.whiten_corner_freqs = [40.0, 50.0, 350.0, 360.0]
+compute_xcorrs.cc_samplerate = 1000.0
+compute_xcorrs.keeplag = 1.0
+
+compute_velchange.cc_samplerate = 1000.0
+compute_velchange.wlen_sec = 0.05
+compute_velchange.coda_start_velocity = 3000.0
+compute_velchange.coda_end_sec = 0.8
+compute_velchange.whiten_corner_freqs = [90.0, 100.0, 300.0, 320.0]
+
+
+# parameter of the PPV vs Manitude relationship
+quick_magnitude.a = 1.2
+quick_magnitude.c = 1.1
+
+picker.snr_threshold = 6
+picker.residual_tolerance = 15e-3
+picker.p_s_tolerance = 2e-3  # P and S must be at least separated by p_s_tolerance
+picker.min_num_picks = 10
+picker.waveform_filter.frequency_min = 100
+picker.waveform_filter.frequency_max = 1000
+
+picker.p_wave.snr_window.noise = 0.005
+picker.p_wave.snr_window.signal = 0.01
+picker.s_wave.snr_window.noise = 0.005
+picker.s_wave.snr_window.signal = 0.01
+
+picker.p_wave.search_window.start = -100e-3        # start of search window relative to predicted arrival time (s)
+picker.p_wave.search_window.end = 20e-3           # end of the search window relative to predicted arrival time (s)
+picker.p_wave.search_window.resolution = 0.0005   # time resolution of search window (s)
+
+picker.s_wave.search_window.start = -100e-3        # start of search window relative to predicted arrival time (s)
+picker.s_wave.search_window.end = 20e-3           # end of the search window relative to predicted arrival time (s)
+picker.s_wave.search_window.resolution = 0.0005   # time resolution of search window (s)
+
+picker.high_frequencies.waveform_filter.frequency_min = 100
+picker.high_frequencies.waveform_filter.frequency_max = 1000
+picker.high_frequencies.p_wave.snr_window.noise = 0.005
+picker.high_frequencies.p_wave.snr_window.signal = 0.005
+picker.high_frequencies.s_wave.snr_window.noise = 0.005
+picker.high_frequencies.s_wave.snr_window.signal = 0.005
+
+picker.medium_frequencies.waveform_filter.frequency_min = 50
+picker.medium_frequencies.waveform_filter.frequency_max = 500
+picker.medium_frequencies.p_wave.snr_window.noise = 0.01
+picker.medium_frequencies.p_wave.snr_window.signal = 0.01
+picker.medium_frequencies.s_wave.snr_window.noise = 0.01
+picker.medium_frequencies.s_wave.snr_window.signal = 0.01
+
+picker.low_frequencieswaveform_filter.frequency_min = 20
+picker.low_frequencieswaveform_filter.frequency_max = 200
+picker.low_frequencies.p_wave.snr_window.noise = 0.02
+picker.low_frequencies.p_wave.snr_window.signal = 0.02
+picker.low_frequencies.s_wave.snr_window.noise = 0.02
+picker.low_frequencies.s_wave.snr_window.signal = 0.02
+
+picker.second_pass.p_wave.search_window.start = -30e-3
+picker.second_pass.p_wave.search_window.end = 30e-3
+picker.second_pass.p_wave.search_window.resolution = 0.0005
+picker.second_pass.s_wave.search_window.start = -30e-3
+picker.second_pass.s_wave.search_window.end = 30e-3
+picker.second_pass.s_wave.search_window.resolution = 0.0005
+picker.second_pass.waveform_filter.frequency_min = 100
+picker.second_pass.waveform_filter.frequency_max = 1000
+picker.second_pass.p_wave.snr_window.noise = 0.005
+picker.second_pass.p_wave.snr_window.signal = 0.005
+picker.second_pass.s_wave.snr_window.noise = 0.005
+picker.second_pass.s_wave.snr_window.signal = 0.005
+
+magnitude.ttpath = 'None'
+magnitude.only_triaxial = true
+magnitude.phase_list = 'P'
+magnitude.density = 2700
+magnitude.min_dist = 20
+magnitude.win_length = 0.02
+# len_spectrum is specified in exponent of 2. For instance 14 is equal to 2 ** 14
+magnitude.len_spectrum_exponent = 14
+# could instead specify <len_spectrum> directly
+magnitude.freq = 100
+magnitude.use_sdr_rad = false
+magnitude.use_free_surface_correction = false
+magnitude.make_preferred = true
+magnitude.use_smom = false
+
+magnitude.frequency.phase_list = ['P', 'S']
+magnitude.frequency.use_sdr_rad = false
+magnitude.frequency.make_preferred = false
+magnitude.frequency.use_smom = true
+magnitude.frequency.min_dist = 20
+
+focal_mechanism.npolmin = 8
+focal_mechanism.max_agap = 180
+focal_mechanism.max_pgap = 60
+focal_mechanism.dang = 5
+focal_mechanism.nmc = 30
+focal_mechanism.maxout = 500
+focal_mechanism.badfrac = 0.1
+focal_mechanism.delmax = 120
+focal_mechanism.cangle = 45
+focal_mechanism.prob_max = 0.25
+focal_mechanism.plot_focal_mechs = false
+
+measure_amplitudes.pulse_min_snr_P = 9
+measure_amplitudes.pulse_min_snr_S = 6
+measure_amplitudes.pulse_min_width = 0.0014
+measure_amplitudes.phase_list = 'P'
+
+measure_energy.phase_list = ['P', 'S']
+measure_energy.correct_attenuation = false
+measure_energy.attenuation_Q = 200
+measure_energy.use_sdr_rad = false
+
+measure_smom.phase_list = ['P', 'S']
+measure_smom.S_win_len = 0.1
+measure_smom.pre_window_start_sec = 0.01
+measure_smom.max_S_P_time = 0.25
+measure_smom.use_fixed_fmin_fmax = false
+# These are only used if use_fixed_fmin_fmax = true:
+measure_smom.fmin = 30.0
+measure_smom.fmax = 600.0
+
+kafka.brokers = 'spp-confluent-cp-kafka-headless:9092'
+kafka.group_id = 'seismic_processing_platform'
+kafka.threads = 3
+
+services.channel.interloc = 'spp.services.interloc'
+services.channel.picker = 'spp.services.picker'
+services.channel.nlloc = 'spp.services.nlloc'
+services.channel.magnitude = 'spp.services.magnitude'
+
+
+# this describes the kafka channel to which the message should be routed
+processing_flow.extract_waveforms.message_queue = 'spp.processing_flow.extract_waveforms'
+processing_flow.automatic.message_queue = 'spp.processing_flow.automatic'
+processing_flow.interactive.message_queue = 'spp.processing_flow.interactive'
+
+processing_flow.automatic.steps = [
+{ module='interloc', input='automatic'},
+{ module='picker'},
+{ module='nlloc'},
+{ module='measure_amplitudes'},
+{ module='measure_smom'},
+{ module='focal_mechanism'},
+{ module='measure_energy'},
+{ module='magnitude'},
+{ module='magnitude', type='frequency'},
+{ module='event_database'}
+]
+
+processing_flow.interactive.steps=[
+{ module='nlloc', input='interactive', output='magnitude'},
+{ module='magnitude', input='magnitude', output='magnitude_frequency'},
+{ module='magnitude', type='frequency', input='magnitude_frequency', output='event_database'},
+{ module='event_database', input='event_database'}
+]
+
+processing_flow.interactive_accepted.trigger_data_name = 'interactive_accepted'
+processing_flow.interactive_accepted.dataset = 'seismic_event'
+processing_flow.interactive_accepted.steps=[
+{ module='measure_smom', input='data_interactive_accepted', output='focal_mechanism'},
+{ module='focal_mechanism', input='focal_mechanism', output='measure_energy'},
+{ module='measure_energy', input='measure_energy', output='magnitude'},
+{ module='magnitude', input='magnitude', output='magnitude_frequency'},
+{ module='magnitude', type='frequency', input='magnitude_frequency', output='event_database'},
+{ module='event_database', input='event_database'}
+]
