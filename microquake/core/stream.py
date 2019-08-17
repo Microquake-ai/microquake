@@ -19,14 +19,13 @@ Expansion of the obspy.core.stream module
 from io import BytesIO
 
 import numpy as np
+import obspy.core.stream as obsstream
+# from microquake.core.util.decorator import uncompress_file as uncompress
+from obspy import UTCDateTime
 from pkg_resources import load_entry_point
 
-import obspy.core.stream as obsstream
 from microquake.core.trace import Trace
 from microquake.core.util import ENTRY_POINTS, tools
-
-# from microquake.core.util.decorator import uncompress_file as uncompress
-# from obspy.core.utcdatetime import UTCDateTime
 
 
 class Stream(obsstream.Stream):
@@ -131,6 +130,7 @@ class Stream(obsstream.Stream):
 
     def sorted_sta_codes(self):
         sorted_list = sorted(self.unique_stations().astype(int))
+
         return ((np.array(sorted_list).astype(str)))
 
     def unique_stations(self):
@@ -236,7 +236,6 @@ class Stream(obsstream.Stream):
 
     @staticmethod
     def create_from_json_traces(traces_json_list):
-        from obspy.core.trace import UTCDateTime
         traces = []
         # for tr_json in traces_json_list:
 
@@ -265,7 +264,6 @@ class Stream(obsstream.Stream):
 # cat = read_events('test.xml')
 # evt = cat[0]
 # st = st.composite()
-
 
 
 def is_valid(st_in, return_stream=False, STA=0.005, LTA=0.1, min_num_valid=5):
@@ -334,6 +332,7 @@ def is_valid(st_in, return_stream=False, STA=0.005, LTA=0.1, min_num_valid=5):
         # else:
         #     if ratio < 4:
         #         accept = False
+
         if tspan > 0.1:
             accept = False
 

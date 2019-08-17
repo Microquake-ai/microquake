@@ -1,11 +1,10 @@
+import numpy as np
+from pkg_resources import load_entry_point
 from scipy.interpolate import griddata
 from scipy.ndimage.interpolation import map_coordinates
+
 from microquake.core import logger
-from pkg_resources import load_entry_point
-
 from microquake.core.util import ENTRY_POINTS
-
-import numpy as np
 
 # from pyevtk.hl import imageToVTK
 
@@ -54,6 +53,7 @@ def _createODS(origin=None, dimensions=None, spacing=None, val=0, **kwargs):
     """
     data = np.ones(tuple(dimensions)) * val
     grid = GridData(data, spacing=spacing, origin=origin)
+
     return grid
 
 
@@ -97,18 +97,21 @@ def ones(shape, origin=(0, 0, 0), spacing=1, **kwargs):
     """
 
     data = np.ones(shape)
+
     return GridData(data, origin=origin, spacing=spacing)
-    
+
 
 def read_grid(filename, format='PICKLE', **kwargs):
     format = format.upper()
+
     if format not in ENTRY_POINTS['grid'].keys():
         logger.error('Grid format %s is not currently supported' % format)
+
         return
 
     format_ep = ENTRY_POINTS['grid'][format]
     read_format = load_entry_point(format_ep.dist.key,
-            'microquake.plugin.grid.%s' % format_ep.name, 'readFormat')
+                                   'microquake.plugin.grid.%s' % format_ep.name, 'readFormat')
 
     return read_format(filename, **kwargs)
 
@@ -128,15 +131,19 @@ def read_buffer_offsets(self, point):
 
     # determine offsets in the grid file to read the 8 points (if necessary)
     offsets = []
+
     if interp_needed:
 
         # index is outside of the grid
+
         if np.any(mod_index < 0) or np.any((self.shape - mod_index) < 1):
             return
 
         # index is on the upper edge of the grid
+
         if np.any((self.shape - mod_index) == 1):
             edge_index = np.nonzero((self.shape - mod_index) == 1)[0]
+
             for e in edge_index:
                 mod_index[e] -= 1
 
@@ -153,6 +160,7 @@ def read_buffer_offsets(self, point):
 def read_buffer(self, xi, points, offsets, interp_needed, grid_file):
 
     values = []  # array of the values of the grid defined at the 8 points
+
     for o in offsets:
         # logger.debug(o)
         fpo = np.memmap(grid_file, dtype='f4', mode='r', offset=o, shape=(1,))
@@ -177,6 +185,7 @@ def homogeneous_like(grid_data, value=1):
     """
     out_grid = grid_data.copy()
     out_grid.data.fill(value)
+
     return out_grid
 
 
@@ -215,6 +224,7 @@ class GridData(object):
         data, np.ndarray
         origin = np.array(origin)
         self.data = data
+
         if resource_id is None:
             self.resource_id = ResourceIdentifier()
         else:
@@ -235,11 +245,13 @@ class GridData(object):
 
     def __setattr__(self, attr, value):
         from microquake.core.nlloc import valid_nlloc_grid_type
+
         if attr == "type":
             self.__dict__[attr] = str(value).upper()
+
             if value not in valid_nlloc_grid_type:
                 logger.warning('grid type provided is not a valid nlloc grid'
-                'type')
+                               'type')
         self.__dict__[attr] = value
 
     def __repr__(self):
@@ -256,7 +268,7 @@ class GridData(object):
         if isinstance(other, GridData):
             if self.check_compatibility(other):
                 return self.data * other.data
-        
+
     def transform_to(self, values):
         """
         transform model space coordinates into grid space coordinates
@@ -284,10 +296,11 @@ class GridData(object):
         """
         return (self.shape == other.shape) and \
                (self.spacing == other.spacing) and \
-                np.all(self.origin == other.origin)
+            np.all(self.origin == other.origin)
 
     def __get_shape__(self):
         """
+
         return the shape of the object
         """
         return self.data.shape
@@ -357,7 +370,7 @@ class GridData(object):
 
         format_ep = ENTRY_POINTS['grid'][format]
         write_format = load_entry_point(format_ep.dist.key,
-                'microquake.plugin.grid.%s' % format_ep.name, 'writeFormat')
+                                        'microquake.plugin.grid.%s' % format_ep.name, 'writeFormat')
 
         write_format(self, filename, **kwargs)
 
@@ -381,7 +394,7 @@ class GridData(object):
             coord = self.transform_to(coord)
 
         if len(coord.shape) < 2:
-            coord = coord[:,np.newaxis]
+            coord = coord[:, np.newaxis]
 
         try:
             return map_coordinates(self.data, coord, mode=mode, order=order,

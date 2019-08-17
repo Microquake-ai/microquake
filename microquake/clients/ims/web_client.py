@@ -19,15 +19,18 @@ module to interact IMS web API
 
 import sys
 from datetime import datetime
+from gzip import GzipFile
+from struct import unpack
+from time import time as timer
 
 import numpy as np
 import requests
+from obspy import UTCDateTime
 from obspy.core.trace import Stats
 
 from loguru import logger
-from obspy import UTCDateTime
 from microquake.core import Stream, Trace
-from microquake.core.event import Catalog
+from microquake.core.event import Arrival, Catalog, Origin, Pick, WaveformStreamID
 
 if sys.version_info[0] < 3:
     from StringIO import StringIO
@@ -81,11 +84,6 @@ def get_continuous(base_url, start_datetime, end_datetime,
         - raw Z value as float32
     """
 
-    from gzip import GzipFile
-    import struct
-    import sys
-    from time import time as timer
-
     if isinstance(site_ids, int):
         site_ids = [site_ids]
 
@@ -138,15 +136,15 @@ def get_continuous(base_url, start_datetime, end_datetime,
         if len(r.content) < 44:
             continue
         ts = timer()
-        header_size = struct.unpack('>i', fileobj.read(4))[0]
-        net_id = struct.unpack('>i', fileobj.read(4))[0]
-        site_id = struct.unpack('>i', fileobj.read(4))[0]
-        starttime = struct.unpack('>q', fileobj.read(8))[0]
-        endtime = struct.unpack('>q', fileobj.read(8))[0]
-        netADC_id = struct.unpack('>i', fileobj.read(4))[0]
-        sensor_id = struct.unpack('>i', fileobj.read(4))[0]
-        attenuator_id = struct.unpack('>i', fileobj.read(4))[0]
-        attenuator_config_id = struct.unpack('>i', fileobj.read(4))[0]
+        header_size = unpack('>i', fileobj.read(4))[0]
+        net_id = unpack('>i', fileobj.read(4))[0]
+        site_id = unpack('>i', fileobj.read(4))[0]
+        starttime = unpack('>q', fileobj.read(8))[0]
+        endtime = unpack('>q', fileobj.read(8))[0]
+        netADC_id = unpack('>i', fileobj.read(4))[0]
+        sensor_id = unpack('>i', fileobj.read(4))[0]
+        attenuator_id = unpack('>i', fileobj.read(4))[0]
+        attenuator_config_id = unpack('>i', fileobj.read(4))[0]
         te = timer()
 
         ts = timer()
@@ -512,8 +510,6 @@ def get_picks(base_url, event_name, site, timezone):
     :return: (list of picks, origin_time)
     :rtype: microquake.event.Catalog
     """
-
-    from microquake.core.event import Pick, Arrival, WaveformStreamID, Origin
 
     url = base_url + '/events/read_event?eventName=%s' % (event_name)
     r2 = requests.get(url)

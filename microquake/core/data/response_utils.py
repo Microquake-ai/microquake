@@ -1,4 +1,3 @@
-
 import csv
 import os
 import pickle
@@ -22,15 +21,17 @@ def read_sensor_types_file(csv_file: str) -> []:
 
             d = {}
 
-            for k,v in row.items():
+            for k, v in row.items():
                 #print("k=%s --> v=%s" % (k,v))
-                d[k]=v
+                d[k] = v
 
             sensor_types[row['sensor id']] = d
 
-    #for sensor_id in sensor_types.keys():
+    # for sensor_id in sensor_types.keys():
         #print("sensor_id:%s --> %s" % (sensor_id, sensor_types[sensor_id]))
+
     return sensor_types
+
 
 def read_cable_file(csv_file: str) -> []:
     """
@@ -66,7 +67,7 @@ def write_NRL_dump_to_file(filename='resources/L-22D.response'):
 
     chan_dict = {}
     chan_dict['sensor'] = ['Sercel/Mark Products', 'L-22D', '325 Ohms', '1327 Ohms']
-    chan_dict['datalogger'] = ['REF TEK','RT 130 & 130-SMA','1','100']
+    chan_dict['datalogger'] = ['REF TEK', 'RT 130 & 130-SMA', '1', '100']
     response = nrl.get_response(sensor_keys=chan_dict['sensor'], datalogger_keys=chan_dict['datalogger'])
 
     with open(filename, 'wb') as output:  # Overwrites any existing file.
@@ -87,13 +88,14 @@ def read_NRL_from_dump(filename='resources/L-22D.response'):
 
 
 def main():
-    #write_NRL_dump_to_file()
+    # write_NRL_dump_to_file()
     response = read_NRL_from_dump()
+
     for stage in response.response_stages:
         print(stage)
+
     return
 
 
 if __name__ == '__main__':
     main()
-

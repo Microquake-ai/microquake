@@ -7,10 +7,9 @@ from scipy.interpolate import interp1d
 from microquake.core import Trace, UTCDateTime
 from microquake.core.data.grid import read_grid
 from microquake.core.event import Arrival, Pick, WaveformStreamID
-from microquake.core.simul.eik import ray_tracer
-
-from microquake.core.settings import settings
 from microquake.core.helpers.velocity import get_current_velocity_model_id
+from microquake.core.settings import settings
+from microquake.core.simul.eik import ray_tracer
 
 
 def get_grid(station_code, phase, type='time'):

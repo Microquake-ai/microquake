@@ -1,22 +1,20 @@
+import copy
+import csv
+import os
+
+import numpy as np
 import obspy.core.inventory
+from obspy.core import AttribDict
 from obspy.core.inventory import Network
 from obspy.core.inventory.inventory import read_inventory
-from obspy.core.inventory.util import _unified_content_strings, _textwrap, Equipment
-from obspy.core.inventory.util import Person, Operator, Site, PhoneNumber
-from obspy.core import AttribDict
+from obspy.core.inventory.util import (Equipment, Operator, Person, PhoneNumber, Site, _textwrap,
+                                       _unified_content_strings)
 from obspy.core.utcdatetime import UTCDateTime
-import numpy as np
 
 from microquake.core.data.response_utils import read_NRL_from_dump
 
-import csv
-import copy
-import os
-
-from loguru import logger
-
-ns_tag='mq'
-ns='MICROQUAKE'
+ns_tag = 'mq'
+ns = 'MICROQUAKE'
 
 """
     Thin wrapper classes around obspy Station/Channel to provide property accesss to stn.x, stn.y, stn.z etc
@@ -52,8 +50,10 @@ def load_inventory_from_excel(xls_file: str) -> 'microquake.core.data.inventory.
     import sys
 
     spec = importlib.util.find_spec('pandas')
+
     if spec is None:
         print("%s: pandas is not installed --> Install and try again" % fname)
+
         return
 
     import pandas as pd
@@ -72,20 +72,20 @@ Networks:
    HNUG  jean-philippem@riotinto.com  Jean-Philippe Mercier   ...     1  Hugo North Underground Network        1
 
     '''
-#source (str) Network ID of the institution sending the message.
-    source  = df_dict['Sites'].iloc[0]['code']
-#sender (str, optional) Name of the institution sending this message.
-    sender  = df_dict['Sites'].iloc[0]['operator']
+# source (str) Network ID of the institution sending the message.
+    source = df_dict['Sites'].iloc[0]['code']
+# sender (str, optional) Name of the institution sending this message.
+    sender = df_dict['Sites'].iloc[0]['operator']
     net_code = df_dict['Networks'].iloc[0]['code']
     net_descriptions = df_dict['Networks'].iloc[0]['name']
 
-    contact_name  = df_dict['Networks'].iloc[0]['contact_name']
+    contact_name = df_dict['Networks'].iloc[0]['contact_name']
     contact_email = df_dict['Networks'].iloc[0]['contact_email']
     contact_phone = df_dict['Networks'].iloc[0]['contact_phone']
     site_operator = df_dict['Sites'].iloc[0]['operator']
-    site_country  = df_dict['Sites'].iloc[0]['country']
-    site_name  = df_dict['Sites'].iloc[0]['name']
-    site_code  = df_dict['Sites'].iloc[0]['code']
+    site_country = df_dict['Sites'].iloc[0]['country']
+    site_name = df_dict['Sites'].iloc[0]['name']
+    site_code = df_dict['Sites'].iloc[0]['code']
 
     print("source=%s" % source)
     print("sender=%s" % sender)
@@ -120,23 +120,24 @@ Networks:
     # Merge Stations+Components+Sensors+Cables info into sorted stations + channels dicts:
 
     df = df_dict['Stations']
-    df_merge = pd.merge(df_dict['Stations'], df_dict['Components'], \
-                        left_on='id', right_on='station_id', \
-                        how='inner', suffixes=('','_channel'))
+    df_merge = pd.merge(df_dict['Stations'], df_dict['Components'],
+                        left_on='id', right_on='station_id',
+                        how='inner', suffixes=('', '_channel'))
 
-    df_merge2 = pd.merge(df_merge, df_dict['Sensors'], \
-                        left_on='sensor_id', right_on='id', \
-                        how='inner', suffixes=('','_sensor'))
+    df_merge2 = pd.merge(df_merge, df_dict['Sensors'],
+                         left_on='sensor_id', right_on='id',
+                         how='inner', suffixes=('', '_sensor'))
 
-    df_merge3 = pd.merge(df_merge2, df_dict['Cables'], \
-                        left_on='cable_id', right_on='id', \
-                        how='inner', suffixes=('','_cable'))
+    df_merge3 = pd.merge(df_merge2, df_dict['Cables'],
+                         left_on='cable_id', right_on='id',
+                         how='inner', suffixes=('', '_cable'))
 
     df = df_merge3.sort_values('id')
 
     # Need to sort by unique station codes, then look through 1-3 channels to add
     stn_codes = set(df['code'])
     stations = []
+
     for code in stn_codes:
         chan_rows = df.loc[df['code'] == code]
         row = chan_rows.iloc[0]
@@ -147,7 +148,7 @@ Networks:
         station['x'] = row['location_x']
         station['y'] = row['location_y']
         station['z'] = row['location_z']
-        station['loc'] = np.array([station['x'],station['y'],station['z']])
+        station['loc'] = np.array([station['x'], station['y'], station['z']])
         station['long_name'] = row['name']
     # MTH: 2019/07 Seem to have moved from pF to F on Cables sheet:
         station['cable_capacitance_pF_per_meter'] = row['c'] * 1e12
@@ -155,7 +156,7 @@ Networks:
     # Set the rest (minus empty fields) directly from spreadsheet names:
         renamed_keys = {'code', 'location_x', 'location_y', 'location_z', 'name'}
         # These keys are either redundant or specific to channel, not station:
-        remove_keys = {'code_channel', 'id_channel', 'orientation_x', 'orientation_y', 'orientation_z',\
+        remove_keys = {'code_channel', 'id_channel', 'orientation_x', 'orientation_y', 'orientation_z',
                        'id_sensor', 'enabled_channel', 'station_id', 'id_cable'}
         keys = row.keys()
         empty_keys = keys[pd.isna(row)]
@@ -166,30 +167,33 @@ Networks:
 
     # Added keys:
         station['motion'] = 'VELOCITY'
+
         if row['sensor_type'].upper() == 'ACCELEROMETER':
             station['motion'] = 'ACCELERATION'
 
     # Attach channels:
         station['channels'] = []
-        for index,r in chan_rows.iterrows():
+
+        for index, r in chan_rows.iterrows():
             chan = {}
             chan['cmp'] = r['code_channel'].lower()
-            chan['orientation'] = np.array([r['orientation_x'], r['orientation_y'], r['orientation_z'] ])
+            chan['orientation'] = np.array([r['orientation_x'], r['orientation_y'], r['orientation_z']])
             chan['enabled'] = r['enabled_channel']
             station['channels'].append(chan)
         stations.append(station)
 
     # Convert these station dicts to inventory.Station objects and attach to inventory.network:
     obspy_stations = []
+
     for station in stations:
         # This is where namespace is first employed:
         obspy_station = Station.from_csv_station(station)
         obspy_station.site = site
         obspy_station.operators = [operator]
         obspy_stations.append(obspy_station)
-        #obspy_stations.append(Station.from_csv_station(station))
-        #print(obspy_station.operators[0].contacts[0].names)
-        #print(obspy_station.site.country)
+        # obspy_stations.append(Station.from_csv_station(station))
+        # print(obspy_station.operators[0].contacts[0].names)
+        # print(obspy_station.site.country)
         #print(obspy_station.code, obspy_station.equipments[0].manufacturer, obspy_station.equipments[0].model)
 
     network.stations = obspy_stations
@@ -215,16 +219,17 @@ def read_csv(csv_file: str) -> []:
     with open(csv_file, mode='r') as csv_file:
         csv_reader = csv.DictReader(csv_file)
         line_count = 0
+
         for row in csv_reader:
             station = {}
-            #if line_count == 0:
-                #print(f'Column names are {", ".join(row)}')
+            # if line_count == 0:
+            #print(f'Column names are {", ".join(row)}')
 
             station['code'] = row['Code']
             station['x'] = float(row['Easting'])
             station['y'] = float(row['Northing'])
             station['z'] = float(row['Elev'])
-            station['loc'] = np.array([station['x'],station['y'],station['z']])
+            station['loc'] = np.array([station['x'], station['y'], station['z']])
             station['long_name'] = row['Long Name']
             station['sensor_id'] = row['Type']
             #station['sensor_type'] = row['Type']
@@ -235,6 +240,7 @@ def read_csv(csv_file: str) -> []:
             chans = [row[chan] for chan in ['Cmp01', 'Cmp02', 'Cmp03'] if row[chan].strip()]
             station['channels'] = []
             ic = 1
+
             for chan in chans:
                 chan_dict = {}
                 chan_dict['cmp'] = chan
@@ -255,6 +261,7 @@ def read_csv(csv_file: str) -> []:
             stations.append(station)
 
     #print(f'Processed {line_count} lines.')
+
     return stations
 
 
@@ -272,12 +279,12 @@ class Inventory(obspy.core.inventory.inventory.Inventory):
 
         for network in obspy_inv.networks:
             stations = []
+
             for station in network.stations:
                 stations.append(Station.from_obspy_station(station))
             network.stations = stations
 
         return Inventory([network], source)
-
 
     def get_station(self, sta):
         return self.select(sta)
@@ -290,31 +297,36 @@ class Inventory(obspy.core.inventory.inventory.Inventory):
             Select a single Station or Channel object out of the Inventory
         '''
         station_found = None
+
         for network in self:
             for station in network.stations:
                 if station.code == sta_code:
                     if net_code:
                         if network.code == net_code:
                             station_found = station
+
                             break
                     else:
                         station_found = station
+
                         break
 
         if not station_found:
             return None
 
         channel_found = None
+
         if cha_code:
             for cha in station_found.channels:
                 if cha.code == cha_code:
                     channel_found = cha
+
                     break
+
             return channel_found
 
         else:
             return station_found
-
 
     '''
         MTH: Note that stations is an attribute on obspy.inventory.Network and returns a list:
@@ -343,10 +355,10 @@ class Inventory(obspy.core.inventory.inventory.Inventory):
 
         return stations
 
-
     def get_sta_codes(self, unique=False):
 
         sta_codes = []
+
         for network in self:
             for station in network.stations:
                 sta_codes.append(station.code)
@@ -356,18 +368,16 @@ class Inventory(obspy.core.inventory.inventory.Inventory):
         else:
             return sta_codes
 
-
     def sort_by_motion(self, motion='VELOCITY'):
 
         stations = []
 
         for network in self:
             for station in network.stations:
-                if station.motion.upper()  == motion.upper():
+                if station.motion.upper() == motion.upper():
                     stations.append(station)
 
         return stations
-
 
     def get_sensor_types(self):
 
@@ -382,28 +392,30 @@ class Inventory(obspy.core.inventory.inventory.Inventory):
 
 class Station(obspy.core.inventory.station.Station):
     @classmethod
-    def from_obspy_station(cls, obspy_station) -> obspy.core.inventory.Station :
+    def from_obspy_station(cls, obspy_station) -> obspy.core.inventory.Station:
         stn = obspy_station
 
         #     cls(*params) is same as calling Station(*params):
-        sta = cls(stn.code, stn.latitude, stn.longitude, stn.elevation, channels=stn.channels, \
-                  site=stn.site, vault=stn.vault, geology=stn.geology, equipments=stn.equipments, \
-                  total_number_of_channels=stn.total_number_of_channels, \
-                  selected_number_of_channels=stn.selected_number_of_channels, description=stn.description, \
-                  restricted_status=stn.restricted_status, alternate_code=stn.alternate_code, \
-                  comments=stn.comments, start_date=stn.start_date, end_date=stn.end_date, \
+        sta = cls(stn.code, stn.latitude, stn.longitude, stn.elevation, channels=stn.channels,
+                  site=stn.site, vault=stn.vault, geology=stn.geology, equipments=stn.equipments,
+                  total_number_of_channels=stn.total_number_of_channels,
+                  selected_number_of_channels=stn.selected_number_of_channels, description=stn.description,
+                  restricted_status=stn.restricted_status, alternate_code=stn.alternate_code,
+                  comments=stn.comments, start_date=stn.start_date, end_date=stn.end_date,
                   historical_code=stn.historical_code, data_availability=stn.data_availability)
+
         if getattr(stn, 'extra', None):
             sta.extra = copy.deepcopy(stn.extra)
 
         sta.channels = []
+
         for cha in stn.channels:
             sta.channels.append(Channel.from_obspy_channel(cha))
 
         return sta
 
     @classmethod
-    def from_csv_station(cls, csv_station) -> obspy.core.inventory.Station :
+    def from_csv_station(cls, csv_station) -> obspy.core.inventory.Station:
         stn = csv_station
 
 # New obspy seems to require creation_date .. here I set it before any expected event dats:
@@ -414,12 +426,13 @@ class Station(obspy.core.inventory.station.Station):
                     installation_date=None, removal_date=None, calibration_dates=None, resource_id=None)
         '''
         equipment = None
+
         if 'manufacturer' in stn:
             equipment = Equipment(type='Sensor', manufacturer=stn['manufacturer'], model=stn['model'])
 
-        sta = Station(stn['code'], 0., 0., 0., site=Site(name='Oyu Tolgoi'), \
-                      equipments=[equipment], \
-                      historical_code=stn['long_name'], \
+        sta = Station(stn['code'], 0., 0., 0., site=Site(name='Oyu Tolgoi'),
+                      equipments=[equipment],
+                      historical_code=stn['long_name'],
                       creation_date=UTCDateTime("2015-12-31T12:23:34.5"),
                       start_date=UTCDateTime("2015-12-31T12:23:34.5"),
                       end_date=UTCDateTime("2599-12-31T12:23:34.5"))
@@ -427,6 +440,7 @@ class Station(obspy.core.inventory.station.Station):
         non_extras_keys = {'code', 'long_name', 'channels', 'start_date', 'end_date'}
         keys = stn.keys() - non_extras_keys
         sta.extra = AttribDict()
+
         for key in keys:
             sta.extra[key] = {'namespace': ns, 'value': stn[key]}
         '''
@@ -442,27 +456,26 @@ class Station(obspy.core.inventory.station.Station):
         '''
 
         sta.channels = []
+
         for cha in stn['channels']:
             channel = Channel(code=cha['cmp'],    # required
                               location_code="",   # required
-                              latitude = 0.,      # required
-                              longitude= 0.,      # required
-                              elevation= 0.,      # required
+                              latitude=0.,      # required
+                              longitude=0.,      # required
+                              elevation=0.,      # required
                               depth=0.,           # required
                               start_date=UTCDateTime("2015-12-31T12:23:34.5"),
                               end_date=UTCDateTime("2599-12-31T12:23:34.5"),
                               )
 
-
-            channel.extra = AttribDict({ 'cos1': { 'namespace': ns, 'value': cha['orientation'][0] },
-                                         'cos2': { 'namespace': ns, 'value': cha['orientation'][1] },
-                                         'cos3': { 'namespace': ns, 'value': cha['orientation'][2] },
-                                         'cosines': { 'namespace': ns, 'value': cha['orientation'] },
-                                         'x':    { 'namespace': ns, 'value': stn['x'] },
-                                         'y':    { 'namespace': ns, 'value': stn['y'] },
-                                         'z':    { 'namespace': ns, 'value': stn['z'] },
-                                      })
-
+            channel.extra = AttribDict({'cos1': {'namespace': ns, 'value': cha['orientation'][0]},
+                                        'cos2': {'namespace': ns, 'value': cha['orientation'][1]},
+                                        'cos3': {'namespace': ns, 'value': cha['orientation'][2]},
+                                        'cosines': {'namespace': ns, 'value': cha['orientation']},
+                                        'x':    {'namespace': ns, 'value': stn['x']},
+                                        'y':    {'namespace': ns, 'value': stn['y']},
+                                        'z':    {'namespace': ns, 'value': stn['z']},
+                                        })
 
             cosines = channel.extra['cosines'].value
             #cosines = np.array([0, 0, 1])
@@ -497,9 +510,8 @@ class Station(obspy.core.inventory.station.Station):
 
             sta.channels.append(channel)
 
-        sta.total_number_of_channels=len(sta.channels)
-        sta.selected_number_of_channels=len(sta.channels)
-
+        sta.total_number_of_channels = len(sta.channels)
+        sta.selected_number_of_channels = len(sta.channels)
 
         return sta
 
@@ -517,7 +529,7 @@ class Station(obspy.core.inventory.station.Station):
     def y(self):
         if self.extra:
             if self.extra.get('y', None):
-               return float(self.extra.y.value)
+                return float(self.extra.y.value)
             else:
                 raise AttributeError
         else:
@@ -570,7 +582,6 @@ class Station(obspy.core.inventory.station.Station):
         else:
             raise AttributeError
 
-
     @property
     def motion(self):
         if self.extra:
@@ -601,7 +612,6 @@ class Station(obspy.core.inventory.station.Station):
         else:
             raise AttributeError
 
-
     def __str__(self):
         contents = self.get_contents()
 
@@ -622,12 +632,12 @@ class Station(obspy.core.inventory.station.Station):
                 y = self.y
                 z = self.z
                 ret = ("Station {station_name}\n"
-                    "\tStation Code: {station_code}\n"
-                    "\tChannel Count: {selected}/{total} (Selected/Total)\n"
-                    "\t{start_date} - {end_date}\n"
-                    "\tAccess: {restricted} {alternate_code}{historical_code}\n"
-                    "\tNorthing: {x:.2f}, Easting: {y:.2f}, "
-                    "Elevation: {z:.1f} m\n")
+                       "\tStation Code: {station_code}\n"
+                       "\tChannel Count: {selected}/{total} (Selected/Total)\n"
+                       "\t{start_date} - {end_date}\n"
+                       "\tAccess: {restricted} {alternate_code}{historical_code}\n"
+                       "\tNorthing: {x:.2f}, Easting: {y:.2f}, "
+                       "Elevation: {z:.1f} m\n")
 
         ret = ret.format(
             station_name=contents["stations"][0],
@@ -645,7 +655,9 @@ class Station(obspy.core.inventory.station.Station):
             ", ".join(_unified_content_strings(contents["channels"])),
             initial_indent="\t\t", subsequent_indent="\t\t",
             expand_tabs=False))
+
         return ret
+
 
 class Channel(obspy.core.inventory.channel.Channel):
 
@@ -654,18 +666,17 @@ class Channel(obspy.core.inventory.channel.Channel):
     @classmethod
     def from_obspy_channel(cls, obspy_channel):
         chn = obspy_channel
-        cha = Channel(chn.code, chn.location_code, chn.latitude, chn.longitude, chn.elevation, chn.depth, \
-                      chn.azimuth, chn.dip, chn.types, chn.external_references, chn.sample_rate, \
-                      chn.sample_rate_ratio_number_samples, chn.sample_rate_ratio_number_seconds, \
-                      chn.storage_format, chn.clock_drift_in_seconds_per_sample, chn.calibration_units, \
-                      chn.calibration_units_description, chn.sensor, chn.pre_amplifier, chn.data_logger, \
-                      chn.equipment, chn.response, chn.description, chn.comments, chn.start_date, \
-                      chn.end_date, chn.restricted_status, chn.alternate_code, chn.historical_code, \
+        cha = Channel(chn.code, chn.location_code, chn.latitude, chn.longitude, chn.elevation, chn.depth,
+                      chn.azimuth, chn.dip, chn.types, chn.external_references, chn.sample_rate,
+                      chn.sample_rate_ratio_number_samples, chn.sample_rate_ratio_number_seconds,
+                      chn.storage_format, chn.clock_drift_in_seconds_per_sample, chn.calibration_units,
+                      chn.calibration_units_description, chn.sensor, chn.pre_amplifier, chn.data_logger,
+                      chn.equipment, chn.response, chn.description, chn.comments, chn.start_date,
+                      chn.end_date, chn.restricted_status, chn.alternate_code, chn.historical_code,
                       chn.data_availability)
 
         if getattr(chn, 'extra', None):
             cha.extra = copy.deepcopy(chn.extra)
-
 
         return cha
 
@@ -725,22 +736,22 @@ class Channel(obspy.core.inventory.channel.Channel):
     @property
     def cosines(self):
         if self.extra:
-            #if self.extra.get('cosines', None):
+            # if self.extra.get('cosines', None):
+
             if self.extra.get('cos1', None) and self.extra.get('cos2', None) and self.extra.get('cos3', None):
                 return np.array([self.cos1, self.cos2, self.cos3])
-                #return float(self.extra.cos.value)
-                #return self.extra.cosines.value
+                # return float(self.extra.cos.value)
+                # return self.extra.cosines.value
             else:
                 raise AttributeError
         else:
             raise AttributeError
 
-
     @property
     def x(self):
         if self.extra:
             if self.extra.get('x', None):
-               return float(self.extra.x.value)
+                return float(self.extra.x.value)
             else:
                 raise AttributeError
         else:
@@ -750,7 +761,7 @@ class Channel(obspy.core.inventory.channel.Channel):
     def y(self):
         if self.extra:
             if self.extra.get('y', None):
-               return float(self.extra.y.value)
+                return float(self.extra.y.value)
             else:
                 raise AttributeError
         else:
@@ -760,16 +771,14 @@ class Channel(obspy.core.inventory.channel.Channel):
     def z(self):
         if self.extra:
             if self.extra.get('z', None):
-               return float(self.extra.z.value)
+                return float(self.extra.z.value)
             else:
                 raise AttributeError
         else:
             raise AttributeError
 
 
-
-
-#def inv_station_list_to_dict(station_list):
+# def inv_station_list_to_dict(station_list):
 def inv_station_list_to_dict(inventory):
     """ Convert station list (= list of microquake Station class metadata) to dict
 
@@ -780,15 +789,17 @@ def inv_station_list_to_dict(inventory):
     sta_meta_dict = {}
 
     station_list = []
+
     for i in range(len(inventory)):
         net = inventory[i]
         station_list += net.stations
 
     for station in station_list:
-        dd={}
+        dd = {}
         dd['station'] = station.copy()
 
-        #if 'loc' in station:
+        # if 'loc' in station:
+
         if hasattr(station, 'loc'):
             dd['loc'] = station.loc
         else:
@@ -797,6 +808,7 @@ def inv_station_list_to_dict(inventory):
             dd['elev'] = station.elevation
 
         chans_dict = {}
+
         for channel in station.channels:
             chans_dict[channel.code] = channel
         dd['chans'] = chans_dict
@@ -807,7 +819,6 @@ def inv_station_list_to_dict(inventory):
     return sta_meta_dict
 
 
-
 def test_read_stationxml(xmlfile_in: str, xmlfile_out: str):
     """
         Read stationXML with or without namespace extras, wrap obspy Station/Channel in this class,
@@ -815,10 +826,12 @@ def test_read_stationxml(xmlfile_in: str, xmlfile_out: str):
     """
     inv = read_inventory(xmlfile_in)
     OT_stns = []
+
     for station in inv[0].stations:
         OT_stns.append(Station.from_obspy_station(station))
     inv[0].stations = OT_stns
     inv.write(xmlfile_out, format='STATIONXML', nsmap={ns_tag: ns})
+
 
 def test_read_csv_write_stationxml(sensor_csv: str, xmlfile_out: str):
     """
@@ -830,6 +843,7 @@ def test_read_csv_write_stationxml(sensor_csv: str, xmlfile_out: str):
     source = 'mth-test'         # Network ID of the institution sending the message.
     network = Network("OT")
     network.stations = []
+
     for station in stations:
         network.stations.append(Station.from_csv_station(station))
 
@@ -841,10 +855,12 @@ def test_read_csv_write_stationxml(sensor_csv: str, xmlfile_out: str):
     #inv_read = read_inventory('OT_bad.xml')
 
     OT_stns = []
+
     for station in inv_read[0].stations:
         OT_stns.append(Station.from_obspy_station(station))
     inv[0].stations = OT_stns
     #inv.write(xmlfile_out, format='STATIONXML', nsmap={ns_tag: ns})
+
 
 def test_print_OT_xml_summary(xmlfile_in: str):
     """
@@ -853,11 +869,13 @@ def test_print_OT_xml_summary(xmlfile_in: str):
     """
     inv = read_inventory(xmlfile_in)
     OT_stns = []
+
     for station in inv[0].stations:
         OT_stns.append(Station.from_obspy_station(station))
 
     for stn in OT_stns:
         print("%3s: <%.2f %.2f %8.2f>" % (stn.code, stn.y, stn.x, stn.z))
+
         for chan in stn.channels:
             print("  chan:%3s: <%.3f %.3f %.3f>" % (chan.code, chan.cos1, chan.cos2, chan.cos3))
 
@@ -881,18 +899,22 @@ def load_inventory(fname, format='CSV', **kwargs):
     :rtype: obspy.core.inventory
 
     """
+
     if format == 'CSV':
         stations = read_csv(fname)
     else:
         print("load_inventory: Only set up to read CSV formats!!!")
+
         return None
     obspy_stations = []
+
     for station in stations:
         obspy_stations.append(Station.from_csv_station(station))
 
     source = 'mth-test'         # Network ID of the institution sending the message.
     network = Network("OT")
     network.stations = obspy_stations
+
     return Inventory([network], source)
 
 
@@ -901,6 +923,7 @@ def get_corner_freq_from_pole(pole):
         get distance [rad/s] from lowest order pole to origin
             and return Hz [/s]
     '''
+
     return np.sqrt(pole.real**2 + pole.imag**2) / (2.*np.pi)
 
 
@@ -911,14 +934,14 @@ def get_sensor_type_from_trace(tr):
     unit_map = {"DISP": ["M"],
                 "VEL": ["M/S", "M/SEC"],
                 "ACC": ["M/S**2", "M/(S**2)", "M/SEC**2", "M/(SEC**2)", "M/S/S"]
-               }
+                }
 
     if 'response' in tr.stats:
         unit = None
         try:
             sensitivity = tr.stats.response.instrument_sensitivity
             i_u = sensitivity.input_units
-        #except Exception:
+        # except Exception:
         except AttributeError:
             print("%s: Couldn't find response.instrument_sensitivity.input_units" % fname)
             raise
@@ -926,6 +949,7 @@ def get_sensor_type_from_trace(tr):
         for key, value in unit_map.items():
             if i_u and i_u.upper() in value:
                 unit = key
+
         if not unit:
             msg = ("ObsPy does not know how to map unit '%s' to "
                    "displacement, velocity, or acceleration - overall "
@@ -937,6 +961,7 @@ def get_sensor_type_from_trace(tr):
         return 'not set'
 
     return
+
 
 def get_dip_and_azimuth_from_cosines(cosines):
     """
@@ -966,6 +991,7 @@ def get_dip_and_azimuth_from_cosines(cosines):
     dip = -np.arctan2(cosines[2], hlen) * 180./np.pi
 
     # obspy/stationXML will enforce: azimuth:0-360 deg, dip:-90 to 90 deg.
+
     if azimuth < 0:
         azimuth += 360.
 
@@ -973,6 +999,7 @@ def get_dip_and_azimuth_from_cosines(cosines):
     assert azimuth >= 0 and azimuth <= 360.
 
     return dip, azimuth
+
 
 def get_cosines_from_dip_and_azimuth(_dip, _az):
     az = _az * np.pi/180.
@@ -1002,12 +1029,8 @@ def main():
     test_read_csv_write_stationxml(sensor_csv, 'OT_new.xml')
     test_print_OT_xml_summary('OT_new.xml')
 
-
     return
-
 
 
 if __name__ == "__main__":
     main()
-
-

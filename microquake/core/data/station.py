@@ -1,10 +1,12 @@
-from microquake.core.util.attribdict import AttribDict
-import numpy as np
 import pickle as pickle
-from microquake.core import logger
 from copy import deepcopy
-from microquake.core.util import ENTRY_POINTS
+
+import numpy as np
 from pkg_resources import load_entry_point
+
+from microquake.core import logger
+from microquake.core.util import ENTRY_POINTS
+from microquake.core.util.attribdict import AttribDict
 
 
 def read_stations(fname, format='CSV', **kwargs):
@@ -15,9 +17,11 @@ def read_stations(fname, format='CSV', **kwargs):
     :return: a site object
     """
     format = format.upper()
+
     if format not in ENTRY_POINTS['site'].keys():
         logger.error('format %s is not currently supported for Site objects' %
                      format)
+
         return
 
     format_ep = ENTRY_POINTS['site'][format]
@@ -55,6 +59,7 @@ class Site:
         else:
             network = self.networks[self.__i]
             self.__i += 1
+
             return network
 
     def write(self, filename, format='PICKLE', **kwargs):
@@ -66,14 +71,16 @@ class Site:
         :type format: str
         """
         format = format.upper()
+
         if format not in ENTRY_POINTS['site'].keys():
             logger.error('format %s is not currently supported for Site '
                          'objects' % format)
+
             return
 
         format_ep = ENTRY_POINTS['site'][format]
         write_format = load_entry_point(format_ep.dist.key,
-                'microquake.plugin.site.%s' % format_ep.name, 'writeFormat')
+                                        'microquake.plugin.site.%s' % format_ep.name, 'writeFormat')
 
         write_format(self, filename, **kwargs)
 
@@ -88,6 +95,7 @@ class Site:
 
         site_tmp = self.copy()
         nets = []
+
         if network:
             for net in self.networks:
                 if net == network:
@@ -105,6 +113,7 @@ class Site:
     @property
     def unique_sensor_types(self):
         st = []
+
         for net in self.networks:
             st.append(net.unique_sensor_types)
 
@@ -121,6 +130,7 @@ class Site:
         """
         sts = []
         code = []
+
         for net in self.networks:
             for sta in net.stations:
                 if station:
@@ -131,9 +141,11 @@ class Site:
                     if triaxial and len(sta) == 3:
                         sts.append(sta)
                         code.append(sta.code)
+
                     if uniaxial and len(sta) < 3:
                         sts.append(sta)
                         code.append(sta.code)
+
         if return_code_only:
             return code
         else:
@@ -170,6 +182,7 @@ class Network:
         else:
             station = self.stations[self.__i]
             self.__i += 1
+
             return station
 
     def copy(self):
@@ -177,6 +190,7 @@ class Network:
 
     def select(self, station=None, sensor_type=None, channel=None):
         stations = []
+
         if (not station) and (not sensor_type):
             for sta in self.stations:
                 stations.append(sta.select(channel=channel))
@@ -194,15 +208,16 @@ class Network:
                     stations.append(sta.select(channel=channel))
         net = self.copy()
         net.stations = stations
+
         return net
 
     def unique_sensor_types(self):
         st = []
+
         for sta in self.stations:
             st.append(sta.sensor_type)
 
         return np.unique(st)
-
 
 
 class Station:
@@ -238,6 +253,7 @@ class Station:
 
     def __setattr__(self, att, value):
         #print('Station setattr: att=%s --> val=%s' % (att, value))
+
         if att == 'channels':
             if isinstance(value, list):
                 self.__dict__[att] = value
@@ -275,6 +291,7 @@ class Station:
         else:
             channel = self.channels[self.__i]
             self.__i += 1
+
             return channel
 
     def __len__(self):
@@ -321,12 +338,14 @@ class Station:
 
     def select(self, channel=None):
         channels = []
+
         if channel:
             for ch in self.channels:
                 if ch.code == channel:
                     channels.append(ch)
             sta = self.copy()
             sta.channels = channels
+
             return sta
         else:
             return self.copy()
@@ -337,6 +356,7 @@ class Channel:
 
     def __init__(self, code=None, orientation=None):
         self.code = code
+
         if orientation:
             self.orientation = np.array(orientation) / np.linalg.norm(
                 orientation)
@@ -349,7 +369,7 @@ class Channel:
                 self.__dict__[att] = str(value)
         elif att == 'orientation':
             if (len(value) == 3) and (
-                isinstance(value, list) or isinstance(value, np.ndarray)):
+                    isinstance(value, list) or isinstance(value, np.ndarray)):
                 self.__dict__[att] = value / np.linalg.norm(value)
             else:
                 logger.error(
@@ -380,7 +400,7 @@ class Channel:
             if not (len(value) == 2):
                 logger.error('input value must be a tupple')
             dip = value[
-                      0] / 180 * np.pi  # coordinate system z-up dip is define down (need to negate dip to calculate the unit vector)
+                0] / 180 * np.pi  # coordinate system z-up dip is define down (need to negate dip to calculate the unit vector)
             az = value[1] / 180 * np.pi
             self.__dict__['orientation'] = np.array(
                 [np.sin(az) * np.cos(-dip), np.cos(az) * np.cos(-dip),
@@ -396,6 +416,7 @@ class Channel:
                             self.orientation[1]) * 180 / np.pi
         except:
             az = 0.0
+
         return az
 
     @property
@@ -405,6 +426,7 @@ class Channel:
             dip = -np.arctan2(self.orientation[2], hlen) * 180 / np.pi
         except:
             dip = 0.0
+
         return dip
 
     def copy(self):

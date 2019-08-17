@@ -1,13 +1,14 @@
 import json
 import urllib.parse
 from io import BytesIO
+from uuid import uuid4
 
 import requests
 from dateutil import parser
 
 from loguru import logger
 from microquake.core import AttribDict, UTCDateTime, read, read_events
-from microquake.core.event import Ray
+from microquake.core.event import Catalog, Ray
 
 
 class RequestRay(AttribDict):
@@ -155,8 +156,6 @@ def post_data_from_objects(api_base_url, event_id=None, event=None,
     :param logger: a logging.Logger object
     :return: same as build_request_data_from_bytes
     """
-
-    from microquake.core.event import Catalog
 
     api_url = api_base_url + "events"
 
@@ -386,7 +385,6 @@ def post_continuous_stream(api_base_url, stream, post_to_kafka=True,
     if stream_id is not None:
         request_data['stream_id'] = stream_id
     else:
-        from uuid import uuid4
         request_data['stream_id'] = str(uuid4())
 
     result = requests.post(url, data=request_data, files=request_files)

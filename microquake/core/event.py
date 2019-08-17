@@ -21,7 +21,6 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 
 import base64
 import io
-from loguru import logger
 import warnings
 from copy import deepcopy
 
@@ -30,6 +29,8 @@ import obspy.core.event as obsevent
 from obspy.core import AttribDict
 from obspy.core.event import *
 from obspy.core.event import ResourceIdentifier
+
+from loguru import logger
 
 debug = False
 

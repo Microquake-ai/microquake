@@ -1,6 +1,4 @@
 
-from loguru import logger
-
 import matplotlib.pyplot as plt
 import numpy as np
 from obspy.core.event.base import Comment
@@ -8,6 +6,7 @@ from obspy.core.event.source import FocalMechanism, NodalPlane, NodalPlanes
 from obspy.imaging.beachball import aux_plane
 
 from hashwrap.hashwrapper import calc_focal_mechanisms
+from loguru import logger
 
 
 def calc(cat, settings):
@@ -29,8 +28,6 @@ def calc(cat, settings):
     fname = 'calc_focal_mechanism'
 
     plot_focal_mechs = settings.plot_focal_mechs
-
-    global logger
 
     sname = []
     p_pol = []
