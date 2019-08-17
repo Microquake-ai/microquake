@@ -1,11 +1,11 @@
 import json
+import urllib.parse
 from io import BytesIO
-from loguru import logger
 
 import requests
-import urllib.parse
 from dateutil import parser
 
+from loguru import logger
 from microquake.core import AttribDict, UTCDateTime, read, read_events
 from microquake.core.event import Ray
 
@@ -254,7 +254,7 @@ def post_data_from_objects(api_base_url, event_id=None, event=None,
         logger.info('done preparing variable length waveform data')
 
     return post_event_data(api_url, event_resource_id, files,
-                       send_to_bus=send_to_bus)
+                           send_to_bus=send_to_bus)
 
 
 def post_event_data(api_base_url, event_resource_id, request_files,
@@ -268,12 +268,13 @@ def post_event_data(api_base_url, event_resource_id, request_files,
     result = requests.post(url, data={"send_to_bus": send_to_bus},
                            files=request_files)
     logger.info(result)
+
     return result
 
 
 def put_event_from_objects(api_base_url, event_id, event=None,
-                            waveform=None, context=None,
-                            variable_size_waveform=None):
+                           waveform=None, context=None,
+                           variable_size_waveform=None):
     # removing id from URL as no longer used
     # url = api_base_url + "%s" % event_resource_id
 
@@ -282,6 +283,7 @@ def put_event_from_objects(api_base_url, event_id, event=None,
     logger.info('puting data on %s' % url)
 
     files = {}
+
     if event is not None:
         event_bytes = BytesIO()
         event.write(event_bytes, format='quakeml')
@@ -304,6 +306,7 @@ def put_event_from_objects(api_base_url, event_id, event=None,
 
     result = requests.put(url, files=files)
     logger.info(result)
+
     return result
 
 
@@ -434,6 +437,7 @@ def get_rays(api_base_url, event_resource_id, origin_resource_id=None,
     url = api_base_url + "rays?"
 
     event_resource_id = encode(event_resource_id)
+
     if event_resource_id:
         url += "event_id=%s&" % event_resource_id
 
@@ -480,10 +484,12 @@ def post_signal_quality(
     return session.post("{}signal_quality".format(api_base_url),
                         json=request_data)
 
+
 def reject_event(api_base_url, event_id):
     session = requests.Session()
-    session.trust_env=False
+    session.trust_env = False
 
     event_id = encode(event_id)
+
     return session.post("{}{}/interactive/reject".format(api_base_url,
-                                                           event_id))
+                                                         event_id))
