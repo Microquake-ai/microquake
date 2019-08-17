@@ -92,8 +92,6 @@ def read_IMS_ASCII(path, net='', **kwargs):
     data = np.loadtxt(path, delimiter=',', skiprows=1)
     stats = Stats()
 
-    header = {}
-
     with open(path) as fid:
         field = fid.readline().split(',')
 
