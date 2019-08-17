@@ -29,7 +29,7 @@ from glob import glob
 
 import numpy as np
 
-from microquake.core import UTCDateTime
+from obspy import UTCDateTime
 from microquake.core.event import Arrival, Catalog
 from microquake.core.util.attribdict import AttribDict
 

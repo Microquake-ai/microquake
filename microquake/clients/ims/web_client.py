@@ -17,8 +17,22 @@ module to interact IMS web API
     (http://www.gnu.org/copyleft/lesser.html)
 """
 
+import sys
+from datetime import datetime
+
 import numpy as np
+import requests
+from obspy.core.trace import Stats
+
 from loguru import logger
+from obspy import UTCDateTime
+from microquake.core import Stream, Trace
+from microquake.core.event import Catalog
+
+if sys.version_info[0] < 3:
+    from StringIO import StringIO
+else:
+    from io import StringIO, BytesIO
 
 
 def get_continuous(base_url, start_datetime, end_datetime,
@@ -67,19 +81,10 @@ def get_continuous(base_url, start_datetime, end_datetime,
         - raw Z value as float32
     """
 
-    import requests
     from gzip import GzipFile
     import struct
-    import numpy as np
-    from microquake.core import Trace, Stream, UTCDateTime
     import sys
     from time import time as timer
-    from datetime import datetime
-
-    if sys.version_info[0] < 3:
-        from StringIO import StringIO
-    else:
-        from io import StringIO, BytesIO
 
     if isinstance(site_ids, int):
         site_ids = [site_ids]
@@ -111,6 +116,7 @@ def get_continuous(base_url, start_datetime, end_datetime,
 
         if r.status_code != 200:
             # raise Exception('request failed! \n %s' % url)
+
             continue
 
         if format == 'binary-gz':
@@ -119,6 +125,7 @@ def get_continuous(base_url, start_datetime, end_datetime,
             fileobj = BytesIO(r.content)
         else:
             raise Exception('unsuported format!')
+
             continue
 
         fileobj.seek(0)
@@ -232,9 +239,6 @@ def EpochNano2UTCDateTime(timestamp, timezone):
     :return: a microquake.UTCDateTime object
     """
 
-    from microquake.core import UTCDateTime
-    from datetime import datetime
-
     time_utc = datetime.utcfromtimestamp(timestamp / 1.e9)
 
     return UTCDateTime(time_utc)
@@ -272,19 +276,9 @@ def get_catalogue(base_url, start_datetime, end_datetime, site,
     """
 
     import calendar
-    from microquake.core import UTCDateTime
     from microquake.core.event import Catalog, Event, Origin, Magnitude, \
         OriginUncertainty, ConfidenceEllipsoid
-    import requests
     import pandas as pd
-    import sys
-    from datetime import datetime
-
-    if sys.version_info[0] < 3:
-        from StringIO import StringIO
-    else:
-        from io import StringIO
-
     start_datetime_utc = UTCDateTime(start_datetime)
     end_datetime_utc = UTCDateTime(end_datetime)
 
@@ -349,6 +343,7 @@ def get_catalogue(base_url, start_datetime, end_datetime, site,
 
     for row in df.iterrows():
         event_name = row[1]['EVENT_NAME']
+
         for k, element in enumerate(row[1]):
             if element == '-':
                 row[1][k] = None
@@ -442,11 +437,6 @@ def get_seismogram(base_url, sgram_name, network_code, site_code, timezone):
     :rtype: microquake.core.Stream
     """
 
-    import requests
-    from microquake.core import Trace, Stream
-    from microquake.core.trace import Stats
-    import numpy as np
-
     url = base_url + '/sgrams/assoc/read_sgram?sgramName=%s' % sgram_name
 
     r = requests.get(url)
@@ -523,10 +513,7 @@ def get_picks(base_url, event_name, site, timezone):
     :rtype: microquake.event.Catalog
     """
 
-    import requests
     from microquake.core.event import Pick, Arrival, WaveformStreamID, Origin
-    import numpy as np
-    from microquake.core import UTCDateTime
 
     url = base_url + '/events/read_event?eventName=%s' % (event_name)
     r2 = requests.get(url)
@@ -662,8 +649,6 @@ def get_seismogram_event(base_url, event, network_code, timezone):
     :rtype: microquake.core.Stream
     """
 
-    from microquake.core import Stream
-
     seismogram_names = event.ASSOC_SEISMOGRAM_NAMES.split(';')
     station_codes = event.TRIGGERED_SITES.split(';')
     traces = []
@@ -705,8 +690,6 @@ def get_range(base_url, start_datetime, end_datetime, site, network_code,
     :param time_zone: time zone name see pytz for a list of time zones
     :return: a list of catalog and stream tuple
     """
-
-    from microquake.core.event import Catalog
 
     events = get_catalogue(base_url, start_datetime, end_datetime, site,
                            blast, event, accepted, manual)

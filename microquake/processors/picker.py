@@ -3,7 +3,7 @@ from time import time
 import numpy as np
 
 from loguru import logger
-from microquake.core import UTCDateTime
+from obspy import UTCDateTime
 from microquake.core.event import CreationInfo, Origin
 from microquake.waveform.pick import snr_picker
 

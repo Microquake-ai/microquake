@@ -19,15 +19,20 @@ plugin for reading and writing various waveform format expending
     (http://www.gnu.org/copyleft/lesser.html)
 """
 
-from microquake.core import logger
-from microquake.core.util.decorator import uncompress_file as uncompress
-from microquake.core import UTCDateTime
-
-# import logging
+from datetime import datetime, timedelta
+from glob import glob
 from struct import unpack
-from datetime import datetime
+
 # from io import BytesIO
 import numpy as np
+from dateutil.parser import parse
+from obspy import UTCDateTime
+from obspy.core.trace import Stats
+from pytz import timezone
+
+from loguru import logger
+from microquake.core import Stream, Trace, read
+from microquake.core.util.decorator import uncompress_file as uncompress
 from microquake.core.util.tools import datetime_to_epoch_sec
 
 
@@ -45,11 +50,11 @@ def decompose_mseed(mseed_bytes, mseed_reclen=4096):
         chunk = mseed_bytes[start:end]
         dt = mseed_date_from_header(chunk)
         key = int(datetime_to_epoch_sec(dt) * 1000)
-        
+
         if key not in dchunks:
             dchunks[key] = b''
         dchunks[key] += chunk
-        
+
     return dchunks
 
 
@@ -71,8 +76,9 @@ def mseed_date_from_header(block4096):
     vals = unpack('>HHBBBBH', block4096[20:30])
     year, julday, hour, minute, sec, _, sec_frac = vals
     tstamp = '%0.4d,%0.3d,%0.2d:%0.2d:%0.2d.%0.4d' % (year, julday, hour,
-                                                       minute, sec, sec_frac)
+                                                      minute, sec, sec_frac)
     dt = datetime.strptime(tstamp, '%Y,%j,%H:%M:%S.%f')
+
     return UTCDateTime(dt)
 
 
@@ -82,10 +88,6 @@ def read_IMS_ASCII(path, net='', **kwargs):
     :param path: path to file
     :return: microquake.core.Stream
     """
-
-    from microquake.core import Stream, Trace, Stats, UTCDateTime
-    from datetime import datetime, timedelta
-    import numpy as np
 
     data = np.loadtxt(path, delimiter=',', skiprows=1)
     stats = Stats()
@@ -97,7 +99,7 @@ def read_IMS_ASCII(path, net='', **kwargs):
 
     stats.sampling_rate = float(field[1])
     timetmp = datetime.fromtimestamp(float(field[5])) \
-      + timedelta(seconds=float(field[6]) / 1e6)  # trigger time in second
+        + timedelta(seconds=float(field[6]) / 1e6)  # trigger time in second
 
     trgtime_UTC = UTCDateTime(timetmp)
     stats.starttime = trgtime_UTC - float(field[10]) / stats.sampling_rate
@@ -110,6 +112,7 @@ def read_IMS_ASCII(path, net='', **kwargs):
     component = np.array(['X', 'Y', 'Z'])
     std = np.std(data, axis=0)
     mstd = np.max(std)
+
     for k, dt in enumerate(data.T):
         stats.channel = '%s' % (component[k])
         traces.append(Trace(data=np.array(dt), header=stats))
@@ -134,31 +137,25 @@ def read_IMS_CONTINUOUS(dname, site=None, site_list=None, event_name=None, **kwa
     :return: ~microquake.core.stream.Stream
     """
 
-    from microquake.core import Stream, Trace, Stats
-    import numpy as np
-    from glob import glob
-    from pytz import timezone
-    from datetime import datetime, timedelta
-    from microquake.core import UTCDateTime
-
-    #if not site:
+    # if not site:
     #    logger.warning('A site object should be provided for the information '
     #                   'on the system to be properly added to the traces '
     #                   'header. The file will be read but information such as '
     #                   'the site, network, station or component information '
     #                   'will not be appended')
 
-
-
     traces = []
-    for directory in glob(dname +'/site*'):
+
+    for directory in glob(dname + '/site*'):
         if site_list:
             site_no = int(directory.split('site')[-1])
+
             if site_no not in site_list:
                 continue
         print(directory)
         # reading data
         # racer()()
+
         if event_name:
             sfile = glob(directory + '\%s.casc' % event_name)
         else:
@@ -173,13 +170,15 @@ def read_IMS_CONTINUOUS(dname, site=None, site_list=None, event_name=None, **kwa
             X = []
             Y = []
             Z = []
+
             for i, line in enumerate(datafile):
                 # reading header
                 field = line.split(',')
+
                 if i == 0:
                     timetmp = datetime.fromtimestamp(float(field[5]),
-                                                 tz=timezone('UTC')) \
-                    + timedelta(seconds=float(field[6]) / 1e6)
+                                                     tz=timezone('UTC')) \
+                        + timedelta(seconds=float(field[6]) / 1e6)
 
                     stats.starttime = UTCDateTime(timetmp)
                     stats.sampling_rate = float(field[2])
@@ -198,8 +197,8 @@ def read_IMS_CONTINUOUS(dname, site=None, site_list=None, event_name=None, **kwa
 
                     Z.append(float(field[4]))
 
-
             stats.npts = len(Z)
+
             if X:
                 stats.channel = 'X'
                 traces.append(Trace(data=np.array(X), header=stats))
@@ -223,9 +222,6 @@ def read_ESG_SEGY(fname, site=None, **kwargs):
     :return: ~microquake.core.stream.Stream
     """
 
-    from microquake.core import read, Stream, Trace
-    import numpy as np
-
     if not site:
         logger.warning('A site object should be provided for the information '
                        'on the system to be properly added to the traces '
@@ -239,6 +235,7 @@ def read_ESG_SEGY(fname, site=None, **kwargs):
 
     stations = site.stations()
     traces = []
+
     for k, tr in enumerate(st):
         x = tr.stats.segy.trace_header.group_coordinate_x
         y = tr.stats.segy.trace_header.group_coordinate_y
@@ -246,9 +243,11 @@ def read_ESG_SEGY(fname, site=None, **kwargs):
         hdist_min = 1e10
         station = None
         network = None
+
         for net in site:
             for sta in net:
-                hdist = np.linalg.norm([sta.x - x, sta.y -y])
+                hdist = np.linalg.norm([sta.x - x, sta.y - y])
+
                 if hdist < hdist_min:
                     hdist_min = hdist
                     station = sta
@@ -260,10 +259,12 @@ def read_ESG_SEGY(fname, site=None, **kwargs):
 
     st2 = Stream(traces=traces)
     traces = []
+
     for station in site.stations():
-        if np.all(station.loc == [1000,1000,1000]):
+        if np.all(station.loc == [1000, 1000, 1000]):
             continue
         sttmp = st2.copy().select(station=station.code)
+
         for k, tr in enumerate(sttmp):
             if k == 0:
                 if len(sttmp) == 3:
@@ -334,13 +335,15 @@ def readTDMS(filename, **kwargs):
     except:
         print('Not able to read %s' % filename)
         print('exiting')
+
         return
 
     traces = []
+
     for group in tdms.groups():
-        time = tdms.object(group,'Timestamps').data
-        sr = np.round(1/((time[-1]-time[0]).total_seconds() \
-                         /float(len(time))))
+        time = tdms.object(group, 'Timestamps').data
+        sr = np.round(1/((time[-1]-time[0]).total_seconds()
+                         / float(len(time))))
         sr = int(sr)
 
         for key in tdms.objects.keys():
@@ -349,18 +352,19 @@ def readTDMS(filename, **kwargs):
 
             if group in key:
                 channel = key.split('/')[-1][1:-1]
+
                 if 'Timestamps' in channel:
                     continue
                 elif 'Sensor' in channel:
                     channel_no = int(channel.split(' ')[-1])
 
-                    data = tdms.object(group,channel).data
+                    data = tdms.object(group, channel).data
 
-                    tmp = Trace(data = data)
+                    tmp = Trace(data=data)
                     tmp.stats.network = network
                     tmp.stats.sampling_rate = int(sr)
                     tmp.stats.location = '00'
-                    starttime = UTCDateTime(time[0].replace(tzinfo = None))
+                    starttime = UTCDateTime(time[0].replace(tzinfo=None))
                     tmp.stats.starttime = starttime
                     channel = SensorInfo['Component'][i]
                     tmp.stats.channel = channel
@@ -388,9 +392,6 @@ def read_hsf(filename, **kwargs):
 
     # TODO this functio is still being developped. Real name of sensor should
     #  be found in the file
-
-    from struct import unpack
-    import numpy as np
 
     with open(filename, 'rb') as hsffile:
 
@@ -424,6 +425,7 @@ def read_hsf(filename, **kwargs):
         (unk,) = unpack('f', hsffile.read(4))
         # there is likely other valuable information beside the station name
         stname = []
+
         for i in range(0, nstations):
             hsffile.seek(station_block_start + station_block_size * i)
             (tmp,) = unpack('14s', hsffile.read(14))
@@ -432,12 +434,13 @@ def read_hsf(filename, **kwargs):
 
         # reading sensor block (arrival time must be in this section)
         sensor_block_start = station_block_start + station_block_size * \
-                                                   (nstations + 1)
+            (nstations + 1)
         sensor_block_size = 222
         sensor_name_size = 14  # this is the minimum
         sensor_name_offset = 96
 
         senname = []
+
         for i in range(0, nsensors):
             hsffile.seek(sensor_block_start + sensor_block_size * i +
                          sensor_name_offset)
@@ -447,12 +450,13 @@ def read_hsf(filename, **kwargs):
 
         # reading channel block size
         channel_block_start = sensor_block_start + sensor_block_size * \
-                                                   (nsensors)
+            (nsensors)
         channel_block_size = 158
         channel_name_offset = 43
         channel_name_size = 20
 
         chnames = []
+
         for i in range(0, nchannels):
             hsffile.seek(channel_block_start + channel_block_size * i +
                          channel_name_offset)
@@ -472,16 +476,17 @@ def read_hsf(filename, **kwargs):
         data = np.array(unpack('i' * npts, hsffile.read(4 * npts)))
         data = data.reshape(npoints, nchannels)
 
-        from microquake.core.stream import Trace, Stream
         trs = []
         name_ct = 0
+
         for k in range(0, nchannels):
             chname = chnames[k]
-            tr = Trace(data=data[:,k])
+            tr = Trace(data=data[:, k])
             # TODO does not work quite well. Will need to collect more
             # accurate information on the associate of channel and station
             name_ct += 1
-            if '1' in  chname.split('_')[-1]:
+
+            if '1' in chname.split('_')[-1]:
                 tr.stats.channel = 'X'
             elif '2' in chname.split('_')[-1]:
                 tr.stats.channel = 'Y'
@@ -489,13 +494,12 @@ def read_hsf(filename, **kwargs):
                 tr.stats.channel = 'Z'
             tr.stats.station = str(name_ct)
             tr.stats.sampling_rate = sampling_rate
-            tr.network = 'net' # TODO change that
+            tr.network = 'net'  # TODO change that
             # TODO find the start time
             # tr.stats.starttime =
             trs.append(tr)
 
-        st = Stream(traces = trs)
-
+        st = Stream(traces=trs)
 
         # TODO reading the picks and few other quantity
 
@@ -524,17 +528,11 @@ def read_texcel_csv(filename, **kwargs):
     :return: ~microquake.core.stream.Stream
     """
 
-    from microquake.core import Stream, Trace
-    from microquake.core.trace import Stats
-    from dateutil.parser import parse
-    from datetime import timedelta
-    import numpy as np
-    from microquake.core import UTCDateTime
-
     with open(filename) as fle:
         x = []
         y = []
         z = []
+
         for k, line in enumerate(fle):
             if k == 0:
                 if 'MICROPHONE' in line:
@@ -542,12 +540,14 @@ def read_texcel_csv(filename, **kwargs):
                 else:
                     offset = 8
             # header
+
             if k < 2:
                 continue
 
             val = line.strip().split(',')
 
             # relative time
+
             if k == 3:
                 rt0 = timedelta(seconds=float(val[0]))
 
@@ -568,7 +568,6 @@ def read_texcel_csv(filename, **kwargs):
             elif k == 10:
                 location = val[offset]
 
-
             elif k == 17:
 
                 sensitivity_x = float(val[offset])
@@ -583,7 +582,7 @@ def read_texcel_csv(filename, **kwargs):
             elif k == 19:
                 trigger_x = float(val[offset])
                 trigger_y = float(val[offset + 1])
-                trigger_z = float(val[offset +2])
+                trigger_z = float(val[offset + 2])
 
             elif k == 20:
                 si_x = float(val[offset])
@@ -623,4 +622,3 @@ def read_texcel_csv(filename, **kwargs):
         tr_z = Trace(data=z / 1000.0, header=stats)
 
     return Stream(traces=[tr_x, tr_y, tr_z])
-
