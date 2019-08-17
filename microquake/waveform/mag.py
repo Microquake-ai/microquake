@@ -17,8 +17,7 @@ warnings.simplefilter("ignore", UserWarning)
 warnings.simplefilter("ignore")
 
 
-import logging
-logger = logging.getLogger(__name__)
+from loguru import logger
 
 
 def moment_magnitude_new(st, event,
@@ -98,7 +97,6 @@ def calc_magnitudes_from_lambda(cat,
                                 use_sdr_rad=False,
                                 use_free_surface_correction=False,
                                 min_dist=20.,
-                                logger_in=None,
                                 **kwargs):
     """
     Calculate the moment magnitude at each station from lambda,
@@ -110,11 +108,6 @@ def calc_magnitudes_from_lambda(cat,
     """
 
     fname = 'calc_magnitudes_from_lambda'
-
-    global logger
-
-    if logger_in is not None:
-        logger = logger_in
 
 
 # Don't loop over event here, do it in the calling routine
@@ -256,15 +249,9 @@ def calculate_energy_from_flux(cat,
                                rho=2700.,
                                use_sdr_rad=False,
                                use_water_level=False,
-                               rad_min=0.2,
-                               logger_in=None):
+                               rad_min=0.2):
 
     fname = 'calculate_energy_from_flux'
-
-    global logger
-
-    if logger_in is not None:
-        logger = logger_in
 
     for event in cat:
         origin = event.preferred_origin() if event.preferred_origin() else event.origins[0]

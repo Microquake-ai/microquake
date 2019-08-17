@@ -93,8 +93,7 @@ class Processor(ProcessingUnit):
                     use_sdr_rad=use_sdr_rad,
                     use_free_surface_correction=use_free_surface_correction,
                     sdr=sdr,
-                    min_dist=min_dist,
-                    logger_in=logger)
+                    min_dist=min_dist)
 
                 Mws.append(Mw)
                 station_mags.extend(sta_mags)

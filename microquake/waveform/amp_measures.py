@@ -9,7 +9,7 @@
 """
 
 # default logger
-import logging
+from loguru import logger
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -21,11 +21,9 @@ from microquake.core.util.tools import copy_picks_to_dict
 from microquake.waveform.parseval_utils import npow2, unpack_rfft
 from microquake.waveform.pick import calculate_snr
 
-logger = logging.getLogger(__name__)
-
 
 def measure_pick_amps(st_in, cat, phase_list=None,
-                      logger_in=None, triaxial_only=False,
+                      triaxial_only=False,
                       **kwargs):
     """
     Attempt to measure velocity pulse parameters (polarity, peak vel, etc)
@@ -47,11 +45,6 @@ def measure_pick_amps(st_in, cat, phase_list=None,
     """
 
     fname = "measure_pick_amps"
-
-    global logger
-
-    if logger_in is not None:
-        logger = logger_in
 
     st = st_in.copy()
 
@@ -746,7 +739,7 @@ def calc_velocity_flux(st_in,
                        Q=1e12,
                        correct_attenuation=False,
                        triaxial_only=True,
-                       debug=False, logger_in=logger):
+                       debug=False):
     """
     For each arrival (on phase_list) calculate the velocity flux using
         the corresponding traces and save to the arrival.vel_flux to
@@ -768,10 +761,6 @@ def calc_velocity_flux(st_in,
 
     fname = "calc_velocity_flux"
 
-    global logger
-
-    if logger_in is not None:
-        logger = logger_in
 
     if phase_list is None:
         phase_list = ['P']

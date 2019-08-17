@@ -568,11 +568,10 @@ def get_picks(base_url, event_name, site, timezone):
                 arrival.pick_id = pick.resource_id.id
                 arrival.phase = 'P'
 
-                import logging
                 try:
                     station = site.select(station=station_code).stations()[0]
                 except:
-                    logging.warning("Station %s not found!\n The station object needs to be updated" % station_code)
+                    logger.warning("Station %s not found!\n The station object needs to be updated" % station_code)
 
                     continue
 
@@ -596,11 +595,10 @@ def get_picks(base_url, event_name, site, timezone):
                 pick.evaluation_status = origin.evaluation_status
                 arrival.pick_id = pick.resource_id.id
                 arrival.phase = 'S'
-                import logging
                 try:
                     station = site.select(station=station_code).stations()[0]
                 except:
-                    logging.warning("Station %s not found!\n The station object needs to be updated" % station_code)
+                    logger.warning("Station %s not found!\n The station object needs to be updated" % station_code)
 
                     continue
 

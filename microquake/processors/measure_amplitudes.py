@@ -69,8 +69,7 @@ class Processor(ProcessingUnit):
                           pulse_min_width=pulse_min_width,
                           pulse_min_snr_P=pulse_min_snr_P,
                           pulse_min_snr_S=pulse_min_snr_S,
-                          debug=False,
-                          logger_in=logger)
+                          debug=False)
 
         self.result = {'cat': cat}
         return self.result

@@ -17,9 +17,7 @@ from obspy.core.inventory.util import Frequency
 ns_tag='mq'
 ns='MICROQUAKE'
 
-import logging
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+from loguru import logger
 
 
 def get_sensitivity(resistance):
@@ -39,7 +37,7 @@ def get_sensitivity(resistance):
     return sensitivity
 
 
-def fix_OT_responses(inventory, logger_in=None):
+def fix_OT_responses(inventory):
     '''
     Replace the generic (placeholder) channel responses in inventory
         with calculated responses.
@@ -47,10 +45,6 @@ def fix_OT_responses(inventory, logger_in=None):
     Response calculations are made using values in the station extras dict
         like damping, coil_resistance, etc.
     '''
-
-    global logger
-    if logger_in is not None:
-        logger = logger_in
 
     for station in inventory.stations():
 
@@ -148,14 +142,10 @@ def fix_OT_responses(inventory, logger_in=None):
     return 1
 
 
-def write_OT_xml(sensor_file, sensor_type_file, cable_file, xml_outfile='OT.xml', logger_in=None):
+def write_OT_xml(sensor_file, sensor_type_file, cable_file, xml_outfile='OT.xml'):
     '''
     Deprecated - used when network metadata was spread over individual csv files
     '''
-
-    global logger
-    if logger_in is not None:
-        logger = logger_in
 
     print("write_OT_xml: xml_outfile=%s" % xml_outfile)
 

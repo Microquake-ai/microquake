@@ -43,12 +43,10 @@ class Processor(ProcessingUnit):
                            phase_list=phase_list,
                            correct_attenuation=correct_attenuation,
                            Q=Q,
-                           debug=False,
-                           logger_in=logger)
+                           debug=False)
 
         calculate_energy_from_flux(cat,
-                                   use_sdr_rad=use_sdr_rad,
-                                   logger_in=logger)
+                                   use_sdr_rad=use_sdr_rad)
 
         self.result = {'cat': cat}
         return self.result

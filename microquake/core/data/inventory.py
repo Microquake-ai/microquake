@@ -13,8 +13,7 @@ import csv
 import copy
 import os
 
-import logging
-logger = logging.getLogger()
+from loguru import logger
 
 ns_tag='mq'
 ns='MICROQUAKE'
@@ -871,7 +870,7 @@ def load_inventory(fname, format='CSV', **kwargs):
           >>> inventory = Inventory.load_from_xml('OT.xml')
 
     An obspy inventory is just a list of stations contained in a list of networks
-    This will return such a list, only the contained stations are 
+    This will return such a list, only the contained stations are
     microquake.core.data.station2.Station class
 
     :param fname: path to file
@@ -941,13 +940,13 @@ def get_sensor_type_from_trace(tr):
 
 def get_dip_and_azimuth_from_cosines(cosines):
     """
-    MTH: My understanding of the orientation is this: 
+    MTH: My understanding of the orientation is this:
          x=E, y=N, z=Up  -eg, this *is* a right-handed coord sys.
          Most seismology has x=N and z=Down, hence the confusion.
          In our convention, Z also works as "elevation", in that elevation increases positive upwards.
 
          The way this works with the channel direction cosines, is:
-         [0, 0, 1] = a channel aligned with the +ve Z direction, will have a 
+         [0, 0, 1] = a channel aligned with the +ve Z direction, will have a
          dip = -90 deg. This is the same as traditional convention (see below)
 
         From SEED manual, Here are traditional channel orientations:

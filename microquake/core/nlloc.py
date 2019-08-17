@@ -20,7 +20,7 @@ module to interact with the NLLoc
 
 # from microquake.core.nlloc.core import *
 
-import logging
+from loguru import logger
 import os
 import shutil
 import tempfile
@@ -32,8 +32,6 @@ import numpy as np
 from obspy import UTCDateTime
 from microquake.core.event import Arrival, Catalog
 from microquake.core.util.attribdict import AttribDict
-
-logger = logging.getLogger()
 
 
 def read_nlloc_hypocenter_file(filename, picks=None,

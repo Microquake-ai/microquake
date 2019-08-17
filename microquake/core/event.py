@@ -21,7 +21,7 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 
 import base64
 import io
-import logging
+from loguru import logger
 import warnings
 from copy import deepcopy
 
@@ -30,9 +30,6 @@ import obspy.core.event as obsevent
 from obspy.core import AttribDict
 from obspy.core.event import *
 from obspy.core.event import ResourceIdentifier
-
-logger = logging.getLogger()
-log_level = logging.getLogger().getEffectiveLevel()
 
 debug = False
 

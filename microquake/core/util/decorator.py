@@ -2,7 +2,7 @@
 #
 #
 # vim: ts=4 sw=4 sts=0 noexpandtab:
-import logging
+from loguru import logger
 import os
 import time
 from functools import wraps
@@ -12,9 +12,7 @@ import numpy
 
 # MTH: if you set log level to DEBUG here, it gets inherited by obspy imports,
 #      which then passes it along to matplotlib, resulting in numerous msgs
-#logging.basicConfig(level=logging.DEBUG)
-logging.basicConfig(level=logging.WARN)
-logger = logging.getLogger('microquake')
+#logger.basicConfig(level=logger.DEBUG)
 
 
 def compressFile(func):
