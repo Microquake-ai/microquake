@@ -1,5 +1,4 @@
 from io import BytesIO
-from time import time
 
 from microquake.core import read, read_events
 from microquake.db.connectors import connect_redis

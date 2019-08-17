@@ -10,8 +10,7 @@ from microquake.core.settings import settings
 from microquake.db.connectors import RedisQueue
 from microquake.processors import (clean_data, focal_mechanism, magnitude, measure_amplitudes, measure_energy,
                                    measure_smom, nlloc, picker)
-from microquake.db.serializers.seismic_objects import deserialize_message
-from microquake.db.models.redis import set_event
+from microquake.db.models.redis import set_event, get_event
 
 api_base_url = settings.get('api_base_url')
 
@@ -73,7 +72,6 @@ def picker_election(location, event_time_utc, cat, stream):
     return cat_pickers[imax]
 
 
-@deserialize_message
 def put_data_api(catalogue=None, fixed_length=None, **kwargs):
     event_id = catalogue[0].resource_id.id
 
@@ -88,14 +86,12 @@ def put_data_api(catalogue=None, fixed_length=None, **kwargs):
 
         set_event(event_id, **dict_out)
 
-        result = api_queue.submit_task(put_data_api,
-                                       kwargs={'event_id': event_id})
+        result = api_queue.submit_task(put_data_api, event_id)
 
         return result
 
 
-@deserialize_message
-def automatic_pipeline(catalogue=None, fixed_length=None, **kwargs):
+def automatic_pipeline(event_id, **kwargs):
     """
     automatic pipeline
     :param fixed_length: fixed length stream encoded as mseed
@@ -103,20 +99,21 @@ def automatic_pipeline(catalogue=None, fixed_length=None, **kwargs):
     :return:
     """
 
-    stream = fixed_length
+    event = get_event(event_id)
+    stream = event['fixed_length']
 
-    if catalogue is None:
+    if event['catalogue'] is None:
         logger.info('No catalog was provided creating new')
         cat = Catalog(events=[Event()])
     else:
-        cat = catalogue
+        cat = event['catalogue']
 
     event_id = cat[0].resource_id
 
     logger.info('removing traces for sensors in the black list, or are '
                 'filled with zero, or contain NaN')
     clean_data_processor = clean_data.Processor()
-    fixed_length = clean_data_processor.process(waveform=fixed_length)
+    fixed_length = clean_data_processor.process(waveform=event['fixed_length'])
 
     loc = cat[0].preferred_origin().loc
     event_time_utc = cat[0].preferred_origin().time
