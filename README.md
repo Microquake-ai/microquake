@@ -25,6 +25,20 @@ git tag newversion
 git push --tags
 ```
 
+### Automatic tagging and releasing
+
+By adding the following command to your git config you can bump and release a new version with one command
+
+```
+git config --global alias.bump "\!version=\$(poetry version | awk '{print \$NF}' ) && git add pyproject.toml && git commit -m \"Bumping version to \$version\" && git tag \$version && git push --tags"
+```
+
+After running the above command you may release a new version with:
+
+```
+git bump
+```
+
 ### Package structure ###
 
 The package structure is not final and will settle over time
