@@ -3,21 +3,19 @@
 
 """
 
+import warnings
+
 import numpy as np
-from obspy.core.event.base import Comment, WaveformStreamID
-from obspy.core.event.base import ResourceIdentifier
+from obspy.core.event import Comment, ResourceIdentifier, WaveformStreamID
 from obspy.core.event.magnitude import Magnitude, StationMagnitude, StationMagnitudeContribution
 
+from loguru import logger
 from microquake.waveform.amp_measures import measure_pick_amps
-from microquake.waveform.smom_measure import measure_pick_smom
 from microquake.waveform.mag_utils import double_couple_rad_pat, free_surface_displacement_amplification
+from microquake.waveform.smom_measure import measure_pick_smom
 
-import warnings
 warnings.simplefilter("ignore", UserWarning)
 warnings.simplefilter("ignore")
-
-
-from loguru import logger
 
 
 def moment_magnitude_new(st, event,
@@ -28,6 +26,7 @@ def moment_magnitude_new(st, event,
                          use_smom=False):
 
     picks = event.picks
+
     if use_smom:
         measure_pick_smom(st, picks, debug=False)
         comment = "Average of freq-domain P & S moment magnitudes"
@@ -58,16 +57,16 @@ def moment_magnitude_new(st, event,
     return
 
 
-
 def set_new_event_mag(event, station_mags, Mw, comment, make_preferred=False):
 
     count = len(station_mags)
 
     sta_mag_contributions = []
+
     for sta_mag in station_mags:
         sta_mag_contributions.append(StationMagnitudeContribution(
-                                      station_magnitude_id=sta_mag.resource_id)
-                                    )
+            station_magnitude_id=sta_mag.resource_id)
+        )
 
     origin_id = event.preferred_origin().resource_id
 
@@ -78,7 +77,7 @@ def set_new_event_mag(event, station_mags, Mw, comment, make_preferred=False):
                           evaluation_mode='automatic',
                           station_magnitude_contributions=sta_mag_contributions,
                           comments=[Comment(text=comment)],
-                         )
+                          )
 
     event.magnitudes.append(event_mag)
     event.station_magnitudes = station_mags
@@ -128,7 +127,6 @@ def calc_magnitudes_from_lambda(cat,
         rad = rad_S
         mag_type = 'Mw_S'
 
-
     if use_smom:
         magnitude_comment = 'station magnitude measured in frequeny-domain (smom)'
         lambda_key = 'smom'
@@ -137,8 +135,9 @@ def calc_magnitudes_from_lambda(cat,
         lambda_key = 'dis_pulse_area'
 
     if use_free_surface_correction and np.abs(ev_loc[2]) > 0.:
-        logger.warning("%s: Free surface correction requested for event [h=%.1f] > 0" % \
-                    (fname, ev_loc[2]))
+        logger.warning("%s: Free surface correction requested for event [h=%.1f] > 0" %
+                       (fname, ev_loc[2]))
+
     if use_sdr_rad and 'sdr' not in kwargs:
         logger.warning("%s: use_sdr_rad requested but NO [sdr] given!" % fname)
 
@@ -151,8 +150,8 @@ def calc_magnitudes_from_lambda(cat,
 
     for arr in arrivals:
 
-    #for sta in sorted([sta for sta in st.unique_stations()],
-                    #key=lambda x: int(x)):
+        # for sta in sorted([sta for sta in st.unique_stations()],
+                    # key=lambda x: int(x)):
 
         pk = arr.pick_id.get_referred_object()
         sta = pk.waveform_id.station_code
@@ -160,11 +159,12 @@ def calc_magnitudes_from_lambda(cat,
         net = pk.waveform_id.network_code
 
         fs_factor = 1.
+
         if use_free_surface_correction:
             if arr.get('inc_angle', None):
                 inc_angle = arr.inc_angle
                 fs_factor = free_surface_displacement_amplification(
-                             inc_angle, vp, vs, incident_wave=P_or_S)
+                    inc_angle, vp, vs, incident_wave=P_or_S)
 
             # MTH: Not ready to implement this.  The reflection coefficients
             #      are expressed in x1,x2,x3 coords
@@ -172,11 +172,12 @@ def calc_magnitudes_from_lambda(cat,
                 # MTH: The free surface corrections are returned as <x1,x2,x3>=<
                 fs_factor = 1.
             else:
-                logger.warning("%s: sta:%s cha:%s pha:%s: inc_angle NOT set in arrival dict --> use default" %\
-                            (fname, sta, cha, arr.phase))
+                logger.warning("%s: sta:%s cha:%s pha:%s: inc_angle NOT set in arrival dict --> use default" %
+                               (fname, sta, cha, arr.phase))
 
         if use_sdr_rad and 'sdr' in kwargs:
             strike, dip, rake = kwargs['sdr']
+
             if arr.get('takeoff_angle', None) and arr.get('azimuth', None):
                 takeoff_angle = arr.takeoff_angle
                 takeoff_azimuth = arr.azimuth
@@ -186,12 +187,11 @@ def calc_magnitudes_from_lambda(cat,
                 logger.debug("%s: phase=%s rad=%f" % (fname, P_or_S, rad))
                 magnitude_comment += ' rad_pat calculated for (s,d,r)=\
                         (%.1f,%.1f,%.1f) theta:%.1f az:%.1f pha:%s |rad|=%f' % \
-                        (strike, dip, rake, takeoff_angle, takeoff_azimuth, P_or_S, rad)
-                #logger.info(magnitude_comment)
+                    (strike, dip, rake, takeoff_angle, takeoff_azimuth, P_or_S, rad)
+                # logger.info(magnitude_comment)
             else:
-                logger.warnng("%s: sta:%s cha:%s pha:%s: takeoff_angle/azimuth NOT set in arrival dict --> use default radpat" %\
-                            (fname, sta, cha, arr.phase))
-
+                logger.warnng("%s: sta:%s cha:%s pha:%s: takeoff_angle/azimuth NOT set in arrival dict --> use default radpat" %
+                              (fname, sta, cha, arr.phase))
 
         _lambda = getattr(arr, lambda_key)
 
@@ -201,7 +201,7 @@ def calc_magnitudes_from_lambda(cat,
 
             M0_scale = 4. * np.pi * density * v**3 / (rad * fs_factor)
 
-            #R  = np.linalg.norm(sta_dict['station'].loc -ev_loc) #Dist in meters
+            # R  = np.linalg.norm(sta_dict['station'].loc -ev_loc) #Dist in meters
 
         # MTH: obspy arrival.distance = *epicentral* distance in degrees
         #   >> Add attribute hypo_dist_in_m to microquake arrival class
@@ -217,28 +217,26 @@ def calc_magnitudes_from_lambda(cat,
                 Mw_list.append(Mw)
 
                 station_mag = StationMagnitude(origin_id=origin_id, mag=Mw,
-                                station_magnitude_type=mag_type,
-                                comments=[Comment(text=magnitude_comment)],
-                                waveform_id=WaveformStreamID(
-                                            network_code=net,
-                                            station_code=sta,
-                                            channel_code=cha,
-                                            ),
-                               )
+                                               station_magnitude_type=mag_type,
+                                               comments=[Comment(text=magnitude_comment)],
+                                               waveform_id=WaveformStreamID(
+                                                   network_code=net,
+                                                   station_code=sta,
+                                                   channel_code=cha,
+                                               ),
+                                               )
                 station_mags.append(station_mag)
 
             else:
-                logger.info("arrival sta:%s pha:%s dist=%.2f < min_dist(=%.2f) --> Skip" % \
+                logger.info("arrival sta:%s pha:%s dist=%.2f < min_dist(=%.2f) --> Skip" %
                             (fname, sta, arr.phase, R, min_dist))
 
-        #else:
-            #logger.warning("arrival sta:%s cha:%s arr pha:%s lambda_key:%s is NOT SET --> Skip" \
-                        #% (sta, cha, arr.phase, lambda_key))
+        # else:
+            # logger.warning("arrival sta:%s cha:%s arr pha:%s lambda_key:%s is NOT SET --> Skip" \
+                # % (sta, cha, arr.phase, lambda_key))
 
-
-    logger.info("nmags=%d avg:%.1f med:%.1f std:%.1f" % \
-          (len(Mw_list), np.mean(Mw_list), np.median(Mw_list), np.std(Mw_list)))
-
+    logger.info("nmags=%d avg:%.1f med:%.1f std:%.1f" %
+                (len(Mw_list), np.mean(Mw_list), np.median(Mw_list), np.std(Mw_list)))
 
     return np.median(Mw_list), station_mags
 
@@ -257,16 +255,17 @@ def calculate_energy_from_flux(cat,
         origin = event.preferred_origin() if event.preferred_origin() else event.origins[0]
 
         use_sdr = False
+
         if use_sdr_rad and event.preferred_focal_mechanism() is not None:
             mech = event.preferred_focal_mechanism()
-            #print(mech)
-            #print(mech.__dict__)
+            # print(mech)
+            # print(mech.__dict__)
             np1 = event.preferred_focal_mechanism().nodal_planes.nodal_plane_1
             sdr = (np1.strike, np1.dip, np1.rake)
             use_sdr = True
 
-        #for phase in ['P', 'S']:
-            #for arr in [x for x in arrivals if x.phase == phase]:
+        # for phase in ['P', 'S']:
+            # for arr in [x for x in arrivals if x.phase == phase]:
 
         P_energy = []
         S_energy = []
@@ -277,7 +276,8 @@ def calculate_energy_from_flux(cat,
             phase = arr.phase
 
             velocity = vp
-            rad_pat = 4/15 # rms P rad pattern (squared) over focal sphere
+            rad_pat = 4/15  # rms P rad pattern (squared) over focal sphere
+
             if phase == 'S':
                 velocity = vs
                 rad_pat = 2/5
@@ -287,29 +287,32 @@ def calculate_energy_from_flux(cat,
 
         # MTH: Setting preferred flux = vel_flux_Q = attenuation tstar corrected flux
             flux = 0
+
             if arr.vel_flux_Q is not None:
                 flux = arr.vel_flux_Q
-                logger.info("%s: vel_flux_Q exists in [%s], using this for energy, arr for sta:%s" % \
+                logger.info("%s: vel_flux_Q exists in [%s], using this for energy, arr for sta:%s" %
                             (fname, phase, sta))
             elif arr.vel_flux is not None:
                 flux = arr.vel_flux
-                logger.info("%s: vel_flux exists in [%s], using this for energy, arr for sta:%s" % \
+                logger.info("%s: vel_flux exists in [%s], using this for energy, arr for sta:%s" %
                             (fname, phase, sta))
             else:
-                logger.info("%s: No vel_flux set for arr sta:%s pha:%s --> skip energy calc" % \
+                logger.info("%s: No vel_flux set for arr sta:%s pha:%s --> skip energy calc" %
                             (fname, sta, phase))
+
                 continue
 
             energy = (4.*np.pi*R**2) * rho * velocity * flux
 
             scale = 1.
+
             if use_sdr:
                 if arr.get('takeoff_angle', None) and arr.get('azimuth', None):
                     takeoff_angle = arr.takeoff_angle
                     takeoff_azimuth = arr.azimuth
-                    strike=sdr[0]
-                    dip=sdr[1]
-                    rake=sdr[2]
+                    strike = sdr[0]
+                    dip = sdr[1]
+                    rake = sdr[2]
                     rad = double_couple_rad_pat(takeoff_angle, takeoff_azimuth,
                                                 strike, dip, rake, phase=phase)
 
@@ -321,8 +324,8 @@ def calculate_energy_from_flux(cat,
             energy *= scale
 
             #logger.debug("%s: phase=%s rad=%f" % (fname, P_or_S, rad))
-            #magnitude_comment += ' rad_pat calculated for (s,d,r)=\
-            #(%.1f,%.1f,%.1f) theta:%.1f az:%.1f pha:%s |rad|=%f' % \
+            # magnitude_comment += ' rad_pat calculated for (s,d,r)=\
+            # (%.1f,%.1f,%.1f) theta:%.1f az:%.1f pha:%s |rad|=%f' % \
             #(strike, dip, rake, takeoff_angle, takeoff_azimuth, P_or_S, rad)
 
             arr.energy = energy
@@ -332,32 +335,30 @@ def calculate_energy_from_flux(cat,
             else:
                 S_energy.append(energy)
 
-
         E = np.median(P_energy) + np.median(S_energy)
         nvals = len(S_energy)
         comment = 'Energy [N-m] calculated from sum of median P + median S energy'
 
         if E > 0:
-        # Note: this is not a "mag" (there is no log10).
-        #       Just using magnitude class to hold it in quakeml
+            # Note: this is not a "mag" (there is no log10).
+            #       Just using magnitude class to hold it in quakeml
 
             energy_mag = Magnitude(origin_id=origin.resource_id,
-                                    mag=E,
-                                    magnitude_type='E',
-                                    station_count=nvals,
-                                    evaluation_mode='automatic',
-                                    comments=[Comment(text=comment)],
-                                    )
+                                   mag=E,
+                                   magnitude_type='E',
+                                   station_count=nvals,
+                                   evaluation_mode='automatic',
+                                   comments=[Comment(text=comment)],
+                                   )
 
             event.magnitudes.append(energy_mag)
 
         else:
-            logger.warning("%s: Calculated val of Energy E=[%s] nS=%d nP=%d is not fit to keep!" % \
-                        (fname, E, nvals, len(P_energy)))
+            logger.warning("%s: Calculated val of Energy E=[%s] nS=%d nP=%d is not fit to keep!" %
+                           (fname, E, nvals, len(P_energy)))
             logger.warning("%s: Energy mag not written to quakeml" % fname)
 
     return
-
 
 
 if __name__ == '__main__':

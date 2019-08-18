@@ -23,10 +23,9 @@ import numpy as np
 
 # import pickle as pickle
 from xml.dom import minidom
-from microquake.core.util.attribdict import AttribDict
+from obspy.core.util.attribdict import AttribDict
 from microquake.core.data import grid
 from microquake.core import logger
-from glob import glob
 
 
 def parse_one(el, tag):
@@ -223,7 +222,7 @@ def parse_densitygrid(ctl, params, grid_el):
                                spacing=params.spacing, val=griddict.r)
 
         griddict.data = Grid
-    
+
     else:
         den = parse_one(denmodel, "density")
         griddict = AttribDict()
@@ -243,7 +242,7 @@ def parse_densitygrid(ctl, params, grid_el):
 
 
 def parse_attenuationgrid(ctl, params, grid_el):
-    
+
     attmodel = parse_one(grid_el, "attmodel")
     id = parse_attrib(attmodel, "id", int)
     velmethod = parse_one(attmodel, "method")
@@ -258,7 +257,7 @@ def parse_attenuationgrid(ctl, params, grid_el):
             q = parse_attrib(att, t, float)
             griddict[t] = q
 
-        
+
             if params.grid_method == "ODS":
                 grids[t] = grid.create('ODS',
                                    origin=params.origin,
@@ -268,7 +267,7 @@ def parse_attenuationgrid(ctl, params, grid_el):
             else:
                 grids[t] = grid.create('OCS', origin=params.origin,
                                    corner=params.corner,
-                                   spacing=params.spacing, 
+                                   spacing=params.spacing,
                                    val=q)
 
         griddict.homogeneous = method
@@ -627,7 +626,7 @@ def parse_calc_params(ctl, params):
 #         params.spark.conf = None
 #         logger.warning('Problem with pyspark')
 
-    
+
 def parse_control_file(filename, section=None):
 
     ctl = minidom.parse(filename)

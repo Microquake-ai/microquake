@@ -20,9 +20,10 @@ Expansion of the obspy.core.trace module
 import numpy as np
 import obspy.core.trace as obstrace
 from obspy import UTCDateTime
+from obspy.core.event import WaveformStreamID
 from obspy.core.trace import AttribDict
 
-from microquake.core.event import Pick, WaveformStreamID
+from microquake.core.event import Pick
 from microquake.core.util import tools
 
 

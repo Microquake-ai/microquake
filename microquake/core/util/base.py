@@ -1,7 +1,6 @@
 # from obspy.core.util.base import *
 from subprocess import call
 
-from obspy.core.util.base import *
 from obspy.core.util.base import ENTRY_POINTS, _get_entry_points
 
 # appending elements to the obspy ENTRY_POINTS

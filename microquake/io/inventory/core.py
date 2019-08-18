@@ -16,7 +16,7 @@ def read_csv(inventory_file: str) -> []:
     import numpy as np
     import pandas as pd
     import obspy.core.inventory
-    from microquake.core import AttribDict
+    from obspy.core.util.attribdict import AttribDict
     from obspy.signal.invsim import paz_to_freq_resp, corn_freq_2_paz
     from obspy.core.inventory import (InstrumentPolynomial, Response,
                                       ResponseStage, InstrumentSensitivity,

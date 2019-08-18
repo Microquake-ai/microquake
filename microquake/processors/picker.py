@@ -1,15 +1,14 @@
 from time import time
 
 import numpy as np
+from obspy import UTCDateTime
+from obspy.core.event import CreationInfo
 
 from loguru import logger
-from obspy import UTCDateTime
-from microquake.core.event import CreationInfo, Origin
-from microquake.waveform.pick import snr_picker
-
-from microquake.core.helpers.grid import (create_arrivals_from_picks, estimate_origin_time,
-                                          synthetic_arrival_times)
+from microquake.core.event import Origin
+from microquake.core.helpers.grid import create_arrivals_from_picks, estimate_origin_time, synthetic_arrival_times
 from microquake.processors.processing_unit import ProcessingUnit
+from microquake.waveform.pick import snr_picker
 
 
 class Processor(ProcessingUnit):
