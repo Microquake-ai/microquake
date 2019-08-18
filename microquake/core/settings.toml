@@ -62,7 +62,7 @@ data_connector.reconciliation_delay_minutes = 60
 data_connector.reconciliation_interval_hours = 72
 data_connector.maximum_event_elevation = 900
 data_connector.request_range_hours = 48
-data_connector.closing_window_time_seconds = 2700 # time after which we
+data_connector.closing_window_time_seconds = 30 # time after which we
 # consider the continuous data window closed after the event occurred
 data_connector.context_trace_forbiden_sensor = ['7', '9']
 
