@@ -72,21 +72,17 @@ def picker_election(location, event_time_utc, cat, stream):
     return cat_pickers[imax]
 
 
-def put_data_api(catalogue=None, fixed_length=None, **kwargs):
-    event_id = catalogue[0].resource_id.id
+def put_data_api(event_id, **kwargs):
+    event = get_event(event_id)
 
     response = put_event_from_objects(api_base_url, event_id,
-                                      event=catalogue,
-                                      waveform=fixed_length)
+                                      event=event['catalogue'],
+                                      waveform=event['fixed_length'])
 
     if response.status_code != requests.codes.ok:
         logger.info('request failed, resending to the queue')
-        dict_out = {'catalogue': catalogue,
-                    'fixed_length': fixed_length}
 
-        set_event(event_id, **dict_out)
-
-        result = api_queue.submit_task(put_data_api, event_id)
+        result = api_queue.submit_task(put_data_api, event_id=event_id)
 
         return result
 
@@ -107,8 +103,6 @@ def automatic_pipeline(event_id, **kwargs):
         cat = Catalog(events=[Event()])
     else:
         cat = event['catalogue']
-
-    event_id = cat[0].resource_id
 
     logger.info('removing traces for sensors in the black list, or are '
                 'filled with zero, or contain NaN')
@@ -165,7 +159,7 @@ def automatic_pipeline(event_id, **kwargs):
 
     set_event(event_id, catalogue=cat_nlloc)
 
-    api_queue.submit_task(put_data_api, kwargs={'event_id': event_id})
+    api_queue.submit_task(put_data_api, event_id=event_id)
 
     # put_event_from_objects(api_base_url, event_id, event=cat_nlloc,
     #                        waveform=fixed_length)
@@ -197,7 +191,7 @@ def automatic_pipeline(event_id, **kwargs):
     cat_magnitude_f[0].resource_id = event_id
 
     set_event(event_id, catalogue=cat_magnitude_f)
-    api_queue.submit_task(put_data_api, kwargs={'event_id': event_id})
+    api_queue.submit_task(put_data_api, event_id=event_id)
     # put_event_from_objects(api_base_url, event_id, event=cat_magnitude_f)
 
     return cat_magnitude_f
