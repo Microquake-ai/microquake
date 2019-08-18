@@ -54,7 +54,7 @@ quakeml_ug_blast_type = 'explosion'
 
 data_connector.minimum_recovery_fraction = 0.85
 data_connector.maximum_attempts = 10 # maximum number of attempts at retrieving the data
-data_connector.minimum_delay_minutes = 30
+data_connector.minimum_delay_minutes = 0.5
 data_connector.context_trace.filter.freqmin = 60
 data_connector.context_trace.filter.freqmax = 500
 data_connector.likelihood_threshold = 0.50
