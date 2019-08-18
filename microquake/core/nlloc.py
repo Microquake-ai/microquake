@@ -23,15 +23,18 @@ module to interact with the NLLoc
 import os
 import shutil
 import tempfile
+from struct import unpack
 from datetime import datetime
 from glob import glob
 
 import numpy as np
+from numpy import arcsin, argsort, linalg, sqrt, array
 from obspy import UTCDateTime
-from obspy.core.event import Catalog
+from obspy.core.event import Catalog, ConfidenceEllipsoid, OriginUncertainty
 from obspy.core.util.attribdict import AttribDict
 
 from loguru import logger
+from microquake.core.data.grid import read_grid
 from microquake.core.event import Arrival
 
 
@@ -250,10 +253,6 @@ def calculate_uncertainty(event, base_directory, base_name, perturbation=5,
     :return: microquake.core.event.Event
     """
 
-    from microquake.core.data.grid import read_grid
-    from numpy import linalg, argsort, arcsin, sqrt
-    from microquake.core.event import ConfidenceEllipsoid, OriginUncertainty
-
     narr = len(event.preferred_origin().arrivals)
 
     # initializing the frechet derivative
@@ -313,23 +312,20 @@ def read_scatter_file(filename):
     :return: a numpy array of the points in the scatter file
     """
 
-    import struct
-    from numpy import array
-
     f = open(filename, 'rb')
 
-    nsamples = struct.unpack('i', f.read(4))[0]
-    struct.unpack('f', f.read(4))
-    struct.unpack('f', f.read(4))
-    struct.unpack('f', f.read(4))
+    nsamples = unpack('i', f.read(4))[0]
+    unpack('f', f.read(4))
+    unpack('f', f.read(4))
+    unpack('f', f.read(4))
 
     points = []
 
     for k in range(0, nsamples):
-        x = struct.unpack('f', f.read(4))[0]
-        y = struct.unpack('f', f.read(4))[0]
-        z = struct.unpack('f', f.read(4))[0]
-        pdf = struct.unpack('f', f.read(4))[0]
+        x = unpack('f', f.read(4))[0]
+        y = unpack('f', f.read(4))[0]
+        z = unpack('f', f.read(4))[0]
+        pdf = unpack('f', f.read(4))[0]
 
         points.append([x, y, z, pdf])
 
