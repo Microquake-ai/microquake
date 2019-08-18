@@ -23,19 +23,19 @@ module to interact with the NLLoc
 import os
 import shutil
 import tempfile
-from struct import unpack
 from datetime import datetime
 from glob import glob
+from struct import unpack
 
 import numpy as np
-from numpy import arcsin, argsort, linalg, sqrt, array
+from numpy import arcsin, argsort, array, linalg, sqrt
 from obspy import UTCDateTime
-from obspy.core.event import Catalog, ConfidenceEllipsoid, OriginUncertainty
+from obspy.core.event import Catalog, ConfidenceEllipsoid, CreationInfo, OriginQuality, OriginUncertainty
 from obspy.core.util.attribdict import AttribDict
 
 from loguru import logger
 from microquake.core.data.grid import read_grid
-from microquake.core.event import Arrival
+from microquake.core.event import Arrival, Origin
 
 
 def read_nlloc_hypocenter_file(filename, picks=None,
@@ -48,8 +48,7 @@ def read_nlloc_hypocenter_file(filename, picks=None,
     :return: seismic catalogue
     :rtype: ~microquake.core.event.Catalog
     """
-    from microquake.core import event
-    cat = event.Catalog()
+    cat = Catalog()
 
     with open(filename) as hyp_file:
 
@@ -86,14 +85,14 @@ def read_nlloc_hypocenter_file(filename, picks=None,
 
         method = '%s' % ("NLLOC")
 
-        creation_info = event.CreationInfo(author='microquake',
-                                           creation_time=UTCDateTime.now())
+        creation_info = CreationInfo(author='microquake',
+                                     creation_time=UTCDateTime.now())
 
-        origin = event.Origin(x=hyp_x, y=hyp_y, z=hyp_z, time=tme,
-                              evaluation_mode=evaluation_mode,
-                              evaluation_status=evaluation_status,
-                              epicenter_fixed=0, method_id=method,
-                              creation_info=creation_info)
+        origin = Origin(x=hyp_x, y=hyp_y, z=hyp_z, time=tme,
+                        evaluation_mode=evaluation_mode,
+                        evaluation_status=evaluation_status,
+                        epicenter_fixed=0, method_id=method,
+                        creation_info=creation_info)
 
         xminor = np.cos(float(stat[22]) * np.pi / 180) * np.sin(float(stat[20])
                                                                 * np.pi / 180)
@@ -121,8 +120,8 @@ def read_nlloc_hypocenter_file(filename, picks=None,
         if np.isnan(major_dip):
             major_dip = None
 
-        ou = event.OriginUncertainty()
-        el = event.ConfidenceEllipsoid()
+        ou = OriginUncertainty()
+        el = ConfidenceEllipsoid()
         el.semi_minor_axis_length = float(stat[24]) * 1000
         el.semi_intermediate_axis_length = float(stat[30]) * 1000
         el.semi_major_axis_length = float(stat[32]) * 1000
@@ -134,7 +133,7 @@ def read_nlloc_hypocenter_file(filename, picks=None,
         origin.origin_uncertainty = ou
 
         TravelTime = False
-        oq = event.OriginQuality()
+        oq = OriginQuality()
         arrivals = []
         stations = []
         phases = []

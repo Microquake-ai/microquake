@@ -25,6 +25,7 @@ import warnings
 
 import numpy as np
 import obspy.core.event as obsevent
+from obspy.core.event import WaveformStreamID
 
 debug = False
 
