@@ -2,9 +2,10 @@ import json
 from io import BytesIO
 
 from dateutil.parser import parse
+from obspy import read, read_events
+from obspy.core.event import CreationInfo, ResourceIdentifier, WaveformStreamID
 
-from microquake.core import UTCDateTime, read, read_events
-from microquake.core.event import Arrival, CreationInfo, Origin, Pick, ResourceIdentifier, WaveformStreamID
+from microquake.core.event import Arrival, Origin, Pick
 from microquake.core.settings import settings
 from microquake.processors import (event_database, focal_mechanism, magnitude, measure_amplitudes, measure_energy,
                                    measure_smom, nlloc)

@@ -26,11 +26,12 @@ from time import time as timer
 import numpy as np
 import requests
 from obspy import UTCDateTime
+from obspy.core.event import Catalog, ConfidenceEllipsoid, OriginUncertainty, WaveformStreamID
 from obspy.core.trace import Stats
 
 from loguru import logger
 from microquake.core import Stream, Trace
-from microquake.core.event import Arrival, Catalog, Origin, Pick, WaveformStreamID
+from microquake.core.event import Arrival, Event, Magnitude, Origin, Pick
 
 if sys.version_info[0] < 3:
     from StringIO import StringIO
@@ -274,8 +275,6 @@ def get_catalogue(base_url, start_datetime, end_datetime, site,
     """
 
     import calendar
-    from microquake.core.event import Catalog, Event, Origin, Magnitude, \
-        OriginUncertainty, ConfidenceEllipsoid
     import pandas as pd
     start_datetime_utc = UTCDateTime(start_datetime)
     end_datetime_utc = UTCDateTime(end_datetime)

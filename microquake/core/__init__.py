@@ -1,6 +1,4 @@
-from obspy.core import *
 # from obspy.core import UTCDateTime
-from obspy.core import util
 from .util.decorator import buggy, unimplemented, broken, deprecated
 from .util.decorator import loggedcall, addmethod, memoizehd, memoize
 from .util.decorator import timedcall, logger

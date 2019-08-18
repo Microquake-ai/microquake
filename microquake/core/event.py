@@ -22,15 +22,9 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 import base64
 import io
 import warnings
-from copy import deepcopy
 
 import numpy as np
 import obspy.core.event as obsevent
-from obspy.core import AttribDict
-from obspy.core.event import *
-from obspy.core.event import ResourceIdentifier
-
-from loguru import logger
 
 debug = False
 

@@ -2,15 +2,16 @@ from io import BytesIO
 
 import numpy as np
 import requests
+from obspy.core.event import Catalog
 
 from loguru import logger
 from microquake.clients.api_client import put_event_from_objects, reject_event
-from microquake.core.event import Catalog, Event
+from microquake.core.event import Event
 from microquake.core.settings import settings
 from microquake.db.connectors import RedisQueue
+from microquake.db.models.redis import get_event, set_event
 from microquake.processors import (clean_data, focal_mechanism, magnitude, measure_amplitudes, measure_energy,
                                    measure_smom, nlloc, picker)
-from microquake.db.models.redis import set_event, get_event
 
 api_base_url = settings.get('api_base_url')
 

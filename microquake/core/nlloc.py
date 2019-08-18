@@ -28,10 +28,11 @@ from glob import glob
 
 import numpy as np
 from obspy import UTCDateTime
+from obspy.core.event import Catalog
+from obspy.core.util.attribdict import AttribDict
 
 from loguru import logger
-from microquake.core.event import Arrival, Catalog
-from obspy.core.util.attribdict import AttribDict
+from microquake.core.event import Arrival
 
 
 def read_nlloc_hypocenter_file(filename, picks=None,

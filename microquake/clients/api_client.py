@@ -5,12 +5,13 @@ from uuid import uuid4
 
 import requests
 from dateutil import parser
+from obspy import UTCDateTime
+from obspy.core.event import Catalog
+from obspy.core.util.attribdict import AttribDict
 
 from loguru import logger
-from obspy import UTCDateTime
-from obspy.core.util.attribdict import AttribDict
 from microquake.core import read
-from microquake.core.event import Catalog, Ray, read_events
+from microquake.core.event import Ray, read_events
 
 
 class RequestRay(AttribDict):

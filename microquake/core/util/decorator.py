@@ -7,7 +7,6 @@ import time
 from functools import wraps
 
 import numpy
-from obspy.core.util.decorator import *
 
 from loguru import logger
 
