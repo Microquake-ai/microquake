@@ -281,7 +281,7 @@ def put_event_from_objects(api_base_url, event_id, event=None,
     # url = api_base_url + "%s" % event_resource_id
 
     event_id = encode(event_id)
-    url = api_base_url + 'events/%s/files' % event_id
+    url = api_base_url + 'events/%s' % event_id
     logger.info('puting data on %s' % url)
 
     files = {}
