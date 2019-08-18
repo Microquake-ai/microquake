@@ -20,7 +20,6 @@ from io import BytesIO
 
 import numpy as np
 import obspy.core.stream as obsstream
-# from microquake.core.util.decorator import uncompress_file as uncompress
 from pkg_resources import load_entry_point
 
 from microquake.core.trace import Trace

@@ -28,11 +28,11 @@ import numpy as np
 from dateutil.parser import parse
 from obspy import UTCDateTime
 from obspy.core.trace import Stats
+from obspy.core.util.decorator import uncompress_file as uncompress
 from pytz import timezone
 
 from loguru import logger
 from microquake.core import Stream, Trace, read
-from microquake.core.util.decorator import uncompress_file as uncompress
 from microquake.core.util.tools import datetime_to_epoch_sec
 
 
