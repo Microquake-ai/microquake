@@ -3,6 +3,12 @@ from os import path
 import pytest
 
 from fakeredis import FakeStrictRedis
+from microquake.core.settings import settings
+
+
+@pytest.fixture(scope="session", autouse=True)
+def api_url():
+    return settings.get('api_base_url')
 
 
 @pytest.fixture(scope="session", autouse=True)

@@ -22,10 +22,8 @@ event_id = "smi:local/2019/06/27/08/25_47_115750099.e"
 
 @pytest.fixture(scope="module", autouse=True)
 @cachier(stale_after=timedelta(days=3))
-def api_event():
-    base_url = settings.get('api_base_url')
-
-    re = api_client.get_event_by_id(base_url, event_id)
+def api_event(api_url):
+    re = api_client.get_event_by_id(api_url, event_id)
 
     event_bytes = requests.get(re.event_file).content
     mseed_bytes = requests.get(re.waveform_file).content
@@ -44,6 +42,19 @@ def test_rom(api_event, picks):
     set_event(event_id, catalogue=catalog, fixed_length=waveform)
     event = get_event(event_id)
     assert isinstance(event['catalogue'], obspy.core.event.catalog.Catalog)
+
+
+@pytest.mark.skip(reason="this is only for testing purposes")
+def test_put_event(api_url, api_event, picks):
+    catalog = read_events(BytesIO(api_event['event_bytes']), format='quakeml')
+    waveform = read(BytesIO(api_event['waveform_bytes']), format='mseed')
+
+    api_url = "http://localhost:8000/api/v1/"
+    api_client.post_data_from_objects(api_url, event_id=None, event=catalog, stream=waveform,
+                                      tolerance=None,
+                                      send_to_bus=False)
+    event_id = "smi:local/2019/06/27/07/46_32_689969117.e"
+    api_client.put_event_from_objects(api_url, event_id=event_id, event=catalog, waveform=waveform)
 
 
 def test_interactive_pipeline(api_event, redis):
