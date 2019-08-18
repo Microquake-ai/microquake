@@ -181,6 +181,19 @@ url = "https://pkg.microquake.org/simple"
 
 [[package]]
 category = "main"
+description = "Dynamic version generation"
+name = "dunamai"
+optional = false
+python-versions = ">=3.5,<4.0"
+version = "0.8.0"
+
+[package.source]
+reference = "microquake"
+type = "legacy"
+url = "https://pkg.microquake.org/simple"
+
+[[package]]
+category = "main"
 description = "The dynamic configurator for your Python Project"
 name = "dynaconf"
 optional = false
@@ -976,7 +989,7 @@ type = "legacy"
 url = "https://pkg.microquake.org/simple"
 
 [metadata]
-content-hash = "61ec68e8d70ee1b66a997802ed74df5ec44538cc7b0a0586267be8314b4854c9"
+content-hash = "ec23c86ec594dcc40c9f702604e5c7ff39eab14ea954c6cc3848ffbb68d25700"
 python-versions = "^3.6 || ^3.7"
 
 [metadata.hashes]
@@ -993,6 +1006,7 @@ click = ["2335065e6395b9e67ca716de5f7526736bfa6ceead690adf616d925bdc622b13", "5b
 colorama = ["05eed71e2e327246ad6b38c540c4a3117230b19679b875190486ddd2d721422d", "f8ac84de7840f5b9c4e3347b3c1eaa50f7e49c2b07596221daec5edaabbd7c48"]
 cycler = ["1d8a5ae1ff6c5cf9b93e8811e581232ad8920aeec647c37316ceac982b08cb2d", "cd7b2d1018258d7247a71425e9f26463dfb444d411c39569972f4ce586b0c9d8"]
 decorator = ["86156361c50488b84a3f148056ea716ca587df2f0de1d34750d35c21312725de", "f069f3a01830ca754ba5258fde2278454a0b5b79e0d7f5c13b3b97e57d4acff6"]
+dunamai = ["cec31d5f1af605916d9ef90802214c0a319073afbc6abb5a8b9f3aaafb19cb1f", "fbf7ee167840047c37d7dc0b4e394ebe2f20b934771c77df3274616cd65b4bf1"]
 dynaconf = ["5bc2656f3bc015ef71c5465690db66532e18307f1c5028a0f28fe349659fd2d0", "6c022abebb916cccfdd3f80562511a4161f81782089168065bd7cdfc617c69e0"]
 fakeredis = ["3abb2dc34de78930514e8aa5c90ee81d38681180875d87c5b6ae56de348d9ed8", "cdefc45309c3080af8d3220d25ce0810a6a2ad1d53d760d418f352144dbbce43"]
 future = ["67045236dcfd6816dc439556d009594abf643e5eb48992e36beac09c2ca659b8"]
