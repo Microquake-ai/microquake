@@ -6,7 +6,6 @@ import numpy as np
 from datetime import datetime
 
 from microquake.core.event import Arrival, Event, Origin, Magnitude, Pick
-from microquake.core.event import ResourceIdentifier
 from microquake.core.stream import Stream
 from microquake.core import read
 from obspy import UTCDateTime

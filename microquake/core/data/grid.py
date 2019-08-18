@@ -1,4 +1,5 @@
 import numpy as np
+from obspy.core.event import ResourceIdentifier
 from pkg_resources import load_entry_point
 from scipy.interpolate import griddata
 from scipy.ndimage.interpolation import map_coordinates
@@ -219,7 +220,6 @@ class GridData(object):
     def __init__(self, data, spacing=1, origin=None,
                  seed_label=None, seed=None, grid_type='VELOCITY',
                  resource_id=None):
-        from microquake.core.event import ResourceIdentifier
         self.data = []
         data, np.ndarray
         origin = np.array(origin)
