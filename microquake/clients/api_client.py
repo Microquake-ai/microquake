@@ -289,22 +289,22 @@ def put_event_from_objects(api_base_url, event_id, event=None,
     if event is not None:
         event_bytes = BytesIO()
         event.write(event_bytes, format='quakeml')
-        files['event'] = event_bytes.getvalue()
+        files['event_file'] = event_bytes.getvalue()
 
     if waveform is not None:
         mseed_bytes = BytesIO()
         waveform.write(mseed_bytes, format='mseed')
-        files['waveform'] = mseed_bytes.getvalue()
+        files['waveform_file'] = mseed_bytes.getvalue()
 
     if context is not None:
         context_bytes = BytesIO()
         context.write(context_bytes, format='mseed')
-        files['context'] = context_bytes.getvalue()
+        files['waveform_context_file'] = context_bytes.getvalue()
 
     if variable_size_waveform is not None:
         vsw_bytes = BytesIO()
         variable_size_waveform(vsw_bytes, format='mseed')
-        files['variable_size_waveform'] = vsw_bytes.getvalue()
+        files['variable_size_waveform_file'] = vsw_bytes.getvalue()
 
     result = requests.put(url, files=files)
     logger.info(result)
