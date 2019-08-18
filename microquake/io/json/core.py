@@ -2,9 +2,9 @@
 Graveyard for deprecated json
 """
 
-from microquake.core import UTCDateTime
+from obspy import UTCDateTime
 from microquake.core import Trace, Stream
-from microquake.core import AttribDict
+from obspy.core.util.attribdict import AttribDict
 import numpy as np
 
 

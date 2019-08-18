@@ -11,7 +11,7 @@ from importlib import reload
 import pytest
 
 from microquake.clients.ims import web_client
-from microquake.core import UTCDateTime
+from obspy import UTCDateTime
 
 
 @pytest.mark.skip(reason="Currently this depends on a url that can't be accessed")

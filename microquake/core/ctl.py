@@ -23,7 +23,7 @@ import numpy as np
 
 # import pickle as pickle
 from xml.dom import minidom
-from microquake.core.util.attribdict import AttribDict
+from obspy.core.util.attribdict import AttribDict
 from microquake.core.data import grid
 from microquake.core import logger
 from glob import glob

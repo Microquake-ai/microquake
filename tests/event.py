@@ -9,7 +9,7 @@ from microquake.core.event import Arrival, Event, Origin, Magnitude, Pick
 from microquake.core.event import ResourceIdentifier
 from microquake.core.stream import Stream
 from microquake.core import read
-from microquake.core import UTCDateTime
+from obspy import UTCDateTime
 from microquake.core.util import tools
 from microquake.core import read_events
 # from obspy import read

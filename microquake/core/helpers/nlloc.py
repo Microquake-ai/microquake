@@ -1,6 +1,6 @@
 from numpy import array
 
-from microquake.core.util.attribdict import AttribDict
+from obspy.core.util.attribdict import AttribDict
 
 from microquake.core.settings import settings
 from microquake.core.helpers.velocity import get_velocities

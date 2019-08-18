@@ -6,7 +6,7 @@ from pkg_resources import load_entry_point
 
 from microquake.core import logger
 from microquake.core.util import ENTRY_POINTS
-from microquake.core.util.attribdict import AttribDict
+from obspy.core.util.attribdict import AttribDict
 
 
 def read_stations(fname, format='CSV', **kwargs):

@@ -7,8 +7,10 @@ import requests
 from dateutil import parser
 
 from loguru import logger
-from microquake.core import AttribDict, UTCDateTime, read, read_events
-from microquake.core.event import Catalog, Ray
+from obspy import UTCDateTime
+from obspy.core.util.attribdict import AttribDict
+from microquake.core import read
+from microquake.core.event import Catalog, Ray, read_events
 
 
 class RequestRay(AttribDict):
