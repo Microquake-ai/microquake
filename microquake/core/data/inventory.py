@@ -111,53 +111,66 @@ Networks:
     phone = re.findall(r"[\d']+", contact_phone)
     area_code = int(phone[0])
     number = "%s-%s" % (phone[1], phone[2])
-    phonenumber = PhoneNumber(area_code=area_code, phone_number=number)
+    phone_number = PhoneNumber(area_code=area_code, phone_number=number)
 
-    person = Person(names=[contact_name], agencies=[site_operator], emails=[contact_email], phones=[phonenumber])
+    person = Person(names=[contact_name], agencies=[site_operator],
+                    emails=[contact_email], phones=[phone_number])
     operator = Operator(agencies=[site_operator], contacts=[person])
     site = Site(name=site_name, description=site_name, country=site_country)
 
     # Merge Stations+Components+Sensors+Cables info into sorted stations + channels dicts:
 
-    df = df_dict['Stations']
-    df_merge = pd.merge(df_dict['Stations'], df_dict['Components'],
-                        left_on='id', right_on='station_id',
+    df_dict['Stations']['station_code'] = df_dict['Stations']['code']
+    df_dict['Sensors']['sensor_code'] = df_dict['Sensors']['code']
+    df_dict['Components']['code_channel'] = df_dict['Components']['code']
+    df_merge = pd.merge(df_dict['Stations'], df_dict['Sensors'],
+                        left_on='code', right_on='station__code',
                         how='inner', suffixes=('', '_channel'))
 
-    df_merge2 = pd.merge(df_merge, df_dict['Sensors'],
-                         left_on='sensor_id', right_on='id',
+    df_merge2 = pd.merge(df_merge, df_dict['Components'],
+                         left_on='sensor_code', right_on='sensor',
                          how='inner', suffixes=('', '_sensor'))
 
-    df_merge3 = pd.merge(df_merge2, df_dict['Cables'],
-                         left_on='cable_id', right_on='id',
+    df_merge3 = pd.merge(df_merge2, df_dict['Cable types'],
+                         left_on='cable__code', right_on='code',
                          how='inner', suffixes=('', '_cable'))
 
-    df = df_merge3.sort_values('id')
+    df_merge4 = pd.merge(df_merge3, df_dict['Sensor types'],
+                         left_on='sensor_type__model', right_on='model',
+                         how='inner', suffixes=('', '_sensor'))
+
+    df = df_merge4.sort_values(['sensor_code', 'location_code'])
 
     # Need to sort by unique station codes, then look through 1-3 channels to add
-    stn_codes = set(df['code'])
+    stn_codes = set(df['sensor_code'])
     stations = []
 
     for code in stn_codes:
-        chan_rows = df.loc[df['code'] == code]
+        chan_rows = df.loc[df['sensor_code'] == code]
         row = chan_rows.iloc[0]
 
         station = {}
     # Set some keys explicitly
-        station['code'] = row['code']
-        station['x'] = row['location_x']
-        station['y'] = row['location_y']
-        station['z'] = row['location_z']
+        station['code'] = '{}'.format(row['sensor_code'])
+        station['x'] = row['location_x_channel']
+        station['y'] = row['location_y_channel']
+        station['z'] = row['location_z_channel']
         station['loc'] = np.array([station['x'], station['y'], station['z']])
-        station['long_name'] = row['name']
+        station['long_name'] = "{}.{}.{:02d}".format(row['network__code'],
+                                                     row['station_code'],
+                                                     row['location_code'])
+
     # MTH: 2019/07 Seem to have moved from pF to F on Cables sheet:
         station['cable_capacitance_pF_per_meter'] = row['c'] * 1e12
 
     # Set the rest (minus empty fields) directly from spreadsheet names:
-        renamed_keys = {'code', 'location_x', 'location_y', 'location_z', 'name'}
+        renamed_keys = {'sensor_code', 'location_x', 'location_y',
+                        'location_z', 'name'}
+
         # These keys are either redundant or specific to channel, not station:
-        remove_keys = {'code_channel', 'id_channel', 'orientation_x', 'orientation_y', 'orientation_z',
-                       'id_sensor', 'enabled_channel', 'station_id', 'id_cable'}
+        remove_keys = {'code', 'id_channel', 'orientation_x',
+                       'orientation_y', 'orientation_z', 'id_sensor',
+                       'enabled_channel', 'station_id', 'id_cable'}
         keys = row.keys()
         empty_keys = keys[pd.isna(row)]
         keys = set(keys) - set(empty_keys) - renamed_keys - remove_keys
@@ -174,12 +187,15 @@ Networks:
     # Attach channels:
         station['channels'] = []
 
-        for index, r in chan_rows.iterrows():
+        for index, rr in chan_rows.iterrows():
             chan = {}
-            chan['cmp'] = r['code_channel'].lower()
-            chan['orientation'] = np.array([r['orientation_x'], r['orientation_y'], r['orientation_z']])
-            chan['enabled'] = r['enabled_channel']
+            chan['cmp'] = rr['code_channel_sensor'].upper()
+            chan['orientation'] = np.array([rr['orientation_x'],
+                                            rr['orientation_y'],
+                                            rr['orientation_z']])
+            chan['enabled'] = rr['enabled']
             station['channels'].append(chan)
+
         stations.append(station)
 
     # Convert these station dicts to inventory.Station objects and attach to inventory.network:
@@ -427,8 +443,10 @@ class Station(obspy.core.inventory.station.Station):
         '''
         equipment = None
 
-        if 'manufacturer' in stn:
-            equipment = Equipment(type='Sensor', manufacturer=stn['manufacturer'], model=stn['model'])
+        if 'manufacturer_sensor' in stn:
+            equipment = Equipment(type='Sensor',
+                                  manufacturer=stn['manufacturer_sensor'],
+                                  model=stn['model'])
 
         sta = Station(stn['code'], 0., 0., 0., site=Site(name='Oyu Tolgoi'),
                       equipments=[equipment],
@@ -437,7 +455,8 @@ class Station(obspy.core.inventory.station.Station):
                       start_date=UTCDateTime("2015-12-31T12:23:34.5"),
                       end_date=UTCDateTime("2599-12-31T12:23:34.5"))
 
-        non_extras_keys = {'code', 'long_name', 'channels', 'start_date', 'end_date'}
+        non_extras_keys = {'code', 'long_name', 'channels', 'start_date',
+                           'end_date'}
         keys = stn.keys() - non_extras_keys
         sta.extra = AttribDict()
 
