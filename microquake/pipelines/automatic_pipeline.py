@@ -77,8 +77,7 @@ def put_data_api(event_id, **kwargs):
     event = get_event(event_id)
 
     response = put_event_from_objects(api_base_url, event_id,
-                                      event=event['catalogue'],
-                                      waveform=event['fixed_length'])
+                                      event=event['catalogue'])
 
     if response.status_code != requests.codes.ok:
         logger.info('request failed, resending to the queue')

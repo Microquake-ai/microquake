@@ -7,7 +7,8 @@ import obspy.core.inventory
 from obspy.core import AttribDict
 from obspy.core.inventory import Network
 from obspy.core.inventory.inventory import read_inventory
-from obspy.core.inventory.util import (Equipment, Operator, Person, PhoneNumber, Site, _textwrap,
+from obspy.core.inventory.util import (Equipment, Operator, Person,
+                                       PhoneNumber, Site, _textwrap,
                                        _unified_content_strings)
 from obspy.core.utcdatetime import UTCDateTime
 
@@ -123,12 +124,13 @@ Networks:
     df_dict['Stations']['station_code'] = df_dict['Stations']['code']
     df_dict['Sensors']['sensor_code'] = df_dict['Sensors']['code']
     df_dict['Components']['code_channel'] = df_dict['Components']['code']
+    df_dict['Components']['sensor'] = df_dict['Components']['sensor__code']
     df_merge = pd.merge(df_dict['Stations'], df_dict['Sensors'],
                         left_on='code', right_on='station__code',
                         how='inner', suffixes=('', '_channel'))
 
     df_merge2 = pd.merge(df_merge, df_dict['Components'],
-                         left_on='sensor_code', right_on='sensor',
+                         left_on='sensor_code', right_on='sensor__code',
                          how='inner', suffixes=('', '_sensor'))
 
     df_merge3 = pd.merge(df_merge2, df_dict['Cable types'],
