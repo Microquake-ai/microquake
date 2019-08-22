@@ -12,6 +12,7 @@ from microquake.core.event import Arrival, Pick
 from microquake.core.helpers.velocity import get_current_velocity_model_id
 from microquake.core.settings import settings
 from microquake.core.simul.eik import ray_tracer
+from loguru import logger
 
 
 def get_grid(station_code, phase, type='time'):
@@ -324,9 +325,16 @@ def synthetic_arrival_times(event_location, origin_time):
                 continue
 
             # at = origin_time + get_grid_point(station, phase,
-            at = origin_time + get_grid_point(station.code, phase,
-                                              event_location,
-                                              grid_coordinates=False)
+
+            try:
+                at = origin_time + get_grid_point(station.code, phase,
+                                                  event_location,
+                                                  grid_coordinates=False)
+            # Catching error when grid file do not exist
+            except IOError:
+                logger.error('Grid file for {} cannot be found... skipping')
+                continue
+
 
             wf_id = WaveformStreamID(
                 network_code=settings.get('project_code'),
