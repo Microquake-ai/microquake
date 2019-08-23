@@ -4,7 +4,7 @@ project_code = 'OT'
 site = 'Oyu Tolgoi'
 site_code = 'OT'
 network = 'Hugo North Ungerground Network'
-network_code = 'OTHN'
+network_code = 'OTUG'
 
 # nlloc
 nlloc.nll_base = 'NLL'

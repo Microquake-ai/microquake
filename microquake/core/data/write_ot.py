@@ -45,7 +45,7 @@ def fix_OT_responses(inventory):
 
     for station in inventory.stations():
 
-        logger.info("sta:%s sensor_id:%s" % (station.code, station.sensor_id))
+        logger.info("sta:{}".format(station.code))
 
         extras = station.extra
         resistance = extras.coil_resistance.value
@@ -79,9 +79,9 @@ def fix_OT_responses(inventory):
         pzs.unitsIn = input_units
         pzs.unitsOut = "V"
 
-        if cable_cap == 0:
-            # print("No cable cap set --> Skip!")
-            pass
+        if cable_cap == 0 or cable_len == 0:
+            logger.info("Cable capacity or cable length set to 0 --> ignoring")
+
         else:
             # Cable capacity in pF (=10^-12 Farads):
             cable_capacity = cable_cap * 1e-12 * cable_len
@@ -95,8 +95,8 @@ def fix_OT_responses(inventory):
 
         resp = getResponse(pzs, freqs, removeZero=False, useSensitivity=False)
 
-        title = 'sta:%s sensor_type:%s f0=%.0f Hz h=%.2f sensitivity=%.2f' % \
-            (station.code, station.sensor_id, f0, damp, sensitivity)
+        title = 'sta:%s f0=%.0f Hz h=%.2f sensitivity=%.2f' % \
+            (station.code, f0, damp, sensitivity)
         logger.info("Corner freq:%f" % get_corner_freq_from_pole(pzs.poles[0]))
 
         fc_low = -999.
@@ -355,19 +355,21 @@ def main():
 
     inventory = load_inventory_from_excel(xls_file)
     success = fix_OT_responses(inventory)
-    inventory.write('OT.xml', format='STATIONXML', nsmap={ns_tag: ns})
+    xml_out = os.path.join(path, 'OT.xml')
+    inventory.write(xml_out, format='STATIONXML', nsmap={ns_tag: ns})
     exit()
 
     sensor_file = os.path.join(path, 'sensors.csv')
     sensor_types_file = os.path.join(path, 'sensor_types.csv')
     cables_file = os.path.join(path, 'cables.csv')
 
-    success = write_OT_xml(sensor_file, sensor_types_file, cables_file, xml_outfile='OT.xml')
+    success = write_OT_xml(sensor_file, sensor_types_file, cables_file,
+                           xml_outfile=xml_out)
     assert success == 1
     exit()
 
     # test_read_xml('OT.xml')
-    test_print_OT_xml_summary('OT.xml')
+    test_print_OT_xml_summary(xml_out)
     exit()
 
     test_read_stationxml('resources/ANMO.xml', 'ANMO2.xml')

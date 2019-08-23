@@ -328,6 +328,7 @@ def synthetic_arrival_times(event_location, origin_time):
                 at = origin_time + get_grid_point(station.code, phase,
                                                   event_location,
                                                   grid_coordinates=False)
+            # Catching error when grid file do not exist
             except FileNotFoundError as exc:
                 logger.warning(
                     f'Cannot read grid for station {station.code}'
