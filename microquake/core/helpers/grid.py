@@ -1,6 +1,7 @@
 import os
 
 import numpy as np
+from loguru import logger
 from numpy.linalg import norm
 from obspy.core import UTCDateTime
 from obspy.core.event import WaveformStreamID
@@ -323,10 +324,15 @@ def synthetic_arrival_times(event_location, origin_time):
             if (phase == 'S') and (dist < 100):
                 continue
 
-            # at = origin_time + get_grid_point(station, phase,
-            at = origin_time + get_grid_point(station.code, phase,
-                                              event_location,
-                                              grid_coordinates=False)
+            try:
+                at = origin_time + get_grid_point(station.code, phase,
+                                                  event_location,
+                                                  grid_coordinates=False)
+            except FileNotFoundError as exc:
+                logger.warning(
+                    f'Cannot read grid for station {station.code}'
+                    f' ({station.site.name}), phase {phase}: {exc}')
+                continue
 
             wf_id = WaveformStreamID(
                 network_code=settings.get('project_code'),

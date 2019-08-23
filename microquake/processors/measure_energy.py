@@ -38,7 +38,13 @@ class Processor(ProcessingUnit):
         for sta in missing_responses:
             logger.warning("Inventory: Missing response for sta:%s" % sta)
 
-        calc_velocity_flux(stream,
+        # TODO is this ok?
+        missing_responses_ids = {r.id for r in missing_responses}
+        cleaned_stream = stream.copy()
+        cleaned_stream.traces = [tr for tr in cleaned_stream.traces
+                                 if tr.id not in missing_responses_ids]
+
+        calc_velocity_flux(cleaned_stream,
                            cat,
                            phase_list=phase_list,
                            correct_attenuation=correct_attenuation,

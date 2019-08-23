@@ -17,8 +17,6 @@ Expansion of the obspy.core.event module
     (http://www.gnu.org/copyleft/lesser.html)
 """
 
-from __future__ import absolute_import, division, print_function, unicode_literals
-
 import base64
 import io
 import warnings
