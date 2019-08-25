@@ -1,7 +1,9 @@
 import json
 from io import BytesIO
 
+import numpy as np
 from dateutil.parser import parse
+from loguru import logger
 from obspy import read_events, UTCDateTime
 from obspy.core.event import CreationInfo, ResourceIdentifier, WaveformStreamID
 
@@ -78,6 +80,12 @@ def interactive_pipeline(
     picks = json.loads(picks_jsonb)
 
     cat = prepare_catalog(picks, cat)
+
+    # find traces with nans, which will choke `detrend()` calls:
+    trs_with_nan = [tr for tr in stream.traces if np.isnan(tr.data.max())]
+    for tr in trs_with_nan:
+        logger.warning(f"Found nan in stream for {tr.id}")
+    stream.traces = [tr for tr in stream.traces if tr not in trs_with_nan]
 
     # TODO this looks horrible, I shouldn't need to do this!
     for tr in stream:
