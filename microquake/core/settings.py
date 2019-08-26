@@ -9,8 +9,6 @@ class Settings(LazySettings):
         """
         Init function currently just initializes the object allowing
         """
-        config_dir = None
-
         if "SPP_CONFIG" in os.environ:
             # keep thpis as legacy behavior
             config_dir = os.environ['SPP_CONFIG']
@@ -54,6 +52,8 @@ class Settings(LazySettings):
             self.common_dir = self.COMMON
         elif hasattr(self, "SPP_COMMON"):
             self.common_dir = self.SPP_COMMON
+        else:
+            raise ValueError("Missing SPP_COMMON in env")
 
         self.nll_base = os.path.join(self.common_dir,
                                      self.get('nlloc').nll_base)
