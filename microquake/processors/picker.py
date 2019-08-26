@@ -6,7 +6,9 @@ from obspy.core.event import CreationInfo
 
 from loguru import logger
 from microquake.core.event import Origin
-from microquake.core.helpers.grid import create_arrivals_from_picks, estimate_origin_time, synthetic_arrival_times
+from microquake.core.helpers.grid import (create_arrivals_from_picks,
+                                          estimate_origin_time,
+                                          synthetic_arrival_times)
 from microquake.processors.processing_unit import ProcessingUnit
 from microquake.waveform.pick import snr_picker
 
