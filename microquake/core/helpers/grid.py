@@ -329,7 +329,7 @@ def synthetic_arrival_times(event_location, origin_time):
                                                   event_location,
                                                   grid_coordinates=False)
             # Catching error when grid file do not exist
-            except FileNotFoundError as exc:
+            except OSError as exc:
                 logger.warning(
                     f'Cannot read grid for station {station.code}'
                     f' ({station.site.name}), phase {phase}: {exc}')
