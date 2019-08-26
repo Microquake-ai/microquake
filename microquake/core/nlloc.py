@@ -271,7 +271,7 @@ def calculate_uncertainty(event, base_directory, base_name, perturbation=5,
                                               base_name, phase, station_code)
 
         tt = read_grid(filename, format='NLLOC')
-        spc = tt.spacing
+        # spc = tt.spacing
 
         # build the Frechet derivative
 
@@ -290,10 +290,10 @@ def calculate_uncertainty(event, base_directory, base_name, perturbation=5,
     i = np.argsort(w)[-1::-1]
     # for the angle calculation see
     # https://en.wikipedia.org/wiki/Euler_angles#Tait-Bryan_angles
-    X = v[:, i[0]]
-    Y = v[:, i[1]]
-    Z = v[:, i[2]]  # TODO Z is unused below, this seems strange
-    major_axis_plunge = np.arcsin(Y[2] / np.sqrt(1 - X[2] ** 2))
+    X = v[:, i[0]]  # major
+    # Y = v[:, i[1]]  # intermediate
+    # Z = v[:, i[2]]  # minor
+    major_axis_plunge = np.arcsin(X[2] / np.sqrt(1 - X[2] ** 2))
     major_axis_azimuth = np.arcsin(X[1] / np.sqrt(1 - X[2] ** 2))
     major_axis_rotation = np.arcsin(-X[2])
     ce = obspy.core.event.ConfidenceEllipsoid(
