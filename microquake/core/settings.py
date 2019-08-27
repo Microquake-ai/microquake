@@ -1,6 +1,7 @@
 import os
 
 from dynaconf import LazySettings
+from loguru import logger
 from microquake.core.data.inventory import Inventory
 
 
@@ -52,8 +53,9 @@ class Settings(LazySettings):
             self.common_dir = self.COMMON
         elif hasattr(self, "SPP_COMMON"):
             self.common_dir = self.SPP_COMMON
-        else:
-            raise ValueError("Missing SPP_COMMON in env")
+
+        if not self.get('common_dir', ''):
+            logger.warning("Missing SPP_COMMON in env")
 
         self.nll_base = os.path.join(self.common_dir,
                                      self.get('nlloc').nll_base)
