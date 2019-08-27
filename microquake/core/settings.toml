@@ -244,3 +244,19 @@ processing_flow.interactive_accepted.steps=[
 { module='magnitude', type='frequency', input='magnitude_frequency', output='event_database'},
 { module='event_database', input='event_database'}
 ]
+
+
+# Settings used in tests to make sure dynaconf behaves as expected
+# (these tests are currently in seismic-api)
+
+testable_settings.def_only_in_microquake = 'not overridden'
+
+testable_settings.def_in_microquake_overrid_in_project = 'this should be overridden'
+
+testable_settings.foo.bar = "this should also be overridden"
+testable_settings.foo.baz = "also not overridden"
+
+testable_settings.bar.zzz = 'not touched from project'
+
+poor_testable_settings.lost = 'this should not be present in final settings'
+poor_testable_settings.why = 'because dynaconf_merge is not used here'
