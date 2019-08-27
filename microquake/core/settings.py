@@ -49,10 +49,10 @@ class Settings(LazySettings):
 
         self.config_dir = config_dir
 
-        if hasattr(self, "COMMON"):
-            self.common_dir = self.COMMON
-        elif hasattr(self, "SPP_COMMON"):
+        if hasattr(self, "SPP_COMMON"):
             self.common_dir = self.SPP_COMMON
+        elif hasattr(self, "COMMON"):
+            self.common_dir = self.COMMON
 
         if not self.get('common_dir', ''):
             logger.warning("Missing SPP_COMMON in env")
