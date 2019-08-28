@@ -291,9 +291,9 @@ def calculate_uncertainty(event, base_directory, base_name, perturbation=5,
     # for the angle calculation see
     # https://en.wikipedia.org/wiki/Euler_angles#Tait-Bryan_angles
     X = v[:, i[0]]  # major
-    # Y = v[:, i[1]]  # intermediate
+    Y = v[:, i[1]]  # intermediate
     # Z = v[:, i[2]]  # minor
-    major_axis_plunge = np.arcsin(X[2] / np.sqrt(1 - X[2] ** 2))
+    major_axis_plunge = np.arcsin(Y[2] / np.sqrt(1 - X[2] ** 2))
     major_axis_azimuth = np.arcsin(X[1] / np.sqrt(1 - X[2] ** 2))
     major_axis_rotation = np.arcsin(-X[2])
     ce = obspy.core.event.ConfidenceEllipsoid(

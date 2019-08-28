@@ -334,7 +334,11 @@ def synthetic_arrival_times(event_location, origin_time):
                     f'Cannot read grid for station {station.code}'
                     f' ({station.site.name}), phase {phase}: {exc}')
                 continue
-
+            except ValueError as exc:
+                logger.warning(
+                    f'Error reading grid for station {station.code}'
+                    f' ({station.site.name}), phase {phase}: {exc}')
+                continue
             wf_id = WaveformStreamID(
                 network_code=settings.get('project_code'),
                 station_code=station.code)

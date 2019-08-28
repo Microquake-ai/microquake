@@ -89,7 +89,7 @@ def interactive_pipeline(
 
     # TODO this looks horrible, I shouldn't need to do this!
     for tr in stream:
-        tr.stats.network = "HNUG"
+        tr.stats.network = settings.SITE_CODE
 
     nlloc_processor = nlloc.Processor()
     cat_nlloc = nlloc_processor.process(cat=cat)['cat']
