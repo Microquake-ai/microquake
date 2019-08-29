@@ -10,7 +10,8 @@ from microquake.core.event import Event
 from microquake.core.settings import settings
 from microquake.db.connectors import RedisQueue
 from microquake.db.models.redis import get_event, set_event
-from microquake.processors import (clean_data, focal_mechanism, magnitude, measure_amplitudes, measure_energy,
+from microquake.processors import (clean_data, focal_mechanism, magnitude,
+                                   measure_amplitudes, measure_energy,
                                    measure_smom, nlloc, picker)
 
 api_base_url = settings.get('api_base_url')
@@ -158,7 +159,6 @@ def automatic_pipeline(event_id, **kwargs):
     cat_nlloc[0].resource_id = event_id
 
     set_event(event_id, catalogue=cat_nlloc)
-
     api_queue.submit_task(put_data_api, event_id=event_id)
 
     # put_event_from_objects(api_base_url, event_id, event=cat_nlloc,

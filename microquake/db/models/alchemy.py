@@ -25,6 +25,32 @@ processing = db.Table('processing', metadata,
                       db.Column('event_category', db.String(255)),
                       db.Column('event_status', db.String(255)))
 
+
+# class to store the ground velocity measure from the continous ground
+# vibration. The main purpose is for rapid alarming.
+
+input('salut')
+
+ground_velocity = db.Table('ground_velocity', metadata,
+                           db.Column('time', db.DateTime(timezone=True),
+                                     primary_key=True),
+                           db.Column('sensor_id', db.Integer),
+                           db.Column('ground_velocity_mm_s', db.Float))
+
+
+class Recording(Base):
+    __tablename__ = 'recordings'
+
+    time = Column(db.DateTime(timezone=True), primary_key=True)
+    end_time = Column(db.DateTime(timezone=True))
+    sensor_id = Column(db.Integer)
+    sensor_type_id = Column(db.Integer)
+    sample_count = Column(db.Integer)
+    sample_rate = Column(db.Float)
+    x = Column(db.Float)
+    y = Column(db.Float)
+    z = Column(db.Float)
+
 # class data_quality(Base):
 #     __tablename__ = 'data_quality'
 #
@@ -60,15 +86,5 @@ processing = db.Table('processing', metadata,
 #                      )
 
 
-class Recording(Base):
-    __tablename__ = 'recordings'
 
-    time = Column(db.DateTime(timezone=True), primary_key=True)
-    end_time = Column(db.DateTime(timezone=True))
-    sensor_id = Column(db.Integer)
-    sensor_type_id = Column(db.Integer)
-    sample_count = Column(db.Integer)
-    sample_rate = Column(db.Float)
-    x = Column(db.Float)
-    y = Column(db.Float)
-    z = Column(db.Float)
+
