@@ -118,9 +118,13 @@ def rotate_to_ENZ(st, inventory):
             # col2 = sta_meta_data[sta]['chans']['y'].cosines
             # col3 = sta_meta_data[sta]['chans']['z'].cosines
 
-            col1 = inventory.get_channel(sta=sta, cha='X').cosines
-            col2 = inventory.get_channel(sta=sta, cha='Y').cosines
-            col3 = inventory.get_channel(sta=sta, cha='Z').cosines
+            try:
+                col1 = inventory.get_channel(sta=sta, cha='X').cosines
+                col2 = inventory.get_channel(sta=sta, cha='Y').cosines
+                col3 = inventory.get_channel(sta=sta, cha='Z').cosines
+            except AttributeError as err:
+                logger.error(err)
+                continue
 
             A = np.column_stack((col1,col2,col3))
             At = A.transpose()
