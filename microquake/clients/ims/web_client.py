@@ -177,6 +177,8 @@ def get_continuous(base_url, start_datetime, end_datetime,
         chans = ['X', 'Y', 'Z']
 
         for i in range(len(newsigs)):
+            if np.all(np.isnan(newsigs[i])):
+                continue
             tr = Trace(data=newsigs[i])
             tr.stats.sampling_rate = sampling_rate
             tr.stats.network = str(network)
