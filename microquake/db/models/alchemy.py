@@ -29,8 +29,6 @@ processing = db.Table('processing', metadata,
 # class to store the ground velocity measure from the continous ground
 # vibration. The main purpose is for rapid alarming.
 
-input('salut')
-
 ground_velocity = db.Table('ground_velocity', metadata,
                            db.Column('time', db.DateTime(timezone=True),
                                      primary_key=True),
