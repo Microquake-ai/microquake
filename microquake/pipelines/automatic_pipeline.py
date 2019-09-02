@@ -79,7 +79,8 @@ def picker_election(location, event_time_utc, cat, stream):
     return cat_pickers[i_max], picker_types[i_max]
 
 
-def put_data_api(event_key, **kwargs):
+def put_data_api(event_id, **kwargs):
+    event_key = event_id
     event = get_event(event_key)
 
     event_id = event['catalogue'][0].event_resource_id.id
