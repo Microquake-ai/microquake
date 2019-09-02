@@ -74,8 +74,10 @@ def picker_election(location, event_time_utc, cat, stream):
     return cat_pickers[imax]
 
 
-def put_data_api(event_id, **kwargs):
-    event = get_event(event_id)
+def put_data_api(event_key, **kwargs):
+    event = get_event(event_key)
+
+    event_id = event['catalogue'][0].event_resource_id.id
 
     response = put_event_from_objects(api_base_url, event_id,
                                       event=event['catalogue'])
@@ -83,7 +85,7 @@ def put_data_api(event_id, **kwargs):
     if response.status_code != requests.codes.ok:
         logger.info('request failed, resending to the queue')
 
-        result = api_queue.submit_task(put_data_api, event_id=event_id)
+        result = api_queue.submit_task(put_data_api, event_id=event_key)
 
         return result
 
