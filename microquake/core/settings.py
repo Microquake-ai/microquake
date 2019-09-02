@@ -11,7 +11,7 @@ class Settings(LazySettings):
         Init function currently just initializes the object allowing
         """
         if "SPP_CONFIG" in os.environ:
-            # keep thpis as legacy behavior
+            # keep this as legacy behavior
             config_dir = os.environ['SPP_CONFIG']
         else:
             config_dir = os.getcwd()
@@ -64,12 +64,8 @@ class Settings(LazySettings):
         self.sensors = self.get('sensors')
 
         if self.sensors.source == 'local':
-            # MTH: let's read in the stationxml directly for now!
             fpath = os.path.join(self.common_dir, self.sensors.stationXML)
             self.inventory = Inventory.load_from_xml(fpath)
-
-            # fpath = os.path.join(settings.common_dir, sensors.path)
-            # self.inventory = load_inventory(fpath, format='CSV')
 
         elif self.sensors.get('sensors').source == 'remote':
             self.inventory = None

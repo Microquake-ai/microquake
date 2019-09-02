@@ -4,7 +4,7 @@ project_code = 'OT'
 site = 'Oyu Tolgoi'
 site_code = 'OT'
 network = 'Hugo North Ungerground Network'
-network_code = 'OTUG'
+network_code = 'OT'
 
 # nlloc
 nlloc.nll_base = 'NLL'
@@ -88,7 +88,6 @@ compute_velchange.coda_start_velocity = 3000.0
 compute_velchange.coda_end_sec = 0.8
 compute_velchange.whiten_corner_freqs = [90.0, 100.0, 300.0, 320.0]
 
-
 # parameter of the PPV vs Manitude relationship
 quick_magnitude.a = 1.2
 quick_magnitude.c = 1.1
@@ -119,6 +118,12 @@ picker.high_frequencies.p_wave.snr_window.noise = 0.005
 picker.high_frequencies.p_wave.snr_window.signal = 0.005
 picker.high_frequencies.s_wave.snr_window.noise = 0.005
 picker.high_frequencies.s_wave.snr_window.signal = 0.005
+picker.high_frequencies.p_wave.search_window.start = -100e-3        # start of search window relative to predicted arrival time (s)
+picker.high_frequencies.p_wave.search_window.end = 20e-3           # end of the search window relative to predicted arrival time (s)
+picker.high_frequencies.p_wave.search_window.resolution = 0.0005   # time resolution of search window (s)
+picker.high_frequencies.s_wave.search_window.start = -100e-3        # start of search window relative to predicted arrival time (s)
+picker.high_frequencies.s_wave.search_window.end = 20e-3           # end of the search window relative to predicted arrival time (s)
+picker.high_frequencies.s_wave.search_window.resolution = 0.0005   # time resolution of search window (s)
 
 picker.medium_frequencies.waveform_filter.frequency_min = 50
 picker.medium_frequencies.waveform_filter.frequency_max = 500
@@ -126,13 +131,26 @@ picker.medium_frequencies.p_wave.snr_window.noise = 0.01
 picker.medium_frequencies.p_wave.snr_window.signal = 0.01
 picker.medium_frequencies.s_wave.snr_window.noise = 0.01
 picker.medium_frequencies.s_wave.snr_window.signal = 0.01
+picker.medium_frequencies.p_wave.search_window.start = -100e-3        # start of search window relative to predicted arrival time (s)
+picker.medium_frequencies.p_wave.search_window.end = 20e-3           # end of the search window relative to predicted arrival time (s)
+picker.medium_frequencies.p_wave.search_window.resolution = 0.0005   # time resolution of search window (s)
+picker.medium_frequencies.s_wave.search_window.start = -100e-3        # start of search window relative to predicted arrival time (s)
+picker.medium_frequencies.s_wave.search_window.end = 20e-3           # end of the search window relative to predicted arrival time (s)
+picker.medium_frequencies.s_wave.search_window.resolution = 0.0005   # time resolution of search window (s)
 
-picker.low_frequencieswaveform_filter.frequency_min = 20
-picker.low_frequencieswaveform_filter.frequency_max = 200
+picker.low_frequencies.waveform_filter.frequency_min = 20
+picker.low_frequencies.waveform_filter.frequency_max = 200
 picker.low_frequencies.p_wave.snr_window.noise = 0.02
 picker.low_frequencies.p_wave.snr_window.signal = 0.02
 picker.low_frequencies.s_wave.snr_window.noise = 0.02
 picker.low_frequencies.s_wave.snr_window.signal = 0.02
+picker.low_frequencies.p_wave.search_window.start = -100e-3        # start of search window relative to predicted arrival time (s)
+picker.low_frequencies.p_wave.search_window.end = 20e-3           # end of the search window relative to predicted arrival time (s)
+picker.low_frequencies.p_wave.search_window.resolution = 0.0005   # time resolution of search window (s)
+picker.low_frequencies.s_wave.search_window.start = -100e-3        # start of search window relative to predicted arrival time (s)
+picker.low_frequencies.s_wave.search_window.end = 20e-3           # end of the search window relative to predicted arrival time (s)
+picker.low_frequencies.s_wave.search_window.resolution = 0.0005   # time resolution of search window (s)
+
 
 picker.second_pass.p_wave.search_window.start = -30e-3
 picker.second_pass.p_wave.search_window.end = 30e-3
