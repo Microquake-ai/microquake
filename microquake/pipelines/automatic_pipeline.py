@@ -31,30 +31,35 @@ def picker_election(location, event_time_utc, cat, stream):
     :return: a Catalog containing the response of the picker that performed
     best according to some logic described in this function.
     """
-    picker_hf_processor = picker.Processor(module_type='high_frequencies')
-    picker_mf_processor = picker.Processor(module_type='medium_frequencies')
-    picker_lf_processor = picker.Processor(module_type='low_frequencies')
 
-    response_hf = picker_hf_processor.process(stream=stream, location=location,
-                                              event_time_utc=event_time_utc)
-    response_mf = picker_mf_processor.process(stream=stream, location=location,
-                                              event_time_utc=event_time_utc)
-    response_lf = picker_lf_processor.process(stream=stream, location=location,
-                                              event_time_utc=event_time_utc)
+    picker_types = ['high_frequencies',
+                    'medium_frequencies',
+                    'low_frequencies']
+
+    picker_0_processor = picker.Processor(module_type=picker_types[0])
+    picker_1_processor = picker.Processor(module_type=picker_types[1])
+    picker_2_processor = picker.Processor(module_type=picker_types[2])
+
+    response_0 = picker_0_processor.process(stream=stream, location=location,
+                                            event_time_utc=event_time_utc)
+    response_1 = picker_1_processor.process(stream=stream, location=location,
+                                            event_time_utc=event_time_utc)
+    response_2 = picker_2_processor.process(stream=stream, location=location,
+                                            event_time_utc=event_time_utc)
 
     cat_pickers = []
 
-    if response_hf:
-        cat_picker_hf = picker_hf_processor.output_catalog(cat.copy())
-        cat_pickers.append(cat_picker_hf)
+    if response_0:
+        cat_picker_0 = picker_0_processor.output_catalog(cat.copy())
+        cat_pickers.append(cat_picker_0)
 
-    if response_mf:
-        cat_picker_mf = picker_mf_processor.output_catalog(cat.copy())
-        cat_pickers.append(cat_picker_mf)
+    if response_1:
+        cat_picker_1 = picker_1_processor.output_catalog(cat.copy())
+        cat_pickers.append(cat_picker_1)
 
-    if response_lf:
-        cat_picker_lf = picker_lf_processor.output_catalog(cat.copy())
-        cat_pickers.append(cat_picker_lf)
+    if response_2:
+        cat_picker_2 = picker_2_processor.output_catalog(cat.copy())
+        cat_pickers.append(cat_picker_2)
 
     if not cat_pickers:
         return False
@@ -69,9 +74,9 @@ def picker_election(location, event_time_utc, cat, stream):
                                                        len_arrivals[1],
                                                        len_arrivals[2]))
 
-    imax = np.argmax(len_arrivals)
+    i_max = np.argmax(len_arrivals)
 
-    return cat_pickers[imax]
+    return cat_pickers[i_max], picker_types[i_max]
 
 
 def put_data_api(event_key, **kwargs):
@@ -115,7 +120,8 @@ def automatic_pipeline(event_id, **kwargs):
     loc = cat[0].preferred_origin().loc
     event_time_utc = cat[0].preferred_origin().time
 
-    cat_picker = picker_election(loc, event_time_utc, cat, stream)
+    cat_picker, picker_type = picker_election(loc, event_time_utc, cat,
+                                              fixed_length)
 
     if not cat_picker:
         logger.warning('The picker did not return any picks! Marking the '
@@ -136,7 +142,7 @@ def automatic_pipeline(event_id, **kwargs):
 
     loc = cat_nlloc[0].preferred_origin().loc
     event_time_utc = cat_nlloc[0].preferred_origin().time
-    picker_sp_processor = picker.Processor(module_type='second_pass')
+    picker_sp_processor = picker.Processor(module_type=picker_type)
     response = picker_sp_processor.process(stream=fixed_length, location=loc,
                                            event_time_utc=event_time_utc)
 

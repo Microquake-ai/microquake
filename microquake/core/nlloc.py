@@ -293,9 +293,15 @@ def calculate_uncertainty(event, base_directory, base_name, perturbation=5,
     X = v[:, i[0]]  # major
     Y = v[:, i[1]]  # intermediate
     # Z = v[:, i[2]]  # minor
-    major_axis_plunge = np.arcsin(X[2] / np.sqrt(1 - X[2] ** 2))
-    major_axis_azimuth = np.arcsin(X[1] / np.sqrt(1 - X[2] ** 2))
-    major_axis_rotation = np.arcsin(-X[2])
+
+    X_H = np.sqrt(X[0] ** 2 + X[1] ** 2)
+    major_axis_plunge = np.arctan2(X[2], X_H)
+    major_axis_azimuth = np.arctan2(X[1], X[0])
+    major_axis_rotation = 0
+
+    # major_axis_plunge = np.arcsin(X[2] / np.sqrt(1 - X[2] ** 2))
+    # major_axis_azimuth = np.arcsin(X[1] / np.sqrt(1 - X[2] ** 2))
+    # major_axis_rotation = np.arcsin(-X[2])
     ce = obspy.core.event.ConfidenceEllipsoid(
         semi_major_axis_length=w[i[0]],
         semi_intermediate_axis_length=w[i[1]],
