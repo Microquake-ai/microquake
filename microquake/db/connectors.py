@@ -136,7 +136,6 @@ def record_processing_logs_pg(event, status, processing_step,
     :param processing_step: processing step name
     :param processing_step_id: processing step identifier integer
     :param processing_time_second: processing dealy for this step in seconds
-    :param processing_delay_second: processing time for this step in seconds
     :return:
     """
 
