@@ -1001,23 +1001,28 @@ class NLL(object):
         st = time()
         if use_ray_tracer:
             for arrival in origin.arrivals:
-                sensor_id = arrival.get_pick().waveform_id.station_code
-                phase = arrival.phase
-
-                fname = '%s.%s.%s.time' % (self.base_name, phase, sensor_id)
-
-                fpath = os.path.join(self.base_folder, 'time', fname)
-
-                ttg = read_grid(fpath, format='NLLOC')
-                ray = ray_tracer(ttg, origin.loc, grid_coordinates=False)
-
-                '''
-                dist = arrival.distance
-                pk = arrival.pick_id.get_referred_object()
-                sta = pk.waveform_id.station_code
-                '''
-
-                arrival.distance = ray.length()
+                try:
+                    sensor_id = arrival.get_pick().waveform_id.station_code
+                    phase = arrival.phase
+    
+                    fname = '%s.%s.%s.time' % (self.base_name, phase, sensor_id)
+    
+                    fpath = os.path.join(self.base_folder, 'time', fname)
+    
+                    ttg = read_grid(fpath, format='NLLOC')
+                    ray = ray_tracer(ttg, origin.loc, grid_coordinates=False)
+    
+                    '''
+                    dist = arrival.distance
+                    pk = arrival.pick_id.get_referred_object()
+                    sta = pk.waveform_id.station_code
+                    '''
+                    arrival.distance = ray.length()
+                except Exception as exc:
+                    logger.warning(
+                        f'Failed to calculate ray for sensor {sensor_id}'
+                        f' phase {phase}: {exc}', exc_info=True)
+                    arrival.distance = None
 
                 # print("nlloc read_hyp_loc: arr sta:%s pha:%s dist:%f ray_dist:%f" % \
                 # (sta, arrival.phase, dist, arrival.distance))
