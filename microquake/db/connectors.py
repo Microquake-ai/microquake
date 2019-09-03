@@ -136,7 +136,7 @@ def record_processing_logs_pg(event, status, processing_step,
     :param processing_step: processing step name
     :param processing_step_id: processing step identifier integer
     :param processing_time_second: processing dealy for this step in seconds
-    :param processing_time_second: processing time for this step in seconds
+    :param processing_delay_second: processing time for this step in seconds
     :return:
     """
 
@@ -147,12 +147,12 @@ def record_processing_logs_pg(event, status, processing_step,
 
     event_time = origin.time.datetime.replace(tzinfo=utc)
 
-    processing_time = datetime.utcnow().replace(tzinfo=utc)
-    processing_delay_second = (processing_time - event_time).total_seconds()
+    current_time = datetime.utcnow().replace(tzinfo=utc)
+    processing_delay_second = (current_time - event_time).total_seconds()
 
     document = {'event_id': event.resource_id.id,
                 'event_timestamp': event_time,
-                'processing_timestamp': processing_time,
+                'processing_timestamp': current_time,
                 'processing_step_name': processing_step,
                 'processing_step_id': processing_step_id,
                 'processing_delay_second': processing_delay_second,

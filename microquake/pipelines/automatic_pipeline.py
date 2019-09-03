@@ -3,16 +3,20 @@ from io import BytesIO
 import numpy as np
 import requests
 from obspy.core.event import Catalog
+from time import time
 
 from loguru import logger
 from microquake.clients.api_client import put_event_from_objects, reject_event
 from microquake.core.event import Event
 from microquake.core.settings import settings
-from microquake.db.connectors import RedisQueue
+from microquake.db.connectors import RedisQueue, record_processing_logs_pg
 from microquake.db.models.redis import get_event, set_event
 from microquake.processors import (clean_data, focal_mechanism, magnitude,
                                    measure_amplitudes, measure_energy,
                                    measure_smom, nlloc, picker)
+
+__processing_step__ = 'automatic processing'
+__processing_step_id__ = 3
 
 api_base_url = settings.get('api_base_url')
 
@@ -80,6 +84,9 @@ def picker_election(location, event_time_utc, cat, stream):
 
 
 def put_data_api(event_id, **kwargs):
+    processing_step = 'update_event_api'
+    processing_step_id = 5
+    processing_start_time = time()
     event_key = event_id
     event = get_event(event_key)
 
@@ -93,7 +100,16 @@ def put_data_api(event_id, **kwargs):
 
         result = api_queue.submit_task(put_data_api, event_id=event_key)
 
+        processing_end_time = time()
+        processing_time = processing_end_time - processing_start_time
+        record_processing_logs_pg(event, 'success', processing_step,
+                                  processing_step_id, processing_time)
+
         return result
+
+
+def extract_magnitude_info(cat):
+    pass
 
 
 def automatic_pipeline(event_id, **kwargs):
@@ -103,6 +119,8 @@ def automatic_pipeline(event_id, **kwargs):
     :param catalogue: catalog object encoded in quakeml
     :return:
     """
+
+    start_processing_time = time()
 
     event = get_event(event_id)
     stream = event['fixed_length']
@@ -201,6 +219,13 @@ def automatic_pipeline(event_id, **kwargs):
 
     set_event(event_id, catalogue=cat_magnitude_f)
     api_queue.submit_task(put_data_api, event_id=event_id)
-    # put_event_from_objects(api_base_url, event_id, event=cat_magnitude_f)
+    end_processing_time = time()
+
+    processing_time = end_processing_time - start_processing_time
+
+    record_processing_logs_pg(cat_magnitude_f, 'success', __processing_step__,
+                              __processing_step_id__, processing_time)
+
+    extract_magnitude_info(cat_magnitude_f)
 
     return cat_magnitude_f
