@@ -90,7 +90,7 @@ def put_data_api(event_id, **kwargs):
     event_key = event_id
     event = get_event(event_key)
 
-    event_id = event['catalogue'][0].event_resource_id.id
+    event_id = event['catalogue'][0].resource_id.id
 
     response = put_event_from_objects(api_base_url, event_id,
                                       event=event['catalogue'])
