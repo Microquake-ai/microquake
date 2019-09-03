@@ -102,8 +102,9 @@ def put_data_api(event_id, **kwargs):
 
         processing_end_time = time()
         processing_time = processing_end_time - processing_start_time
-        record_processing_logs_pg(event, 'success', processing_step,
-                                  processing_step_id, processing_time)
+        record_processing_logs_pg(event['catalogue'], 'success',
+                                  processing_step, processing_step_id,
+                                  processing_time)
 
         return result
 
