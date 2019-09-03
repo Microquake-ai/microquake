@@ -25,7 +25,8 @@ processing = db.Table('processing', metadata,
                       db.Column('processing_completed_timestamp',
                                 db.Float),
                       db.Column('event_category', db.String(255)),
-                      db.Column('event_status', db.String(255)))
+                      db.Column('event_status', db.String(255)),
+                      db.Column('event_magnitude', db.Integer))
 
 
 # class to store the ground velocity measure from the continous ground

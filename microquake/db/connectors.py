@@ -139,6 +139,9 @@ def record_processing_logs_pg(event, status, processing_step,
     :return:
     """
 
+    if 'catalog' in str(type(event)).lower():
+        event = event[0]
+
     origin = event.preferred_origin()
 
     if origin is None:
