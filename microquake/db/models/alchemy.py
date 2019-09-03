@@ -11,8 +11,10 @@ processing_logs = db.Table('processing_logs', metadata,
                             db.Column('processing_timestamp', db.DateTime),
                             db.Column('processing_step_name', db.String(255)),
                             db.Column('processing_step_id', db.Integer),
-                            db.Column('processing_delay_second', db.Float),
-                            db.Column('processing_time_second', db.Float),
+                            db.Column('processing_delay_second', db.Float(
+                                precision=8)),
+                            db.Column('processing_time_second', db.Float(
+                                precision=8)),
                             db.Column('processing_status', db.String(255)))
 
 processing = db.Table('processing', metadata,
