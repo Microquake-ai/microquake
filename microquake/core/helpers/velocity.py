@@ -88,8 +88,8 @@ def create_velocities():
     vp.data[:, :, :zis[2]] = Vp_z[2]
     vs.data[:, :, :zis[2]] = Vs_z[2]
 
+    # TODO this block looks unused to me, should we use it?
     (lx, ly, lz) = vp.shape
-
     x = [vp.transform_from(np.array([x_, 0, 0]))[0] for x_ in range(0, lx)]
     y = [vp.transform_from(np.array([0, y_, 0]))[1] for y_ in range(0, ly)]
     z = [vp.transform_from(np.array([0, 0, z_]))[2] for z_ in range(0, lz)]
