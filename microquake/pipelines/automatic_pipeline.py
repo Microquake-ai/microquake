@@ -95,18 +95,18 @@ def put_data_api(event_id, **kwargs):
     response = put_event_from_objects(api_base_url, event_id,
                                       event=event['catalogue'])
 
-    if response.status_code != requests.codes.ok:
-        logger.info('request failed, resending to the queue')
+    # if response.status_code != requests.codes.ok:
+    #     logger.info('request failed, resending to the queue')
 
-        result = api_queue.submit_task(put_data_api, event_id=event_key)
+    #     result = api_queue.submit_task(put_data_api, event_id=event_key)
 
-        processing_end_time = time()
-        processing_time = processing_end_time - processing_start_time
-        record_processing_logs_pg(event['catalogue'], 'success',
-                                  processing_step, processing_step_id,
-                                  processing_time)
+    #     processing_end_time = time()
+    #     processing_time = processing_end_time - processing_start_time
+    #     record_processing_logs_pg(event['catalogue'], 'success',
+    #                               processing_step, processing_step_id,
+    #                               processing_time)
 
-        return result
+    #     return result
 
 
 def extract_magnitude_info(cat):

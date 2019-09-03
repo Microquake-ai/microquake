@@ -336,8 +336,15 @@ def calculate_energy_from_flux(cat,
                 S_energy.append(energy)
 
         E = np.median(P_energy) + np.median(S_energy)
-        nvals = len(S_energy)
-        comment = 'Energy [N-m] calculated from sum of median P + median S energy'
+        nvals = len(S_energy) + len(P_energy)
+        comment = 'Energy [N-m] calculated from sum of median P + median S ' \
+                  'energy'
+        comment_ep = 'Ep:{}, std_Ep:{}'.format(np.median(P_energy),
+                                               np.std(P_energy))
+        comment_ep = '{' + comment_ep + '}'
+        comment_es = 'Es:{}, std_Es:{}'.format(np.median(S_energy),
+                                               np.std(S_energy))
+        comment_es = '{' + comment_es + '}'
 
         if E > 0:
             # Note: this is not a "mag" (there is no log10).
@@ -348,7 +355,9 @@ def calculate_energy_from_flux(cat,
                                    magnitude_type='E',
                                    station_count=nvals,
                                    evaluation_mode='automatic',
-                                   comments=[Comment(text=comment)],
+                                   comments=[Comment(text=comment),
+                                             Comment(text=comment_es),
+                                             Comment(text=comment_ep)],
                                    )
 
             event.magnitudes.append(energy_mag)
