@@ -5,7 +5,7 @@ Base = declarative_base()
 from sqlalchemy import Column, Integer, String
 
 processing_logs = db.Table('processing_logs', metadata,
-                           db.Column(id, db.Integer, primary_key=True),
+                           db.Column('id', db.Integer, primary_key=True),
                            db.Column('event_id', db.String(255)),
                            db.Column('event_timestamp', db.DateTime),
                            db.Column('processing_timestamp', db.DateTime),
