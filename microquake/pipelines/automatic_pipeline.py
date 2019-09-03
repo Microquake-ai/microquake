@@ -184,7 +184,6 @@ def automatic_pipeline(event_id, **kwargs):
     cat_nlloc.write(bytes_out, format='QUAKEML')
 
     # send to data base
-    cat_nlloc[0].resource_id = event_id
 
     set_event(event_id, catalogue=cat_nlloc)
     api_queue.submit_task(put_data_api, event_id=event_id)
@@ -215,8 +214,6 @@ def automatic_pipeline(event_id, **kwargs):
     magnitude_f_processor = magnitude.Processor(module_type='frequency')
     cat_magnitude_f = magnitude_f_processor.process(cat=cat_magnitude,
                                                     stream=fixed_length)['cat']
-
-    cat_magnitude_f[0].resource_id = event_id
 
     set_event(event_id, catalogue=cat_magnitude_f)
     api_queue.submit_task(put_data_api, event_id=event_id)
