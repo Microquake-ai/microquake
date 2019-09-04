@@ -1,9 +1,10 @@
 [tool.poetry]
 name = "microquake"
-version = "0.1.67"
+version = "0.1.72"
 description = "Python library that is an extension/expansion/adaptation of ObsPy to microseismic data"
 authors = ["Your Name <you@example.com>"]
 license = "GPL-3.0"
+include = ["HISTORY.md", "microquake/core/settings.toml"]
 keywords = [
     "seismology",
     "mining",
@@ -30,7 +31,7 @@ name = "microquake"
 url = "https://pkg.microquake.org/simple/"
 
 [tool.poetry.dependencies]
-python = "^3.6 || ^3.7"
+python = "^3.7"
 obspy = "^1.1"
 numpy = "^1.16"
 pytz = "^2019.1"

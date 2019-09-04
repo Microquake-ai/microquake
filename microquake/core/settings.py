@@ -53,9 +53,9 @@ class Settings(LazySettings):
             self.common_dir = self.SPP_COMMON
         elif hasattr(self, "COMMON"):
             self.common_dir = self.COMMON
-
-        if not self.get('common_dir', ''):
-            logger.warning("Missing SPP_COMMON in env")
+        else:
+            logger.warning("No SPP_COMMON in env, defaulting to the current directory")
+            self.common_dir = os.path.join(os.getcwd(), 'common')
 
         self.nll_base = os.path.join(self.common_dir,
                                      self.get('nlloc').nll_base)
