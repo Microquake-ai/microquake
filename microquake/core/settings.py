@@ -54,6 +54,7 @@ class Settings(LazySettings):
         elif hasattr(self, "COMMON"):
             self.common_dir = self.COMMON
         else:
+            logger.warning("No SPP_COMMON in env, defaulting to the current directory")
             self.common_dir = os.path.join(os.getcwd(), 'common')
 
         self.nll_base = os.path.join(self.common_dir,
