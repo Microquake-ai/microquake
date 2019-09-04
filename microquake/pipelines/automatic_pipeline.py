@@ -13,7 +13,8 @@ from microquake.db.connectors import RedisQueue, record_processing_logs_pg
 from microquake.db.models.redis import get_event, set_event
 from microquake.processors import (clean_data, focal_mechanism, magnitude,
                                    measure_amplitudes, measure_energy,
-                                   measure_smom, nlloc, picker)
+                                   measure_smom, nlloc, picker,
+                                   magnitude_extractor)
 
 __processing_step__ = 'automatic processing'
 __processing_step_id__ = 3
@@ -107,10 +108,6 @@ def put_data_api(event_id, **kwargs):
     #                               processing_time)
 
     #     return result
-
-
-def extract_magnitude_info(cat):
-    pass
 
 
 def automatic_pipeline(event_id, **kwargs):
@@ -223,6 +220,11 @@ def automatic_pipeline(event_id, **kwargs):
 
     record_processing_logs_pg(cat_magnitude_f, 'success', __processing_step__,
                               __processing_step_id__, processing_time)
+
+
+    magnitude = magnitude_extractor.Processor().process(cat_magnitude_f)
+    # send the magnitude info to the API
+
 
     extract_magnitude_info(cat_magnitude_f)
 
