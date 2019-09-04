@@ -4,7 +4,7 @@ version = "0.1.71"
 description = "Python library that is an extension/expansion/adaptation of ObsPy to microseismic data"
 authors = ["Your Name <you@example.com>"]
 license = "GPL-3.0"
-include = ["HISTORY.md", "settings.toml"]
+include = ["HISTORY.md", "microquake/core/settings.toml"]
 keywords = [
     "seismology",
     "mining",
