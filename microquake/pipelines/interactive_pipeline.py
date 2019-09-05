@@ -31,44 +31,44 @@ def prepare_catalog(ui_picks, catalog):
     new_origin.method_id = ResourceIdentifier("PICKER_FOR_HOLDING_ARRIVALS")
 
     for arrival in ui_picks['data']:
-        for key in arrival.keys():
-            if key == 'pick':
-                # Determine if a pick needs to be appended to the pick list
-                temp_pick = arrival['pick']
-                date_time = UTCDateTime(parse(temp_pick['time_utc']))
-                temp_pick['time'] = UTCDateTime(date_time)
-                waveform_id = WaveformStreamID(
-                    network_code=settings.NETWORK_CODE,
-                    station_code=temp_pick['station'])
+        if 'pick' not in arrival.keys():
+            continue
+        # Determine if a pick needs to be appended to the pick list
+        temp_pick = arrival['pick']
+        date_time = UTCDateTime(parse(temp_pick['time_utc']))
+        temp_pick['time'] = UTCDateTime(date_time)
+        waveform_id = WaveformStreamID(
+            network_code=settings.NETWORK_CODE,
+            station_code=temp_pick['station'])
 
-                if 'pick_resource_id' not in arrival['pick'].keys():
-                    # create new pick and append the pick to the pick list
-                    new_pick = Pick(**temp_pick)
-                    cat[0].picks.append(new_pick)
-                    cat[0].picks[-1].waveform_id = waveform_id
-                    new_arrival = Arrival()
-                    new_arrival.phase = arrival['phase']
-                    new_arrival.pick_id = new_pick.resource_id
+        if 'pick_resource_id' not in arrival['pick'].keys():
+            # create new pick and append the pick to the pick list
+            new_pick = Pick(**temp_pick)
+            cat[0].picks.append(new_pick)
+            cat[0].picks[-1].waveform_id = waveform_id
+            new_arrival = Arrival()
+            new_arrival.phase = arrival['phase']
+            new_arrival.pick_id = new_pick.resource_id
+            new_origin.arrivals.append(new_arrival)
+            new_origin.arrivals.append(new_arrival)
+
+        else:
+            for pk_cat in cat[0].picks:
+                if temp_pick['pick_resource_id'] == pk_cat.resource_id:
+                    if temp_pick['time'] == pk_cat.time or temp_pick[
+                            'phase_hint'] == pk_cat.phase_hint:
+                        # do not create a new pick
+                        new_arrival = Arrival(phase=arrival['phase'],
+                                              pick_id=pk_cat.resource_id)
+                    else:
+                        new_pick = pk_cat.copy()
+                        new_pick.resource_id = ResourceIdentifier()
+                        new_pick.time = temp_pick['time']
+                        new_pick.phase_hint = temp_pick['phase_hint']
+                        new_arrival = Arrival(phase=temp_pick[
+                            'phase_hint', ])
+
                     new_origin.arrivals.append(new_arrival)
-                    new_origin.arrivals.append(new_arrival)
-
-                else:
-                    for pk_cat in cat[0].picks:
-                        if temp_pick['pick_resource_id'] == pk_cat.resource_id:
-                            if temp_pick['time'] == pk_cat.time or temp_pick[
-                                    'phase_hint'] == pk_cat.phase_hint:
-                                # do not create a new pick
-                                new_arrival = Arrival(phase=arrival['phase'],
-                                                      pick_id=pk_cat.resource_id)
-                            else:
-                                new_pick = pk_cat.copy()
-                                new_pick.resource_id = ResourceIdentifier()
-                                new_pick.time = temp_pick['time']
-                                new_pick.phase_hint = temp_pick['phase_hint']
-                                new_arrival = Arrival(phase=temp_pick[
-                                    'phase_hint', ])
-
-                            new_origin.arrivals.append(new_arrival)
 
     cat[0].origins.append(new_origin)
     cat[0].preferred_origin_id = new_origin.resource_id.id
