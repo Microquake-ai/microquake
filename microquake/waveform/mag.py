@@ -6,6 +6,7 @@
 import warnings
 
 import numpy as np
+from microquake.core.event import Pick
 from obspy.core.event import Comment, ResourceIdentifier, WaveformStreamID
 from obspy.core.event.magnitude import Magnitude, StationMagnitude, StationMagnitudeContribution
 
@@ -153,10 +154,14 @@ def calc_magnitudes_from_lambda(cat,
         # for sta in sorted([sta for sta in st.unique_stations()],
                     # key=lambda x: int(x)):
 
-        pk = arr.pick_id.get_referred_object()
-        sta = pk.waveform_id.station_code
-        cha = pk.waveform_id.channel_code
-        net = pk.waveform_id.network_code
+        try:
+            pk = arr.pick_id.get_referred_object()
+            sta = pk.waveform_id.station_code
+            cha = pk.waveform_id.channel_code
+            net = pk.waveform_id.network_code
+        except AttributeError:
+            logger.warning('Missing data on arrival', exc_info=True)
+            continue
 
         fs_factor = 1.
 
@@ -271,8 +276,14 @@ def calculate_energy_from_flux(cat,
         S_energy = []
 
         for arr in origin.arrivals:
-            pk = arr.pick_id.get_referred_object()
-            sta = pk.waveform_id.station_code
+            pk = Pick(arr.get_pick())
+            try:
+                sta = pk.waveform_id.station_code
+            except AttributeError:
+                logger.warning(
+                    f'Cannot get station for arrival "{arr.resource_id}"'
+                    f' for event "{event.resource_id}".')
+                continue
             phase = arr.phase
 
             velocity = vp

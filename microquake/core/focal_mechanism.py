@@ -56,10 +56,15 @@ def calc(cat, settings):
 
         for arr in arrivals:
 
+            if not arr.get_pick():
+                logger.warning(
+                    f"Missing pick for arrival {arr.resource_id} on"
+                    f" event {event.resource_id}")
+                continue
+
             if arr.pulse_snr is None:
                 logger.warning("%s P arr pulse_snr == NONE !!!" %
                                arr.pick_id.get_referred_object().waveform_id.station_code)
-
                 continue
 
             sname.append(arr.pick_id.get_referred_object().waveform_id.station_code)
