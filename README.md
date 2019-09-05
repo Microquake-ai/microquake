@@ -6,6 +6,7 @@ Microquake is an open source package to be licensed under the [GNU general Publi
 
 ```
 pip install poetry
+poetry config http-basic.microquake {user} {password}
 poetry install
 ```
 

@@ -272,6 +272,23 @@ type = "legacy"
 url = "https://pkg.microquake.org/simple"
 
 [[package]]
+category = "main"
+description = "MTH: seismic/acoustic instrument response lib"
+name = "instresp"
+optional = false
+python-versions = "*"
+version = "0.1.1"
+
+[package.dependencies]
+matplotlib = "*"
+numpy = "*"
+
+[package.source]
+reference = "microquake"
+type = "legacy"
+url = "https://pkg.microquake.org/simple"
+
+[[package]]
 category = "dev"
 description = "IPython: Productive Interactive Computing"
 name = "ipython"
@@ -992,7 +1009,7 @@ type = "legacy"
 url = "https://pkg.microquake.org/simple"
 
 [metadata]
-content-hash = "ec23c86ec594dcc40c9f702604e5c7ff39eab14ea954c6cc3848ffbb68d25700"
+content-hash = "1a303474236ce2b954a32d6e875214e53d44398ca2b68f986316371bdd271656"
 python-versions = "^3.6 || ^3.7"
 
 [metadata.hashes]
@@ -1015,6 +1032,7 @@ fakeredis = ["3abb2dc34de78930514e8aa5c90ee81d38681180875d87c5b6ae56de348d9ed8",
 future = ["67045236dcfd6816dc439556d009594abf643e5eb48992e36beac09c2ca659b8"]
 idna = ["c357b3f628cf53ae2c4c05627ecc484553142ca23264e593d327bcde5e9c3407", "ea8b7f6188e6fa117537c3df7da9fc686d485087abf6ac197f9c46432f7e4a3c"]
 importlib-metadata = ["9ff1b1c5a354142de080b8a4e9803e5d0d59283c93aed808617c787d16768375", "b7143592e374e50584564794fcb8aaf00a23025f9db866627f89a21491847a8d"]
+instresp = ["c5b67d41993b248924f066d78e7be42c27f98f0f26a82546989d4654c592d3f0"]
 ipython = ["c4ab005921641e40a68e405e286e7a1fcc464497e14d81b6914b4fd95e5dee9b", "dd76831f065f17bddd7eaa5c781f5ea32de5ef217592cf019e34043b56895aa1"]
 ipython-genutils = ["72dd37233799e619666c9f639a9da83c34013a73e8bbc79a7a6348d93c61fab8", "eb2e116e75ecef9d4d228fdc66af54269afa26ab4463042e33785b887c628ba8"]
 jedi = ["786b6c3d80e2f06fd77162a07fed81b8baa22dde5d62896a790a331d6ac21a27", "ba859c74fa3c966a22f2aeebe1b74ee27e2a462f56d3f5f7ca4a59af61bfe42e"]
