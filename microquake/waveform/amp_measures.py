@@ -16,6 +16,7 @@ import numpy as np
 from scipy.fftpack import rfft
 
 from microquake.core.data.inventory import get_sensor_type_from_trace
+from microquake.core.event import Pick
 from microquake.core.stream import Stream
 from microquake.core.util.tools import copy_picks_to_dict
 from microquake.waveform.parseval_utils import npow2, unpack_rfft
@@ -65,7 +66,7 @@ def measure_pick_amps(st_in, cat, phase_list=None,
             origin = event.preferred_origin() if event.preferred_origin() else event.origins[0]
 
             for arr in origin.arrivals:
-                pk = arr.get_pick()
+                pk = Pick(arr.get_pick())
 
                 if not pk:
                     continue
@@ -173,7 +174,7 @@ def measure_velocity_pulse(st,
             if phase not in phase_list:
                 continue
 
-            pk = arr.get_pick()
+            pk = Pick(arr.get_pick())
 
             if pk is None:
                 logger.error("%s: arr pha:%s id:%s --> Lost reference to pick id:%s --> SKIP" %
@@ -320,7 +321,7 @@ def measure_displacement_pulse(st,
             if phase not in phase_list:
                 continue
 
-            pk = arr.get_pick()
+            pk = Pick(arr.get_pick())
 
             if pk is None:
                 logger.error("%s: arr pha:%s id:%s --> Lost reference to pick id:%s --> SKIP" %
@@ -780,7 +781,7 @@ def calc_velocity_flux(st_in,
             if phase not in phase_list:
                 continue
 
-            pick = arr.get_pick()
+            pick = Pick(arr.get_pick())
 
             if pick is None:
                 logger.error("%s: arr pha:%s id:%s --> Lost reference to pick id:%s --> SKIP" %
