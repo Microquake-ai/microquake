@@ -9,8 +9,11 @@ from instResp.libInst import get_corner_freq_from_pole, getResponse
 from instResp.libNom import RC, WA, Accelerometer
 from instResp.plotResp import plotResponse
 from loguru import logger
-from microquake.core.data.inventory import (Inventory, load_inventory, load_inventory_from_excel,
-                                            test_print_OT_xml_summary)
+from microquake.core.data.inventory import (
+    Inventory,
+    load_inventory_from_excel,
+    test_print_OT_xml_summary
+)
 from microquake.core.data.response_utils import read_cable_file, read_sensor_types_file
 
 ns_tag = 'mq'
@@ -145,6 +148,9 @@ def write_OT_xml(sensor_file, sensor_type_file, cable_file, xml_outfile='OT.xml'
     '''
     Deprecated - used when network metadata was spread over individual csv files
     '''
+    # This import will fail as load_inventory not anymore here
+    from microquake.core.data.inventory import load_inventory
+    # <MV 190905>
 
     print("write_OT_xml: xml_outfile=%s" % xml_outfile)
 
