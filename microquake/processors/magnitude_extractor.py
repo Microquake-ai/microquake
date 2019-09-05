@@ -32,21 +32,21 @@ class Processor(ProcessingUnit):
         dict_out['energy_s_joule'] = energy_s_dict['Es']
         dict_out['energy_s_std'] = energy_s_dict['std_Es']
 
-        dict_out['corner_frequency_P_Hz'] = None
-        dict_out['corner_frequency_S_Hz'] = None
+        dict_out['corner_frequency_p_hz'] = None
+        dict_out['corner_frequency_s_hz'] = None
         cfs = []
         for comment in cat[0].preferred_origin().comments:
-            if 'corner_frequency_P' or 'corner_frequency_S' in comment:
+            if 'corner_frequency_p' or 'corner_frequency_s' in comment:
                 cf_string = cat[0].preferred_origin().comments[0].text
                 cf = float(cf_string.split('=')[1].split(' ')[0])
                 if '_P' in comment:
-                    dict_out['corner_frequency_P_Hz'] = cf
+                    dict_out['corner_frequency_p_hz'] = cf
                 else:
-                    dict_out['corner_frequency_S_Hz'] = cf
+                    dict_out['corner_frequency_s_hz'] = cf
                 cfs.append(cf)
 
         cf = np.mean(cfs)
-        dict_out['corner_frequency_Hz'] = cf
+        dict_out['corner_frequency_hz'] = cf
 
         td_magnitude = cat[0].magnitudes[-2].mag
         fd_magnitude = cat[0].magnitudes[-1].mag
@@ -59,12 +59,12 @@ class Processor(ProcessingUnit):
         sm = 10 ** (3 / 2 * mw + 6.02)
         dict_out['seismic_moment'] = sm
         potency = sm / mu
-        dict_out['potency_m**3'] = potency
-        dict_out['source_volume_m**3'] = potency
+        dict_out['potency_m3'] = potency
+        dict_out['source_volume_m3'] = potency
         dict_out['apparent_stress'] = 2 * energy / potency
 
         ssd = calc_static_stress_drop(mw, cf)
-        dict_out['static_stress_drop_MPa'] = ssd
+        dict_out['static_stress_drop_mpa'] = ssd
         dict_out['origin_id'] = cat[0].preferred_magnitude().resource_id.id
 
         return dict_out

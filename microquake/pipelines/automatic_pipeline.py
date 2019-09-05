@@ -7,7 +7,8 @@ from time import time
 
 from loguru import logger
 from microquake.clients.api_client import put_event_from_objects, reject_event
-from microquake.core.event import Event
+from microquake.core.event import Event, Magnitude
+from obspy.core.event import Comment
 from microquake.core.settings import settings
 from microquake.db.connectors import RedisQueue, record_processing_logs_pg
 from microquake.db.models.redis import get_event, set_event
@@ -129,10 +130,37 @@ def automatic_pipeline(event_id, **kwargs):
     else:
         cat = event['catalogue']
 
+    return automatic_processor(cat, stream)
+
+
+def automatic_pipeline_api(event_id, **kwargs):
+    """
+    automatic pipeline
+    :param fixed_length: fixed length stream encoded as mseed
+    :param catalogue: catalog object encoded in quakeml
+    :return:
+    """
+
+    start_processing_time = time()
+
+    event = get_event(event_id)
+    stream = event['fixed_length']
+
+    if event['catalogue'] is None:
+        logger.info('No catalog was provided creating new')
+        cat = Catalog(events=[Event()])
+    else:
+        cat = event['catalogue']
+
+    return automatic_processor(cat, stream)
+
+
+def automatic_processor(cat, stream):
+
     logger.info('removing traces for sensors in the black list, or are '
                 'filled with zero, or contain NaN')
     clean_data_processor = clean_data.Processor()
-    fixed_length = clean_data_processor.process(waveform=event['fixed_length'])
+    fixed_length = clean_data_processor.process(waveform=stream)
 
     loc = cat[0].preferred_origin().loc
     event_time_utc = cat[0].preferred_origin().time
@@ -190,7 +218,8 @@ def automatic_pipeline(event_id, **kwargs):
 
     measure_amplitudes_processor = measure_amplitudes.Processor()
     cat_amplitude = measure_amplitudes_processor.process(cat=cat_nlloc,
-                                                         stream=fixed_length)['cat']
+                                                         stream=fixed_length)[
+        'cat']
 
     smom_processor = measure_smom.Processor()
     cat_smom = smom_processor.process(cat=cat_amplitude,
@@ -221,11 +250,16 @@ def automatic_pipeline(event_id, **kwargs):
     record_processing_logs_pg(cat_magnitude_f, 'success', __processing_step__,
                               __processing_step_id__, processing_time)
 
-
     magnitude = magnitude_extractor.Processor().process(cat_magnitude_f)
     # send the magnitude info to the API
 
+    origin_id = cat_magnitude_f[0].preferred_origin()
+    corner_frequency = cat_magnitude_f[0].preferred_origin().comments[0]
+    mag = Magnitude(mag=magnitude['moment_magnitude'], magnitude_type='Mw',
+                    origin_id=origin_id, evaluation_mode='automatic',
+                    evaluation_status='preliminary',
+                    comments=[corner_frequency])
 
-    extract_magnitude_info(cat_magnitude_f)
-
-    return cat_magnitude_f
+    cat_magnitude_f[0].magnitudes.append(mag)
+    cat_magnitude_f[0].preferred_magnitude_id = mag.resource_id
+    return cat_nlloc, magnitude
