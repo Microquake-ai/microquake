@@ -53,6 +53,12 @@ class Processor(ProcessingUnit):
 
         for magnitude in reversed(cat[0].magnitudes):
 
+            if len(magnitude.comments) == 0:
+                continue
+
+            if len(magnitude.comments) == 0:
+                continue
+
             if 'time domain station magnitudes' in magnitude.comments[0]:
                 td_magnitude = magnitude
                 dict_out['time_domain_moment_magnitude'] = td_magnitude
@@ -60,6 +66,9 @@ class Processor(ProcessingUnit):
                 break
 
         for magnitude in reversed(cat[0].magnitudes):
+
+            if len(magnitude.comments) == 0:
+                continue
 
             if 'frequency domain station magnitudes' in magnitude.comments[0]:
                 fd_magnitude = magnitude
