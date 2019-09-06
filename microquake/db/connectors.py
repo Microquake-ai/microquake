@@ -15,9 +15,6 @@ from redis import ConnectionPool, Redis
 from rq import Queue
 from walrus import Walrus
 
-db_name = settings.POSTGRES_DB_NAME
-postgres_url = settings.POSTGRES_URL + db_name
-
 
 def connect_redis():
     return RedisWrapper().redis_connect(url=settings.REDIS_WALRUS_URL)
@@ -65,6 +62,9 @@ def connect_rq(message_queue):
 
 def connect_postgres():
 
+    db_name = settings.POSTGRES_DB_NAME
+    postgres_url = settings.POSTGRES_URL + db_name
+
     engine = db.create_engine(postgres_url)
     connection = engine.connect()
     # Create tables if they do not exist
@@ -74,6 +74,10 @@ def connect_postgres():
 
 
 def create_postgres_session():
+
+    db_name = settings.POSTGRES_DB_NAME
+    postgres_url = settings.POSTGRES_URL + db_name
+
     engine = db.create_engine(postgres_url)
     pg = connect_postgres()
     Session = sessionmaker(bind=engine)

@@ -3,11 +3,11 @@ from io import BytesIO
 from microquake.core import read, read_events
 from microquake.db.connectors import connect_redis
 
-redis_connector = connect_redis()
-
 
 def set_event(event_id, catalogue=None, fixed_length=None, context=None,
               variable_length=None, ttl=10800):
+
+    redis_connector = connect_redis()
     event = redis_connector.Hash(event_id)
 
     if catalogue is not None:
@@ -36,6 +36,8 @@ def set_event(event_id, catalogue=None, fixed_length=None, context=None,
 
 
 def get_event(event_id):
+
+    redis_connector = connect_redis()
     event = redis_connector.Hash(event_id)
 
     dict_in = {}

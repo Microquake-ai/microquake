@@ -8,11 +8,12 @@ from obspy import read_events, UTCDateTime
 from obspy.core.event import CreationInfo, ResourceIdentifier, WaveformStreamID
 
 from microquake.core import read
-from microquake.core.event import Arrival, Origin, Pick
+from microquake.core.event import Arrival, Origin, Pick, Magnitude
 from microquake.core.settings import settings
-from microquake.processors import (
-    focal_mechanism, magnitude, measure_amplitudes, measure_energy,
-    measure_smom, nlloc)
+from microquake.processors import (focal_mechanism, magnitude,
+                                   measure_amplitudes, measure_energy,
+                                   measure_smom, nlloc, magnitude_extractor,
+                                   quick_magnitude)
 
 
 def prepare_catalog(ui_picks, catalog):
@@ -109,31 +110,49 @@ def interactive_pipeline(
     # Removing the Origin object used to hold the picks
     del cat_nlloc[0].origins[-2]
 
+    quick_magnitude_processor = quick_magnitude.Processor()
+    quick_magnitude_processor.process(stream=stream, cat=cat_nlloc)
+    cat_qm = quick_magnitude_processor.output_catalog(cat_nlloc)
+
     bytes_out = BytesIO()
     cat_nlloc.write(bytes_out, format='QUAKEML')
 
-    measure_amplitudes_processor = measure_amplitudes.Processor()
-    cat_amplitude = measure_amplitudes_processor.process(
-        cat=cat_nlloc, stream=stream)['cat']
+    m_amp_processor = measure_amplitudes.Processor()
+    cat_amplitude = m_amp_processor.process(cat=cat_qm,
+                                            stream=stream)['cat']
 
     smom_processor = measure_smom.Processor()
-    cat_smom = smom_processor.process(
-        cat=cat_amplitude, stream=stream)['cat']
+    cat_smom = smom_processor.process(cat=cat_amplitude,
+                                      stream=stream)['cat']
 
     fmec_processor = focal_mechanism.Processor()
-    cat_fmec = fmec_processor.process(
-        cat=cat_smom, stream=stream)['cat']
+    cat_fmec = fmec_processor.process(cat=cat_smom,
+                                      stream=stream)['cat']
 
     energy_processor = measure_energy.Processor()
-    cat_energy = energy_processor.process(
-        cat=cat_fmec, stream=stream)['cat']
+    cat_energy = energy_processor.process(cat=cat_fmec,
+                                          stream=stream)['cat']
 
     magnitude_processor = magnitude.Processor()
-    cat_magnitude = magnitude_processor.process(
-        cat=cat_energy, stream=stream)['cat']
+    cat_magnitude = magnitude_processor.process(cat=cat_energy,
+                                                stream=stream)['cat']
 
     magnitude_f_processor = magnitude.Processor(module_type='frequency')
-    cat_magnitude_f = magnitude_f_processor.process(
-        cat=cat_magnitude, stream=stream)['cat']
+    cat_magnitude_f = magnitude_f_processor.process(cat=cat_magnitude,
+                                                    stream=stream)['cat']
 
-    return cat_magnitude_f
+    mag = magnitude_extractor.Processor().process(cat=cat_magnitude_f)
+    # send the magnitude info to the API
+
+    origin_id = cat_magnitude_f[0].preferred_origin().resource_id
+    corner_frequency = cat_magnitude_f[0].preferred_origin().comments[0]
+    mag_obj = Magnitude(mag=mag['moment_magnitude'], magnitude_type='Mw',
+                        origin_id=origin_id, evaluation_mode='automatic',
+                        evaluation_status='preliminary',
+                        comments=[corner_frequency])
+
+    cat_magnitude_f[0].magnitudes.append(mag_obj)
+    cat_magnitude_f[0].preferred_magnitude_id = mag_obj.resource_id
+
+    return cat_magnitude_f, mag
+

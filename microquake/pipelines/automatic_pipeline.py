@@ -22,9 +22,6 @@ __processing_step_id__ = 3
 
 api_base_url = settings.get('api_base_url')
 
-api_message_queue = settings.API_MESSAGE_QUEUE
-api_queue = RedisQueue(api_message_queue)
-
 
 def picker_election(location, event_time_utc, cat, stream):
     """
@@ -86,6 +83,10 @@ def picker_election(location, event_time_utc, cat, stream):
 
 
 def put_data_api(event_id, **kwargs):
+
+    api_message_queue = settings.API_MESSAGE_QUEUE
+    api_queue = RedisQueue(api_message_queue)
+
     processing_step = 'update_event_api'
     processing_step_id = 5
     processing_start_time = time()
@@ -97,18 +98,24 @@ def put_data_api(event_id, **kwargs):
     response = put_event_from_objects(api_base_url, event_id,
                                       event=event['catalogue'])
 
-    # if response.status_code != requests.codes.ok:
-    #     logger.info('request failed, resending to the queue')
+    if response.status_code != requests.codes.ok:
+        # Those line will need to be removed once the issue with the API is
+        # fixed, the API currently returns code 400 even if the request is
+        # successful.
+        if response.status_code == 400:
+            return response
 
-    #     result = api_queue.submit_task(put_data_api, event_id=event_key)
+        logger.info('request failed, resending to the queue')
 
-    #     processing_end_time = time()
-    #     processing_time = processing_end_time - processing_start_time
-    #     record_processing_logs_pg(event['catalogue'], 'success',
-    #                               processing_step, processing_step_id,
-    #                               processing_time)
+        result = api_queue.submit_task(put_data_api, event_id=event_key)
 
-    #     return result
+        processing_end_time = time()
+        processing_time = processing_end_time - processing_start_time
+        record_processing_logs_pg(event['catalogue'], 'success',
+                                  processing_step, processing_step_id,
+                                  processing_time)
+
+    return response
 
 
 def automatic_pipeline(event_id, **kwargs):
@@ -118,6 +125,9 @@ def automatic_pipeline(event_id, **kwargs):
     :param catalogue: catalog object encoded in quakeml
     :return:
     """
+
+    api_message_queue = settings.API_MESSAGE_QUEUE
+    api_queue = RedisQueue(api_message_queue)
 
     start_processing_time = time()
 
@@ -130,7 +140,12 @@ def automatic_pipeline(event_id, **kwargs):
     else:
         cat = event['catalogue']
 
-    return automatic_processor(cat, stream)
+    cat_out, mag = automatic_processor(cat, stream)
+
+    set_event(event_id, catalogue=cat)
+    api_queue.submit_task(put_data_api, event_id=event_id)
+
+    return cat_out, mag
 
 
 def automatic_pipeline_api(event_id, **kwargs):
@@ -152,10 +167,18 @@ def automatic_pipeline_api(event_id, **kwargs):
     else:
         cat = event['catalogue']
 
-    return automatic_processor(cat, stream)
+    cat_out, mag = automatic_processor(cat, stream)
+
+    record_processing_logs_pg(cat_magnitude_f, 'success', __processing_step__,
+                              __processing_step_id__, processing_time)
+
+    return cat_out, mag
+
 
 
 def automatic_processor(cat, stream):
+
+    start_processing_time = time()
 
     logger.info('removing traces for sensors in the black list, or are '
                 'filled with zero, or contain NaN')
@@ -169,14 +192,7 @@ def automatic_processor(cat, stream):
                                               fixed_length)
 
     if not cat_picker:
-        logger.warning('The picker did not return any picks! Marking the '
-                       'event as rejected in the database.')
-
-        api_queue.submit_task(reject_event,
-                              args=(api_base_url,
-                                    cat[0].resource_id.id))
-
-        return False
+        return
 
     nlloc_processor = nlloc.Processor()
     nlloc_processor.initializer()
@@ -208,18 +224,9 @@ def automatic_processor(cat, stream):
     bytes_out = BytesIO()
     cat_nlloc.write(bytes_out, format='QUAKEML')
 
-    # send to data base
-
-    set_event(event_id, catalogue=cat_nlloc)
-    api_queue.submit_task(put_data_api, event_id=event_id)
-
-    # put_event_from_objects(api_base_url, event_id, event=cat_nlloc,
-    #                        waveform=fixed_length)
-
-    measure_amplitudes_processor = measure_amplitudes.Processor()
-    cat_amplitude = measure_amplitudes_processor.process(cat=cat_nlloc,
-                                                         stream=fixed_length)[
-        'cat']
+    m_amp_processor = measure_amplitudes.Processor()
+    cat_amplitude = m_amp_processor.process(cat=cat_nlloc,
+                                            stream=fixed_length)['cat']
 
     smom_processor = measure_smom.Processor()
     cat_smom = smom_processor.process(cat=cat_amplitude,
@@ -241,25 +248,21 @@ def automatic_processor(cat, stream):
     cat_magnitude_f = magnitude_f_processor.process(cat=cat_magnitude,
                                                     stream=fixed_length)['cat']
 
-    set_event(event_id, catalogue=cat_magnitude_f)
-    api_queue.submit_task(put_data_api, event_id=event_id)
     end_processing_time = time()
 
     processing_time = end_processing_time - start_processing_time
 
-    record_processing_logs_pg(cat_magnitude_f, 'success', __processing_step__,
-                              __processing_step_id__, processing_time)
-
-    magnitude = magnitude_extractor.Processor().process(cat_magnitude_f)
+    mag = magnitude_extractor.Processor().process(cat=cat_magnitude_f)
     # send the magnitude info to the API
 
-    origin_id = cat_magnitude_f[0].preferred_origin()
+    origin_id = cat_magnitude_f[0].preferred_origin().resource_id
     corner_frequency = cat_magnitude_f[0].preferred_origin().comments[0]
-    mag = Magnitude(mag=magnitude['moment_magnitude'], magnitude_type='Mw',
-                    origin_id=origin_id, evaluation_mode='automatic',
-                    evaluation_status='preliminary',
-                    comments=[corner_frequency])
+    mag_obj = Magnitude(mag=mag['moment_magnitude'], magnitude_type='Mw',
+                        origin_id=origin_id, evaluation_mode='automatic',
+                        evaluation_status='preliminary',
+                        comments=[corner_frequency])
 
-    cat_magnitude_f[0].magnitudes.append(mag)
-    cat_magnitude_f[0].preferred_magnitude_id = mag.resource_id
-    return cat_nlloc, magnitude
+    cat_magnitude_f[0].magnitudes.append(mag_obj)
+    cat_magnitude_f[0].preferred_magnitude_id = mag_obj.resource_id
+
+    return cat_magnitude_f, mag
