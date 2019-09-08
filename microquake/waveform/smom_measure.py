@@ -10,11 +10,10 @@ from microquake.core.util.tools import copy_picks_to_dict
 
 import matplotlib.pyplot as plt
 import copy
-import logging
-logger = logging.getLogger(__name__)
+from loguru import logger
 
 """
-    smom_measures - A collection of functions used in the calculation of 
+    smom_measures - A collection of functions used in the calculation of
                      smom (long-period plateau) in the frequency domain
 """
 
@@ -24,7 +23,6 @@ def measure_pick_smom(st, inventory, event, synthetic_picks,
                       plot_fit=False,
                       P_or_S='P',
                       debug_level=0,
-                      logger_in=None,
                       **kwargs):
     """
         Calculate spectra of each channel/arrival and compare to Brune model to fit
@@ -32,10 +30,6 @@ def measure_pick_smom(st, inventory, event, synthetic_picks,
     """
 
     fname = "measure_pick_smom"
-
-    global logger
-    if logger_in is not None:
-        logger = logger_in
 
 
 # Get P(S) spectra at all stations/channels that have a P(S) arrival:
@@ -45,7 +39,7 @@ def measure_pick_smom(st, inventory, event, synthetic_picks,
     vel_dict = copy.deepcopy(sta_dict)
 
 # Stack vel spectra to get fc ~ peak_f
-# Note that fc_S is predicted to be < fc_P 
+# Note that fc_S is predicted to be < fc_P
     stacked_spec, freqs = stack_spectra(sta_dict)
     peak_f = peak_freq(stacked_spec, freqs, fmin=25.)
 
@@ -674,7 +668,7 @@ def calc_fit(sta_dict, fc, fmin=20., fmax=1000.,
 
     return fit, smom_dict
 
-def plot_spec5(freqs, signal_fft, noise_fft, model_spec, 
+def plot_spec5(freqs, signal_fft, noise_fft, model_spec,
                model2_spec, model3_spec,
                title=None, subtitle=None):
 

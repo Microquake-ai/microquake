@@ -1,8 +1,8 @@
-import numpy as np
-import copy
-from scipy.fftpack import fft, ifft, fftfreq
-from scipy.signal import sosfilt, zpk2sos, iirfilter
 from datetime import datetime, timedelta
+
+import numpy as np
+from scipy.fftpack import fft, fftfreq, ifft
+from scipy.signal import iirfilter, sosfilt, zpk2sos
 
 
 def datetime_to_epoch_sec(dtime):
@@ -16,38 +16,46 @@ def make_picks(stcomp, pick_times_utc, phase, pick_params):
     edge_time = wlen_search / 2 + np.max(snr_wlens)
 
     picks = []
+
     for tr, ptime in zip(stcomp, pick_times_utc):
 
         if tr.time_within(ptime, edge_time) is True:
 
             picks.append(tr.make_pick(ptime, wlen_search,
-                        stepsize, snr_wlens, phase_hint=phase))
+                                      stepsize, snr_wlens, phase_hint=phase))
 
     return picks
 
 # MTH: this is the version I've been using:
+
+
 def copy_picks_to_dict(picks):
     pick_dict = {}
+
     for pick in picks:
         station = pick.waveform_id.station_code
-        phase   = pick.phase_hint
+        phase = pick.phase_hint
 
         if station not in pick_dict:
-            pick_dict[station]={}
+            pick_dict[station] = {}
         # MTH: If you copy the pick you pollute the reference id space
         #      and arrival.pick_id.get_referred_object() no longer works!
-        #pick_dict[station][phase]=copy.deepcopy(pick)
-        pick_dict[station][phase]=pick
+        # pick_dict[station][phase]=copy.deepcopy(pick)
+        pick_dict[station][phase] = pick
 
     return pick_dict
 
+
 def picks_to_dict(picks):
     pd = {}
+
     for p in picks:
         key = p.waveform_id.get_seed_string()
+
         if key not in pd:
             pd[key] = []
         pd[key].append(p.time)
+
     return pd
 
 
@@ -55,6 +63,7 @@ def repick_using_snr(sig, ipick, wlen_search, stepsize, snr_wlens):
     origin_inds, snrs = sliding_snr(sig, ipick, wlen_search, stepsize, snr_wlens)
     newpick = origin_inds[np.argmax(snrs)]
     snr = np.max(snrs)
+
     return newpick, snr
 
 
@@ -67,6 +76,7 @@ def sliding_snr(sig, ipick, wlen_search, stepsize, snr_wlens, plot=False):
 
     origin_inds = np.arange(i0, i1, stepsize)
     snrs = np.zeros(len(origin_inds), dtype=np.float32)
+
     for i, og in enumerate(origin_inds):
         energy_noise = np.mean((sig[og - wl_noise:og]) ** 2)
         energy_sig = np.mean((sig[og:og + wl_sig]) ** 2)
@@ -108,13 +118,16 @@ def stream_to_array(st, t0, npts_fix, taplen=0.05):
     taplen_npts = int(npts_fix * taplen)
 
     data = np.zeros((nsig, npts_fix), dtype=np.float32)
+
     for i, tr in enumerate(st):
         i0 = int((tr.stats.starttime - t0) * sr + 0.5)
         sig = tr.data - np.mean(tr.data)
+
         if taplen != 0:
             taper_data(sig, taplen_npts)
         slen = min(len(sig), npts_fix - i0)
         data[i, i0: i0 + slen] = sig[:slen]
+
     return data
 
 
@@ -127,9 +140,11 @@ def taper_data(data, wlen):
 def taper2d(data, wlen):
     out = data.copy()
     tap = hann_half(wlen)
+
     for i in range(data.shape[0]):
         out[i][:wlen] *= tap
         out[i][-wlen:] *= tap[::-1]
+
     return out
 
 
@@ -139,6 +154,7 @@ def ttsamp(dist, vel, sr):
 
 def integrate(sig):
     from scipy.integrate import cumtrapz
+
     return cumtrapz(sig, initial=0)
 
 
@@ -151,8 +167,10 @@ def attenuate(sig, sr, dist, Q, vel, gspread=True):
     factor = np.exp(-np.pi * np.abs(freqs) * tstar)
     fsig *= factor
     sig = np.real(ifft(fsig))
+
     if gspread:
         sig /= dist
+
     return sig
 
 
@@ -161,6 +179,7 @@ def roll_data(data, tts):
 
     for i, sig in enumerate(data):
         droll[i] = np.roll(sig, -tts[i])
+
     return droll
 
 
@@ -168,10 +187,13 @@ def velstack(data, dists2src, sr, vels):
 
     dnorm = norm2d(data)
     dstack = np.zeros((len(vels), dnorm.shape[1]), dtype=np.float32)
+
     for ivel, vel in enumerate(vels):
         shifts = (dists2src / vel * sr + 0.5).astype(int)
+
         for i, shift in enumerate(shifts):
             dstack[ivel] += np.roll(dnorm[i], -shift)
+
     return dstack
 
 
@@ -200,8 +222,10 @@ def bandpass(data, band, sr, corners=4, zerophase=True):
     z, p, k = iirfilter(corners, [low, high], btype='band',
                         ftype='butter', output='zpk')
     sos = zpk2sos(z, p, k)
+
     if zerophase:
         firstpass = sosfilt(sos, data)
+
         if len(data.shape) == 1:
             return sosfilt(sos, firstpass[::-1])[::-1]
         else:
@@ -217,8 +241,10 @@ def filter(data, btype, band, sr, corners=4, zerophase=True):
     z, p, k = iirfilter(corners, band / fe, btype=btype,
                         ftype='butter', output='zpk')
     sos = zpk2sos(z, p, k)
+
     if zerophase:
         firstpass = sosfilt(sos, data)
+
         if len(data.shape) == 1:
             return sosfilt(sos, firstpass[::-1])[::-1]
         else:
@@ -231,6 +257,7 @@ def decimate(data_in, sr, factor):
     data = data_in.copy()
     fmax = sr / (factor * 2)
     filter(data, 'lowpass', fmax, sr)
+
     if len(data.shape) == 1:
         return data[::factor]
     else:
@@ -244,6 +271,7 @@ def norm2d(d):
 def cross_corr(sig1, sig2, norm=True, pad=False, phase_only=False, phat=False):
     """Cross-correlate two signals."""
     pad_len = len(sig1)
+
     if pad is True:
         pad_len *= 2
         # pad_len = signal.next_pow_2(pad_len)
@@ -287,6 +315,7 @@ def freq_window(cf, npts, sr):
     win[cx[1]:cx[2]] = 1
     win[cx[2]:cx[3]] = taper_cosine(cx[3] - cx[2])[::-1]
     win[cx[-1]:] = 0
+
     return win
 
 
@@ -302,6 +331,7 @@ def whiten2D(a, freqs, sr):
     wl = a.shape[1]
     win = freq_window(freqs, wl, sr)
     af = fft(a)
+
     for sx in range(a.shape[0]):
         whiten_freq(af[sx], win)
     a[:] = np.real(ifft(af))
@@ -346,6 +376,7 @@ def amax_cc(sig):
 
 def angle(a, b):
     # return np.arctan((a[1] - b[1]) / (a[0] - b[0]))
+
     return np.arctan2((a[1] - b[1]), (a[0] - b[0]))
 
 
@@ -375,6 +406,7 @@ def zeropad2d(a, npad):
     nrow, ncol = a.shape
     out = np.zeros((nrow, ncol + npad), dtype=a.dtype)
     out[:, :ncol] = a
+
     return out
 
 
@@ -386,9 +418,11 @@ def zero_argmax(a, wlen, taplen=0.05):
     hl = int(len(win) // 2)
     out = a.copy()
     imaxes = np.argmax(np.abs(out), axis=1)
+
     for i, imax in enumerate(imaxes):
         i0 = imax - hl
         i1 = imax + hl
+
         if i0 <= 0:
             out[i, 0:i1] *= win[abs(i0):]
         elif i1 > npts:
@@ -414,6 +448,7 @@ def fftnoise(f):
     phases = np.cos(phases) + 1j * np.sin(phases)
     f[1:npts + 1] *= phases
     f[-1:-1 - npts:-1] = np.conj(f[1:npts + 1])
+
     return ifft(f).real
 
 
@@ -423,6 +458,7 @@ def band_noise(band, sr, samples):
     f = np.zeros(samples)
     idx = np.where(np.logical_and(freqs >= freqmin, freqs <= freqmax))[0]
     f[idx] = 1
+
     return fftnoise(f)
 
 
@@ -431,6 +467,7 @@ def envelope(data):
     FFT = fft(data, slen)
     FFT[1: slen // 2] *= 2
     FFT[slen // 2:] = 0
+
     return np.abs(ifft(FFT))
 
 
@@ -473,6 +510,7 @@ def read_csv(filename, site_code='', **kwargs):
         orients = tmp[10:22].reshape(3, 4)
 
         channels = []
+
         for comp in orients:
             if not comp[0]:
                 continue

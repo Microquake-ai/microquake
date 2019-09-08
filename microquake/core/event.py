@@ -17,22 +17,13 @@ Expansion of the obspy.core.event module
     (http://www.gnu.org/copyleft/lesser.html)
 """
 
-from __future__ import absolute_import, division, print_function, unicode_literals
-
 import base64
 import io
-import logging
 import warnings
-from copy import deepcopy
 
 import numpy as np
 import obspy.core.event as obsevent
-from obspy.core import AttribDict
-from obspy.core.event import *
-from obspy.core.event import ResourceIdentifier
-
-logger = logging.getLogger()
-log_level = logging.getLogger().getEffectiveLevel()
+from obspy.core.event import WaveformStreamID
 
 debug = False
 

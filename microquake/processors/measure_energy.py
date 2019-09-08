@@ -38,17 +38,20 @@ class Processor(ProcessingUnit):
         for sta in missing_responses:
             logger.warning("Inventory: Missing response for sta:%s" % sta)
 
-        calc_velocity_flux(stream,
+        missing_responses_ids = {r.id for r in missing_responses}
+        cleaned_stream = stream.copy()
+        cleaned_stream.traces = [tr for tr in cleaned_stream.traces
+                                 if tr.id not in missing_responses_ids]
+
+        calc_velocity_flux(cleaned_stream,
                            cat,
                            phase_list=phase_list,
                            correct_attenuation=correct_attenuation,
                            Q=Q,
-                           debug=False,
-                           logger_in=logger)
+                           debug=False)
 
         calculate_energy_from_flux(cat,
-                                   use_sdr_rad=use_sdr_rad,
-                                   logger_in=logger)
+                                   use_sdr_rad=use_sdr_rad)
 
         self.result = {'cat': cat}
         return self.result

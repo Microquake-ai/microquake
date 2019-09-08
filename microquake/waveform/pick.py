@@ -28,8 +28,7 @@ from microquake.core import event
 from microquake.core.util.decorator import deprecated
 import microquake.core.nlloc as nll
 #from microquake.core.util.decorator import logger
-import logging
-logger = logging.getLogger()
+from loguru import logger
 
 from microquake.core.event import make_pick
 from microquake.core.util.tools import copy_picks_to_dict

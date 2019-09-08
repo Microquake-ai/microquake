@@ -1,9 +1,11 @@
 # This module calculates the magnitude base of a simple GMPE
 import numpy as np
-from microquake.core.event import Magnitude, QuantityError
-from microquake.core.settings import settings
+from obspy.core.event import QuantityError
 
+from microquake.core.event import Magnitude
+from microquake.core.settings import settings
 from microquake.processors.processing_unit import ProcessingUnit
+
 
 class Processor(ProcessingUnit):
     @property
@@ -43,6 +45,7 @@ class Processor(ProcessingUnit):
             dist = np.linalg.norm(ev_loc - st_loc)
 
             motion_type = inventory.select(station).motion
+
             if motion_type != 'VELOCITY':
                 if motion_type == 'ACCELERATION':
                     velocity = st_stream.composite().copy().integrate()[0].data
@@ -51,7 +54,6 @@ class Processor(ProcessingUnit):
 
             else:
                 velocity = st_stream.composite().copy()[0].data
-
 
             # The PPV/Mag relationship is valid for mm/s, the velocity is
             # expressed in m/s in the file, we need to multiply by 1000
@@ -74,7 +76,7 @@ class Processor(ProcessingUnit):
         mag = Magnitude(mag=self.mag, magnitude_type='Mw',
                         evaluation_station='automatic',
                         evaluation_status='preliminary',
-                        station_count = self.station_count,
+                        station_count=self.station_count,
                         mag_errors=error,
                         origin_id=catalog[0].preferred_origin_id)
 
@@ -82,4 +84,3 @@ class Processor(ProcessingUnit):
         catalog[0].preferred_magnitude_id = mag.resource_id
 
         return catalog
-

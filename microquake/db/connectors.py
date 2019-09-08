@@ -13,15 +13,11 @@ from microquake.core.stream import Stream, Trace
 from microquake.db.models.alchemy import Recording, metadata, processing_logs
 from redis import ConnectionPool, Redis
 from rq import Queue
-
-db_name = settings.POSTGRES_DB_NAME
-postgres_url = settings.POSTGRES_URL + db_name
-redis_url = settings.REDIS_URL
-redis_rq_url = settings.REDIS_RQ_URL
+from walrus import Walrus
 
 
 def connect_redis():
-    return RedisWrapper().redis_connect(url=redis_url)
+    return RedisWrapper().redis_connect(url=settings.REDIS_WALRUS_URL)
 
 
 class RedisWrapper(object):
@@ -36,12 +32,12 @@ class RedisWrapper(object):
         except AttributeError:
             self.connection_pool = ConnectionPool.from_url(url)
 
-        return Redis(connection_pool=self.connection_pool)
+        return Walrus(connection_pool=self.connection_pool)
 
 
 class RedisQueue:
     def __init__(self, queue, timeout=600):
-        self.redis = Redis.from_url(url=redis_rq_url)
+        self.redis = Redis.from_url(url=settings.REDIS_RQ_URL)
         self.timeout = timeout
         self.queue = queue
         self.rq_queue = Queue(self.queue, connection=self.redis,
@@ -66,6 +62,9 @@ def connect_rq(message_queue):
 
 def connect_postgres():
 
+    db_name = settings.POSTGRES_DB_NAME
+    postgres_url = settings.POSTGRES_URL + db_name
+
     engine = db.create_engine(postgres_url)
     connection = engine.connect()
     # Create tables if they do not exist
@@ -75,6 +74,10 @@ def connect_postgres():
 
 
 def create_postgres_session():
+
+    db_name = settings.POSTGRES_DB_NAME
+    postgres_url = settings.POSTGRES_URL + db_name
+
     engine = db.create_engine(postgres_url)
     pg = connect_postgres()
     Session = sessionmaker(bind=engine)
@@ -137,9 +140,11 @@ def record_processing_logs_pg(event, status, processing_step,
     :param processing_step: processing step name
     :param processing_step_id: processing step identifier integer
     :param processing_time_second: processing dealy for this step in seconds
-    :param processing_time_second: processing time for this step in seconds
     :return:
     """
+
+    if 'catalog' in str(type(event)).lower():
+        event = event[0]
 
     origin = event.preferred_origin()
 
@@ -148,12 +153,12 @@ def record_processing_logs_pg(event, status, processing_step,
 
     event_time = origin.time.datetime.replace(tzinfo=utc)
 
-    processing_time = datetime.utcnow().replace(tzinfo=utc)
-    processing_delay_second = (processing_time - event_time).total_seconds()
+    current_time = datetime.utcnow().replace(tzinfo=utc)
+    processing_delay_second = (current_time - event_time).total_seconds()
 
     document = {'event_id': event.resource_id.id,
                 'event_timestamp': event_time,
-                'processing_timestamp': processing_time,
+                'processing_timestamp': current_time,
                 'processing_step_name': processing_step,
                 'processing_step_id': processing_step_id,
                 'processing_delay_second': processing_delay_second,

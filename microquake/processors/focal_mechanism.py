@@ -32,8 +32,7 @@ class Processor(ProcessingUnit):
 
         cat = kwargs["cat"]
 
-        focal_mechanisms, figs = calc(cat, self.params,
-                                      logger_in=logger)
+        focal_mechanisms, figs = calc(cat, self.params)
 
         if len(focal_mechanisms) > 0:
             for i, event in enumerate(cat):

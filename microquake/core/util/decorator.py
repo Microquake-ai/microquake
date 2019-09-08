@@ -2,19 +2,13 @@
 #
 #
 # vim: ts=4 sw=4 sts=0 noexpandtab:
-import logging
 import os
 import time
 from functools import wraps
-from obspy.core.util.decorator import *
 
 import numpy
 
-# MTH: if you set log level to DEBUG here, it gets inherited by obspy imports,
-#      which then passes it along to matplotlib, resulting in numerous msgs
-#logging.basicConfig(level=logging.DEBUG)
-logging.basicConfig(level=logging.WARN)
-logger = logging.getLogger('microquake')
+from loguru import logger
 
 
 def compressFile(func):
@@ -24,6 +18,7 @@ def compressFile(func):
     def wrapped_func(filename, *args, **kwargs):
         if not isinstance(filename):
             return func(filename, *args, **kwargs)
+
         if filename.endswith('gz'):
             import gzip
             f = gzip.open(filename, 'w')
@@ -37,7 +32,6 @@ def compressFile(func):
             f = filename
 
     return func(f, *args, **kwargs)
-
 
 
 class buggy(object):
@@ -59,6 +53,7 @@ class buggy(object):
             except Exception:
                 print("%s Crashed : Didn't i told you it was buggy ?" % fct.__name__)
                 raise
+
             return return_value
 
         return wrapper
@@ -110,6 +105,7 @@ def deprecated(fct):
     @wraps(fct)
     def wrapper(*args, **kwargs):
         logger.warning("Call to deprecated function %s." % fct.__name__)
+
         return fct(*args, **kwargs)
 
     return wrapper
@@ -122,11 +118,12 @@ def loggedcall(fct):
 
     @wraps(fct)
     def wrapper(*args, **kwargs):
-        logger.info("Function -- %s--  called with arguments -- %s -- and keywords -- %s --" % \
+        logger.info("Function -- %s--  called with arguments -- %s -- and keywords -- %s --" %
                     (fct.__name__, str(args), str(kwargs)))
         return_value = fct(*args, **kwargs)
-        logger.info("Function -- %s -- returned -- %s --" % \
+        logger.info("Function -- %s -- returned -- %s --" %
                     (fct.__name__, return_value))
+
         return return_value
 
     return wrapper
@@ -135,6 +132,7 @@ def loggedcall(fct):
 def addmethod(instance):
     def decorator(fct):
         setattr(instance, fct.func_name, fct)
+
         return fct
 
     return decorator
@@ -145,8 +143,9 @@ def timedcall(fct):
     def wrapper(*args, **kwargs):
         t = time.time()
         return_value = fct(*args, **kwargs)
-        logger.info("Function -- %s -- called : TIME -- %.4f --" % \
+        logger.info("Function -- %s -- called : TIME -- %.4f --" %
                     (fct.__name__, time.time() - t))
+
         return return_value
 
     return wrapper
@@ -179,12 +178,13 @@ class memoizehd(object):
             cachefile += '_'.join([str(hash(kwargs[i])) for i in kwargs]) + ".npy"
             try:
                 os.stat(cachefile)
-                logger.info("Parameters hash matched calling -- %s --, reading cached return from file " % \
+                logger.info("Parameters hash matched calling -- %s --, reading cached return from file " %
                             fct.__name__)
                 return_value = numpy.load(cachefile)
             except:
                 return_value = fct(*args, **kwargs)
                 numpy.save(cachefile, return_value)
+
             return return_value
 
         return wrapper
@@ -201,7 +201,7 @@ def memoize(fct):
     def wrapper(*args, **kwargs):
         if args not in return_dict:
             return_dict[args] = fct(*args, **kwargs)
+
         return return_dict[args]
 
     return wrapper
-

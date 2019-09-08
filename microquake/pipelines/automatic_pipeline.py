@@ -2,21 +2,25 @@ from io import BytesIO
 
 import numpy as np
 import requests
+from obspy.core.event import Catalog
+from time import time
 
 from loguru import logger
 from microquake.clients.api_client import put_event_from_objects, reject_event
-from microquake.core.event import Catalog, Event
+from microquake.core.event import Event, Magnitude
+from obspy.core.event import Comment
 from microquake.core.settings import settings
-from microquake.db.connectors import RedisQueue
-from microquake.processors import (clean_data, focal_mechanism, magnitude, measure_amplitudes, measure_energy,
-                                   measure_smom, nlloc, picker)
-from microquake.db.serializers.seismic_objects import deserialize_message
-from microquake.db.models.redis import set_event
+from microquake.db.connectors import RedisQueue, record_processing_logs_pg
+from microquake.db.models.redis import get_event, set_event
+from microquake.processors import (clean_data, focal_mechanism, magnitude,
+                                   measure_amplitudes, measure_energy,
+                                   measure_smom, nlloc, picker,
+                                   magnitude_extractor)
+
+__processing_step__ = 'automatic processing'
+__processing_step_id__ = 3
 
 api_base_url = settings.get('api_base_url')
-
-api_message_queue = settings.API_MESSAGE_QUEUE
-api_queue = RedisQueue(api_message_queue)
 
 
 def picker_election(location, event_time_utc, cat, stream):
@@ -30,30 +34,35 @@ def picker_election(location, event_time_utc, cat, stream):
     :return: a Catalog containing the response of the picker that performed
     best according to some logic described in this function.
     """
-    picker_hf_processor = picker.Processor(module_type='high_frequencies')
-    picker_mf_processor = picker.Processor(module_type='medium_frequencies')
-    picker_lf_processor = picker.Processor(module_type='low_frequencies')
 
-    response_hf = picker_hf_processor.process(stream=stream, location=location,
-                                              event_time_utc=event_time_utc)
-    response_mf = picker_mf_processor.process(stream=stream, location=location,
-                                              event_time_utc=event_time_utc)
-    response_lf = picker_lf_processor.process(stream=stream, location=location,
-                                              event_time_utc=event_time_utc)
+    picker_types = ['high_frequencies',
+                    'medium_frequencies',
+                    'low_frequencies']
+
+    picker_0_processor = picker.Processor(module_type=picker_types[0])
+    picker_1_processor = picker.Processor(module_type=picker_types[1])
+    picker_2_processor = picker.Processor(module_type=picker_types[2])
+
+    response_0 = picker_0_processor.process(stream=stream, location=location,
+                                            event_time_utc=event_time_utc)
+    response_1 = picker_1_processor.process(stream=stream, location=location,
+                                            event_time_utc=event_time_utc)
+    response_2 = picker_2_processor.process(stream=stream, location=location,
+                                            event_time_utc=event_time_utc)
 
     cat_pickers = []
 
-    if response_hf:
-        cat_picker_hf = picker_hf_processor.output_catalog(cat.copy())
-        cat_pickers.append(cat_picker_hf)
+    if response_0:
+        cat_picker_0 = picker_0_processor.output_catalog(cat.copy())
+        cat_pickers.append(cat_picker_0)
 
-    if response_mf:
-        cat_picker_mf = picker_mf_processor.output_catalog(cat.copy())
-        cat_pickers.append(cat_picker_mf)
+    if response_1:
+        cat_picker_1 = picker_1_processor.output_catalog(cat.copy())
+        cat_pickers.append(cat_picker_1)
 
-    if response_lf:
-        cat_picker_lf = picker_lf_processor.output_catalog(cat.copy())
-        cat_pickers.append(cat_picker_lf)
+    if response_2:
+        cat_picker_2 = picker_2_processor.output_catalog(cat.copy())
+        cat_pickers.append(cat_picker_2)
 
     if not cat_pickers:
         return False
@@ -68,34 +77,48 @@ def picker_election(location, event_time_utc, cat, stream):
                                                        len_arrivals[1],
                                                        len_arrivals[2]))
 
-    imax = np.argmax(len_arrivals)
+    i_max = np.argmax(len_arrivals)
 
-    return cat_pickers[imax]
+    return cat_pickers[i_max], picker_types[i_max]
 
 
-@deserialize_message
-def put_data_api(catalogue=None, fixed_length=None, **kwargs):
-    event_id = catalogue[0].resource_id.id
+def put_data_api(event_id, **kwargs):
+
+    api_message_queue = settings.API_MESSAGE_QUEUE
+    api_queue = RedisQueue(api_message_queue)
+
+    processing_step = 'update_event_api'
+    processing_step_id = 5
+    processing_start_time = time()
+    event_key = event_id
+    event = get_event(event_key)
+
+    event_id = event['catalogue'][0].resource_id.id
 
     response = put_event_from_objects(api_base_url, event_id,
-                                      event=catalogue,
-                                      waveform=fixed_length)
+                                      event=event['catalogue'])
 
     if response.status_code != requests.codes.ok:
+        # Those line will need to be removed once the issue with the API is
+        # fixed, the API currently returns code 400 even if the request is
+        # successful.
+        if response.status_code == 400:
+            return response
+
         logger.info('request failed, resending to the queue')
-        dict_out = {'catalogue': catalogue,
-                    'fixed_length': fixed_length}
 
-        set_event(event_id, **dict_out)
+        result = api_queue.submit_task(put_data_api, event_id=event_key)
 
-        result = api_queue.submit_task(put_data_api,
-                                       kwargs={'event_id': event_id})
+        processing_end_time = time()
+        processing_time = processing_end_time - processing_start_time
+        record_processing_logs_pg(event['catalogue'], 'success',
+                                  processing_step, processing_step_id,
+                                  processing_time)
 
-        return result
+    return response
 
 
-@deserialize_message
-def automatic_pipeline(catalogue=None, fixed_length=None, **kwargs):
+def automatic_pipeline(event_id, **kwargs):
     """
     automatic pipeline
     :param fixed_length: fixed length stream encoded as mseed
@@ -103,35 +126,73 @@ def automatic_pipeline(catalogue=None, fixed_length=None, **kwargs):
     :return:
     """
 
-    stream = fixed_length
+    api_message_queue = settings.API_MESSAGE_QUEUE
+    api_queue = RedisQueue(api_message_queue)
 
-    if catalogue is None:
+    start_processing_time = time()
+
+    event = get_event(event_id)
+    stream = event['fixed_length']
+
+    if event['catalogue'] is None:
         logger.info('No catalog was provided creating new')
         cat = Catalog(events=[Event()])
     else:
-        cat = catalogue
+        cat = event['catalogue']
 
-    event_id = cat[0].resource_id
+    cat_out, mag = automatic_processor(cat, stream)
+
+    set_event(event_id, catalogue=cat)
+    api_queue.submit_task(put_data_api, event_id=event_id)
+
+    return cat_out, mag
+
+
+def automatic_pipeline_api(event_id, **kwargs):
+    """
+    automatic pipeline
+    :param fixed_length: fixed length stream encoded as mseed
+    :param catalogue: catalog object encoded in quakeml
+    :return:
+    """
+
+    start_processing_time = time()
+
+    event = get_event(event_id)
+    stream = event['fixed_length']
+
+    if event['catalogue'] is None:
+        logger.info('No catalog was provided creating new')
+        cat = Catalog(events=[Event()])
+    else:
+        cat = event['catalogue']
+
+    cat_out, mag = automatic_processor(cat, stream)
+
+    record_processing_logs_pg(cat_magnitude_f, 'success', __processing_step__,
+                              __processing_step_id__, processing_time)
+
+    return cat_out, mag
+
+
+
+def automatic_processor(cat, stream):
+
+    start_processing_time = time()
 
     logger.info('removing traces for sensors in the black list, or are '
                 'filled with zero, or contain NaN')
     clean_data_processor = clean_data.Processor()
-    fixed_length = clean_data_processor.process(waveform=fixed_length)
+    fixed_length = clean_data_processor.process(waveform=stream)
 
     loc = cat[0].preferred_origin().loc
     event_time_utc = cat[0].preferred_origin().time
 
-    cat_picker = picker_election(loc, event_time_utc, cat, stream)
+    cat_picker, picker_type = picker_election(loc, event_time_utc, cat,
+                                              fixed_length)
 
     if not cat_picker:
-        logger.warning('The picker did not return any picks! Marking the '
-                       'event as rejected in the database.')
-
-        api_queue.submit_task(reject_event,
-                              args=(api_base_url,
-                                    cat[0].resource_id.id))
-
-        return False
+        return
 
     nlloc_processor = nlloc.Processor()
     nlloc_processor.initializer()
@@ -142,7 +203,7 @@ def automatic_pipeline(catalogue=None, fixed_length=None, **kwargs):
 
     loc = cat_nlloc[0].preferred_origin().loc
     event_time_utc = cat_nlloc[0].preferred_origin().time
-    picker_sp_processor = picker.Processor(module_type='second_pass')
+    picker_sp_processor = picker.Processor(module_type=picker_type)
     response = picker_sp_processor.process(stream=fixed_length, location=loc,
                                            event_time_utc=event_time_utc)
 
@@ -163,19 +224,9 @@ def automatic_pipeline(catalogue=None, fixed_length=None, **kwargs):
     bytes_out = BytesIO()
     cat_nlloc.write(bytes_out, format='QUAKEML')
 
-    # send to data base
-    cat_nlloc[0].resource_id = event_id
-
-    set_event(event_id, catalogue=cat_nlloc)
-
-    api_queue.submit_task(put_data_api, kwargs={'event_id': event_id})
-
-    # put_event_from_objects(api_base_url, event_id, event=cat_nlloc,
-    #                        waveform=fixed_length)
-
-    measure_amplitudes_processor = measure_amplitudes.Processor()
-    cat_amplitude = measure_amplitudes_processor.process(cat=cat_nlloc,
-                                                         stream=fixed_length)['cat']
+    m_amp_processor = measure_amplitudes.Processor()
+    cat_amplitude = m_amp_processor.process(cat=cat_nlloc,
+                                            stream=fixed_length)['cat']
 
     smom_processor = measure_smom.Processor()
     cat_smom = smom_processor.process(cat=cat_amplitude,
@@ -197,10 +248,21 @@ def automatic_pipeline(catalogue=None, fixed_length=None, **kwargs):
     cat_magnitude_f = magnitude_f_processor.process(cat=cat_magnitude,
                                                     stream=fixed_length)['cat']
 
-    cat_magnitude_f[0].resource_id = event_id
+    end_processing_time = time()
 
-    set_event(event_id, catalogue=cat_magnitude_f)
-    api_queue.submit_task(put_data_api, kwargs={'event_id': event_id})
-    # put_event_from_objects(api_base_url, event_id, event=cat_magnitude_f)
+    processing_time = end_processing_time - start_processing_time
 
-    return cat_magnitude_f
+    mag = magnitude_extractor.Processor().process(cat=cat_magnitude_f)
+    # send the magnitude info to the API
+
+    origin_id = cat_magnitude_f[0].preferred_origin().resource_id
+    corner_frequency = cat_magnitude_f[0].preferred_origin().comments[0]
+    mag_obj = Magnitude(mag=mag['moment_magnitude'], magnitude_type='Mw',
+                        origin_id=origin_id, evaluation_mode='automatic',
+                        evaluation_status='preliminary',
+                        comments=[corner_frequency])
+
+    cat_magnitude_f[0].magnitudes.append(mag_obj)
+    cat_magnitude_f[0].preferred_magnitude_id = mag_obj.resource_id
+
+    return cat_magnitude_f, mag

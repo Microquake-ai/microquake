@@ -20,20 +20,21 @@ module to interact with the NLLoc
 
 # from microquake.core.nlloc.core import *
 
-import logging
 import os
 import shutil
 import tempfile
 from datetime import datetime
 from glob import glob
+from time import time
 
 import numpy as np
-
-from microquake.core import UTCDateTime
-from microquake.core.event import Arrival, Catalog
-from microquake.core.util.attribdict import AttribDict
-
-logger = logging.getLogger()
+import obspy.core.event
+from loguru import logger
+from microquake.core.data.grid import read_grid
+from microquake.core.event import Arrival, Origin
+from obspy.core import AttribDict
+from obspy import UTCDateTime
+from struct import unpack
 
 
 def read_nlloc_hypocenter_file(filename, picks=None,
@@ -46,13 +47,10 @@ def read_nlloc_hypocenter_file(filename, picks=None,
     :return: seismic catalogue
     :rtype: ~microquake.core.event.Catalog
     """
-    from microquake.core import event
-    cat = event.Catalog()
+    cat = obspy.core.event.Catalog()
 
     with open(filename) as hyp_file:
 
-        #print("read_nlloc_file:%s" % filename)
-        # exit()
         all_lines = hyp_file.readlines()
         hyp = [line.split() for line in all_lines if 'HYPOCENTER' in line][0]
         stat = [line.split() for line in all_lines if 'STATISTICS' in line][0]
@@ -86,14 +84,14 @@ def read_nlloc_hypocenter_file(filename, picks=None,
 
         method = '%s' % ("NLLOC")
 
-        creation_info = event.CreationInfo(author='microquake',
-                                           creation_time=UTCDateTime.now())
+        creation_info = obspy.core.event.CreationInfo(
+            author='microquake', creation_time=UTCDateTime.now())
 
-        origin = event.Origin(x=hyp_x, y=hyp_y, z=hyp_z, time=tme,
-                              evaluation_mode=evaluation_mode,
-                              evaluation_status=evaluation_status,
-                              epicenter_fixed=0, method_id=method,
-                              creation_info=creation_info)
+        origin = Origin(x=hyp_x, y=hyp_y, z=hyp_z, time=tme,
+                        evaluation_mode=evaluation_mode,
+                        evaluation_status=evaluation_status,
+                        epicenter_fixed=0, method_id=method,
+                        creation_info=creation_info)
 
         xminor = np.cos(float(stat[22]) * np.pi / 180) * np.sin(float(stat[20])
                                                                 * np.pi / 180)
@@ -121,20 +119,23 @@ def read_nlloc_hypocenter_file(filename, picks=None,
         if np.isnan(major_dip):
             major_dip = None
 
-        ou = event.OriginUncertainty()
-        el = event.ConfidenceEllipsoid()
+        # obspy will complain if we use anything other then the exact type
+        # it expects. Cannot extend, cannot even import from elsewhere!
+        el = obspy.core.event.ConfidenceEllipsoid()
         el.semi_minor_axis_length = float(stat[24]) * 1000
         el.semi_intermediate_axis_length = float(stat[30]) * 1000
         el.semi_major_axis_length = float(stat[32]) * 1000
         el.major_axis_azimuth = major_az
         el.major_axis_plunge = major_dip
 
+        # obsy will complain... see above
+        ou = obspy.core.event.OriginUncertainty()
         ou.confidence_ellipsoid = el
 
         origin.origin_uncertainty = ou
 
         TravelTime = False
-        oq = event.OriginQuality()
+        oq = obspy.core.event.OriginQuality()
         arrivals = []
         stations = []
         phases = []
@@ -253,10 +254,6 @@ def calculate_uncertainty(event, base_directory, base_name, perturbation=5,
     :return: microquake.core.event.Event
     """
 
-    from microquake.core.data.grid import read_grid
-    from numpy import linalg, argsort, arcsin, sqrt
-    from microquake.core.event import ConfidenceEllipsoid, OriginUncertainty
-
     narr = len(event.preferred_origin().arrivals)
 
     # initializing the frechet derivative
@@ -274,7 +271,7 @@ def calculate_uncertainty(event, base_directory, base_name, perturbation=5,
                                               base_name, phase, station_code)
 
         tt = read_grid(filename, format='NLLOC')
-        spc = tt.spacing
+        # spc = tt.spacing
 
         # build the Frechet derivative
 
@@ -287,25 +284,32 @@ def calculate_uncertainty(event, base_directory, base_name, perturbation=5,
             tt_p2 = tt.interpolate(loc_p2, grid_coordinate=False)
             Frechet[i, dim] = (tt_p1 - tt_p2) / (2 * perturbation)
 
-    hessian = linalg.inv(np.dot(Frechet.T, Frechet))
+    hessian = np.linalg.inv(np.dot(Frechet.T, Frechet))
     tmp = hessian * pick_uncertainty ** 2
-    w, v = linalg.eig(tmp)
-    i = argsort(w)[-1::-1]
+    w, v = np.linalg.eig(tmp)
+    i = np.argsort(w)[-1::-1]
     # for the angle calculation see
     # https://en.wikipedia.org/wiki/Euler_angles#Tait-Bryan_angles
-    X = v[:, i[0]]
-    Y = v[:, i[1]]
-    Z = v[:, i[2]]
-    major_axis_plunge = arcsin(Y[2] / sqrt(1 - X[2] ** 2))
-    major_axis_azimuth = arcsin(X[1] / sqrt(1 - X[2] ** 2))
-    major_axis_rotation = arcsin(-X[2])
-    ce = ConfidenceEllipsoid(semi_major_axis_length=w[i[0]],
-                             semi_intermediate_axis_length=w[i[1]],
-                             semi_minor_axis_length=w[i[2]],
-                             major_axis_plunge=major_axis_plunge,
-                             major_axis_azimuth=major_axis_azimuth,
-                             major_axis_rotation=major_axis_rotation)
-    ou = OriginUncertainty(confidence_ellipsoid=ce)
+    X = v[:, i[0]]  # major
+    Y = v[:, i[1]]  # intermediate
+    # Z = v[:, i[2]]  # minor
+
+    X_H = np.sqrt(X[0] ** 2 + X[1] ** 2)
+    major_axis_plunge = np.arctan2(X[2], X_H)
+    major_axis_azimuth = np.arctan2(X[1], X[0])
+    major_axis_rotation = 0
+
+    # major_axis_plunge = np.arcsin(X[2] / np.sqrt(1 - X[2] ** 2))
+    # major_axis_azimuth = np.arcsin(X[1] / np.sqrt(1 - X[2] ** 2))
+    # major_axis_rotation = np.arcsin(-X[2])
+    ce = obspy.core.event.ConfidenceEllipsoid(
+        semi_major_axis_length=w[i[0]],
+        semi_intermediate_axis_length=w[i[1]],
+        semi_minor_axis_length=w[i[2]],
+        major_axis_plunge=major_axis_plunge,
+        major_axis_azimuth=major_axis_azimuth,
+        major_axis_rotation=major_axis_rotation)
+    ou = obspy.core.event.OriginUncertainty(confidence_ellipsoid=ce)
 
     return ou
 
@@ -316,27 +320,24 @@ def read_scatter_file(filename):
     :return: a numpy array of the points in the scatter file
     """
 
-    import struct
-    from numpy import array
-
     f = open(filename, 'rb')
 
-    nsamples = struct.unpack('i', f.read(4))[0]
-    struct.unpack('f', f.read(4))
-    struct.unpack('f', f.read(4))
-    struct.unpack('f', f.read(4))
+    nsamples = unpack('i', f.read(4))[0]
+    unpack('f', f.read(4))
+    unpack('f', f.read(4))
+    unpack('f', f.read(4))
 
     points = []
 
     for k in range(0, nsamples):
-        x = struct.unpack('f', f.read(4))[0]
-        y = struct.unpack('f', f.read(4))[0]
-        z = struct.unpack('f', f.read(4))[0]
-        pdf = struct.unpack('f', f.read(4))[0]
+        x = unpack('f', f.read(4))[0]
+        y = unpack('f', f.read(4))[0]
+        z = unpack('f', f.read(4))[0]
+        pdf = unpack('f', f.read(4))[0]
 
         points.append([x, y, z, pdf])
 
-    return array(points)
+    return np.array(points)
 
 
 def is_supported_nlloc_grid_type(grid_type):
@@ -359,7 +360,7 @@ def _read_nll_header_file(file_name):
     read NLLoc header file
     :param file_name: path to the header file
     :type file_name: str
-    :rtype: ~microquake.core.util.attribdict.AttribDict
+    :rtype: ~microquake.core.AttribDict
     """
     dict_out = AttribDict()
     with open(file_name, 'r') as fin:
@@ -818,7 +819,6 @@ class NLL(object):
         calculate and save take off angle grid
         """
         from microquake.core.simul.eik import angles
-        from microquake.core import read_grid
         # reading the travel time grid
         ifile = time_file
         ttg = read_grid(ifile, format='NLLOC')
@@ -835,23 +835,20 @@ class NLL(object):
         Returns:
 
         """
-        from microquake.core.data.grid import read_grid
-        from numpy import arange, meshgrid, zeros_like
         from microquake.core.simul.eik import ray_tracer
-        from time import time
         time_files = glob('%s/time/*time*.hdr' % self.base_folder)
 
         ttg = read_grid(time_files[0], format='NLLOC')
-        x = arange(0, ttg.shape[0])
-        y = arange(0, ttg.shape[1])
-        z = arange(0, ttg.shape[2])
+        x = np.arange(0, ttg.shape[0])
+        y = np.arange(0, ttg.shape[1])
+        z = np.arange(0, ttg.shape[2])
 
-        X, Y, Z = meshgrid(x, y, z)
+        X, Y, Z = np.meshgrid(x, y, z)
         X = X.reshape(np.product(ttg.shape))
         Y = Y.reshape(np.product(ttg.shape))
         Z = Z.reshape(np.product(ttg.shape))
 
-        out_array = zeros_like(ttg.data)
+        out_array = np.zeros_like(ttg.data)
 
         for time_file in time_files:
             ttg = read_grid(time_file, format='NLLOC')
@@ -871,7 +868,7 @@ class NLL(object):
             ttg.type = 'DISTANCE'
             ttg.write(ofname, format='NLLOC')
 
-            retur
+            return
 
     def tar_files(self):
         # Create tar.gz from the NLL folder
@@ -911,7 +908,7 @@ class NLL(object):
 
         if not glob(filename):
             logger.error("%s.%s: location failed" % (__name__, fname))
-            return Catalog(events=[evt])
+            return obspy.core.event.Catalog(events=[evt])
 
         if event.origins:
             if event.preferred_origin():
@@ -967,10 +964,12 @@ class NLL(object):
 
                 polarity = 'U' if pk.polarity == 'positive' else 'D'
 
-                out_file.write('%s ?    ?    ?    %s %s %s GAU %s -1.00e+00 -1.00e+00 -1.00e+00\n'
-                               % (pk.waveform_id.station_code.ljust(6),
-                                  pk.phase_hint.ljust(6), polarity, date_str,
-                                  pick_error))
+                out_file.write(
+                    '%s ?    ?    ?    %s %s %s GAU'
+                    ' %s -1.00e+00 -1.00e+00 -1.00e+00\n' % (
+                        pk.waveform_id.station_code.ljust(6),
+                        pk.phase_hint.ljust(6), polarity, date_str,
+                        pick_error))
         return event
 
     def read_hyp_loc(self, hypfile, event, evaluation_mode='automatic',
@@ -991,7 +990,6 @@ class NLL(object):
         :type use_ray_tracer: bool
         :rtype: ~microquake.core.event.Catalog
         """
-        from microquake.core import read_grid
         from microquake.core.simul.eik import ray_tracer
         from time import time
 
@@ -1003,23 +1001,28 @@ class NLL(object):
         st = time()
         if use_ray_tracer:
             for arrival in origin.arrivals:
-                sensor_id = arrival.get_pick().waveform_id.station_code
-                phase = arrival.phase
-
-                fname = '%s.%s.%s.time' % (self.base_name, phase, sensor_id)
-
-                fpath = os.path.join(self.base_folder, 'time', fname)
-
-                ttg = read_grid(fpath, format='NLLOC')
-                ray = ray_tracer(ttg, origin.loc, grid_coordinates=False)
-
-                '''
-                dist = arrival.distance
-                pk = arrival.pick_id.get_referred_object()
-                sta = pk.waveform_id.station_code
-                '''
-
-                arrival.distance = ray.length()
+                try:
+                    sensor_id = arrival.get_pick().waveform_id.station_code
+                    phase = arrival.phase
+    
+                    fname = '%s.%s.%s.time' % (self.base_name, phase, sensor_id)
+    
+                    fpath = os.path.join(self.base_folder, 'time', fname)
+    
+                    ttg = read_grid(fpath, format='NLLOC')
+                    ray = ray_tracer(ttg, origin.loc, grid_coordinates=False)
+    
+                    '''
+                    dist = arrival.distance
+                    pk = arrival.pick_id.get_referred_object()
+                    sta = pk.waveform_id.station_code
+                    '''
+                    arrival.distance = ray.length()
+                except Exception as exc:
+                    logger.warning(
+                        f'Failed to calculate ray for sensor {sensor_id}'
+                        f' phase {phase}: {exc}', exc_info=True)
+                    arrival.distance = None
 
                 # print("nlloc read_hyp_loc: arr sta:%s pha:%s dist:%f ray_dist:%f" % \
                 # (sta, arrival.phase, dist, arrival.distance))
@@ -1031,10 +1034,9 @@ class NLL(object):
         event.origins.append(origin)
         event.preferred_origin_id = origin.resource_id
 
-        return Catalog(events=[event])
+        return obspy.core.event.Catalog(events=[event])
 
     def take_off_angle(self, station):
-        from microquake.core.data.grid import read_grid
         fname = '%s/time/%s.P.%s.take_off' % (self.base_folder, self.base_name,
                                               station)
         return read_grid(fname, format='NLLOC')

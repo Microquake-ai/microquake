@@ -17,6 +17,7 @@ Expansion of the obspy.core.event module
     (http://www.gnu.org/copyleft/lesser.html)
 """
 
+
 def encode_pickle(obj):
     """Encodes any python object as a
     :py:mod:`base64` string.
@@ -39,6 +40,7 @@ def decode_pickle(compressed_obj):
 
     ser_obj = bz2.decompress(compressed_obj)
     obj = pickle.loads(ser_obj)
+
     return obj
 
 

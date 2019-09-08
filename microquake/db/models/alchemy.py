@@ -5,15 +5,17 @@ Base = declarative_base()
 from sqlalchemy import Column, Integer, String
 
 processing_logs = db.Table('processing_logs', metadata,
-                            db.Column('event_id',db.String(255),
-                                      primary_key=True),
-                            db.Column('event_timestamp', db.DateTime),
-                            db.Column('processing_timestamp', db.DateTime),
-                            db.Column('processing_step_name', db.String(255)),
-                            db.Column('processing_step_id', db.Integer),
-                            db.Column('processing_delay_second', db.Float),
-                            db.Column('processing_time_second', db.Float),
-                            db.Column('processing_status', db.String(255)))
+                           db.Column('id', db.Integer, primary_key=True),
+                           db.Column('event_id', db.String(255)),
+                           db.Column('event_timestamp', db.DateTime),
+                           db.Column('processing_timestamp', db.DateTime),
+                           db.Column('processing_step_name', db.String(255)),
+                           db.Column('processing_step_id', db.Integer),
+                           db.Column('processing_delay_second', db.Float(
+                               precision=8)),
+                           db.Column('processing_time_second', db.Float(
+                               precision=8)),
+                           db.Column('processing_status', db.String(255)))
 
 processing = db.Table('processing', metadata,
                       db.Column('event_id', db.String(255), primary_key=True),
@@ -23,7 +25,32 @@ processing = db.Table('processing', metadata,
                       db.Column('processing_completed_timestamp',
                                 db.Float),
                       db.Column('event_category', db.String(255)),
-                      db.Column('event_status', db.String(255)))
+                      db.Column('event_status', db.String(255)),
+                      db.Column('event_magnitude', db.Integer))
+
+
+# class to store the ground velocity measure from the continous ground
+# vibration. The main purpose is for rapid alarming.
+
+ground_velocity = db.Table('ground_velocity', metadata,
+                           db.Column('time', db.DateTime(timezone=True),
+                                     primary_key=True),
+                           db.Column('sensor_id', db.Integer),
+                           db.Column('ground_velocity_mm_s', db.Float))
+
+
+class Recording(Base):
+    __tablename__ = 'recordings'
+
+    time = Column(db.DateTime(timezone=True), primary_key=True)
+    end_time = Column(db.DateTime(timezone=True))
+    sensor_id = Column(db.Integer)
+    sensor_type_id = Column(db.Integer)
+    sample_count = Column(db.Integer)
+    sample_rate = Column(db.Float)
+    x = Column(db.Float)
+    y = Column(db.Float)
+    z = Column(db.Float)
 
 # class data_quality(Base):
 #     __tablename__ = 'data_quality'
@@ -60,15 +87,5 @@ processing = db.Table('processing', metadata,
 #                      )
 
 
-class Recording(Base):
-    __tablename__ = 'recordings'
 
-    time = Column(db.DateTime(timezone=True), primary_key=True)
-    end_time = Column(db.DateTime(timezone=True))
-    sensor_id = Column(db.Integer)
-    sensor_type_id = Column(db.Integer)
-    sample_count = Column(db.Integer)
-    sample_rate = Column(db.Float)
-    x = Column(db.Float)
-    y = Column(db.Float)
-    z = Column(db.Float)
+

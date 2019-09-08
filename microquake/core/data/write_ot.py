@@ -1,45 +1,43 @@
-
-import numpy as np
 import os
 
-from instResp.libInst import getResponse, get_corner_freq_from_pole
-from instResp.libNom import WA, RC, Accelerometer
-from instResp.plotResp import plotResponse
-
-from microquake.core.data.inventory import load_inventory, test_print_OT_xml_summary
-from microquake.core.data.inventory import load_inventory_from_excel
-from microquake.core.data.inventory import Inventory
-from microquake.core.data.response_utils import read_sensor_types_file, read_cable_file
-
-from obspy.core.inventory.response import InstrumentSensitivity
+import numpy as np
+from obspy.core.inventory.response import InstrumentSensitivity, PolesZerosResponseStage
 from obspy.core.inventory.util import Frequency
 
-ns_tag='mq'
-ns='MICROQUAKE'
+import instResp
+from instResp.libInst import get_corner_freq_from_pole, getResponse
+from instResp.libNom import RC, WA, Accelerometer
+from instResp.plotResp import plotResponse
+from loguru import logger
+from microquake.core.data.inventory import (
+    Inventory,
+    load_inventory_from_excel,
+    test_print_OT_xml_summary
+)
+from microquake.core.data.response_utils import read_cable_file, read_sensor_types_file
 
-import logging
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+ns_tag = 'mq'
+ns = 'MICROQUAKE'
 
 
 def get_sensitivity(resistance):
     if resistance == 0:
-        #print("    This is a most likely an Accelerometer!")
+        # print("    This is a most likely an Accelerometer!")
         sensitivity = 1.0
     elif resistance % 3500 == 0:
-        #print("    This is a high-gain geophone --> Use 80 V/m/s")
+        # print("    This is a high-gain geophone --> Use 80 V/m/s")
         sensitivity = resistance/3500 * 80
     elif resistance % 375 == 0:
-        #print("    This is a low-gain geophone --> Use 28.8 V/m/s")
+        # print("    This is a low-gain geophone --> Use 28.8 V/m/s")
         sensitivity = resistance/375 * 28.8
     else:
-        #print("    Unknown resistance [%s] --> use default sensitivity=1.0" % resistance)
+        # print("    Unknown resistance [%s] --> use default sensitivity=1.0" % resistance)
         sensitivity = 1.0
 
     return sensitivity
 
 
-def fix_OT_responses(inventory, logger_in=None):
+def fix_OT_responses(inventory):
     '''
     Replace the generic (placeholder) channel responses in inventory
         with calculated responses.
@@ -48,29 +46,26 @@ def fix_OT_responses(inventory, logger_in=None):
         like damping, coil_resistance, etc.
     '''
 
-    global logger
-    if logger_in is not None:
-        logger = logger_in
-
     for station in inventory.stations():
 
-        logger.info("sta:%s sensor_id:%s" % (station.code, station.sensor_id))
+        logger.info("sta:{}".format(station.code))
 
         extras = station.extra
         resistance = extras.coil_resistance.value
-        f0         = extras.resonance_frequency.value
-        damp       = extras.damping.value
-        cable_cap  = extras.cable_capacitance_pF_per_meter.value
-        cable_len  = extras.cable_length.value
+        f0 = extras.resonance_frequency.value
+        damp = extras.damping.value
+        cable_cap = extras.cable_capacitance_pF_per_meter.value
+        cable_len = extras.cable_length.value
 
         sensitivity = get_sensitivity(resistance)
         extras['calculated_pz_sensitivity'] = {'namespace': ns, 'value': sensitivity}
 
-        logger.info("resistance:%f sensitivity:%f cable_cap:%f len:%f" % \
+        logger.info("resistance:%f sensitivity:%f cable_cap:%f len:%f" %
                     (resistance, sensitivity, cable_cap, cable_len))
 
         pz_generator = WA
         input_units = "M/S"
+
         if station.motion == "ACCELERATION":
             pz_generator = Accelerometer
             input_units = "M/S**2"
@@ -82,37 +77,39 @@ def fix_OT_responses(inventory, logger_in=None):
 
         freqs = np.logspace(-5, 4., num=2000)
 
-        #pzs.name = station.sensor_id
+        # pzs.name = station.sensor_id
         pzs.name = extras.model.value
         pzs.unitsIn = input_units
         pzs.unitsOut = "V"
 
-        if cable_cap == 0:
-            #print("No cable cap set --> Skip!")
-            pass
+        if cable_cap == 0 or cable_len == 0:
+            logger.info("Cable capacity or cable length set to 0 --> ignoring")
+
         else:
             # Cable capacity in pF (=10^-12 Farads):
             cable_capacity = cable_cap * 1e-12 * cable_len
             tau = resistance * cable_capacity
             f_rc = 1./tau
-            #print("cap_per_m:%s x len:%f = %f  x R=%f --> tau=%f fc=1/tau=%g" % \
-                  #(cable_cap, cable_len, cable_capacity, resistance, tau, f_rc))
+            # print("cap_per_m:%s x len:%f = %f  x R=%f --> tau=%f fc=1/tau=%g" % \
+            # (cable_cap, cable_len, cable_capacity, resistance, tau, f_rc))
             pz_rc = RC(tau=tau)
             pzs.append_pole(pz_rc.poles[0])
-            pzs.normalize_to_a0(norm_freq = 100)
+            pzs.normalize_to_a0(norm_freq=100)
 
-        resp  = getResponse(pzs, freqs, removeZero=False, useSensitivity=False)
+        resp = getResponse(pzs, freqs, removeZero=False, useSensitivity=False)
 
-        title='sta:%s sensor_type:%s f0=%.0f Hz h=%.2f sensitivity=%.2f' % \
-                (station.code, station.sensor_id, f0, damp, sensitivity)
+        title = 'sta:%s f0=%.0f Hz h=%.2f sensitivity=%.2f' % \
+            (station.code, f0, damp, sensitivity)
         logger.info("Corner freq:%f" % get_corner_freq_from_pole(pzs.poles[0]))
 
         fc_low = -999.
+
         if station.motion == "VELOCITY":
             fc_low = get_corner_freq_from_pole(pzs.poles[0])
-        #elif station.motion == "ACCELERATION":
+        # elif station.motion == "ACCELERATION":
 
         fc_high = 1e6
+
         if pzs.poles.size == 3:
             logger.info("** High-f Corner freq:%f" % get_corner_freq_from_pole(pzs.poles[2]))
             fc_high = get_corner_freq_from_pole(pzs.poles[2])
@@ -120,11 +117,10 @@ def fix_OT_responses(inventory, logger_in=None):
         extras['min_frequency'] = {'namespace': ns, 'value': float(fc_low)}
         extras['max_frequency'] = {'namespace': ns, 'value': float(fc_high)}
 
-        #if station.code == '2':
-        #if 1:
-            #plotResponse(resp, freqs, title=title, xmin=1, xmax=10000., ymin=.01, ymax=6, title_font_size=8)
-            #exit()
-
+        # if station.code == '2':
+        # if 1:
+        # plotResponse(resp, freqs, title=title, xmin=1, xmax=10000., ymin=.01, ymax=6, title_font_size=8)
+        # exit()
 
         response = station.channels[0].response
         instrument_sensitivity = response.instrument_sensitivity
@@ -148,14 +144,13 @@ def fix_OT_responses(inventory, logger_in=None):
     return 1
 
 
-def write_OT_xml(sensor_file, sensor_type_file, cable_file, xml_outfile='OT.xml', logger_in=None):
+def write_OT_xml(sensor_file, sensor_type_file, cable_file, xml_outfile='OT.xml'):
     '''
     Deprecated - used when network metadata was spread over individual csv files
     '''
-
-    global logger
-    if logger_in is not None:
-        logger = logger_in
+    # This import will fail as load_inventory not anymore here
+    from microquake.core.data.inventory import load_inventory
+    # <MV 190905>
 
     print("write_OT_xml: xml_outfile=%s" % xml_outfile)
 
@@ -165,6 +160,7 @@ def write_OT_xml(sensor_file, sensor_type_file, cable_file, xml_outfile='OT.xml'
 
     for cable in cables:
         logger.info("cable:%s --> %s" % (cable, cables[cable]))
+
     for sensor in sensor_types:
         logger.info("sensor:%s --> %s" % (sensor, sensor_types[sensor]))
 
@@ -183,21 +179,23 @@ def write_OT_xml(sensor_file, sensor_type_file, cable_file, xml_outfile='OT.xml'
         extras['cable_pF_capacitance_per_m'] = {'namespace': ns, 'value': float(cable_cap)}
 
         resistance = float(sensor_type['output resistance (ohm)'])
+
         if resistance == 0:
-            #print("    This is a most likely an Accelerometer!")
+            # print("    This is a most likely an Accelerometer!")
             sensitivity = 1.0
         elif resistance % 3500 == 0:
-            #print("    This is a high-gain geophone --> Use 80 V/m/s")
+            # print("    This is a high-gain geophone --> Use 80 V/m/s")
             sensitivity = resistance/3500 * 80
         elif resistance % 375 == 0:
-            #print("    This is a low-gain geophone --> Use 28.8 V/m/s")
+            # print("    This is a low-gain geophone --> Use 28.8 V/m/s")
             sensitivity = resistance/375 * 28.8
         else:
-            #print("    Unknown resistance [%s] --> use default sensitivity=1.0" % resistance)
+            # print("    Unknown resistance [%s] --> use default sensitivity=1.0" % resistance)
             sensitivity = 1.0
 
         pz_generator = WA
         input_units = "M/S"
+
         if station.motion == "ACCELERATION":
             pz_generator = Accelerometer
             input_units = "M/S**2"
@@ -218,8 +216,8 @@ def write_OT_xml(sensor_file, sensor_type_file, cable_file, xml_outfile='OT.xml'
         pzs.unitsOut = "V"
 
         if cable_cap == "0":
-            #print("No cable cap set --> Skip!")
-            #print(pzs)
+            # print("No cable cap set --> Skip!")
+            # print(pzs)
             pass
         else:
             cable_len = float(station.cable_length)
@@ -227,25 +225,26 @@ def write_OT_xml(sensor_file, sensor_type_file, cable_file, xml_outfile='OT.xml'
             cable_capacity = float(cable_cap) * 1e-12 * cable_len
             tau = resistance * cable_capacity
             f_rc = 1./tau
-            #print("cap_per_m:%s x len:%f = %f  x R=%f --> tau=%f fc=1/tau=%g" % \
-                  #(cable_cap, cable_len, cable_capacity, resistance, tau, f_rc))
+            # print("cap_per_m:%s x len:%f = %f  x R=%f --> tau=%f fc=1/tau=%g" % \
+            # (cable_cap, cable_len, cable_capacity, resistance, tau, f_rc))
             pz_rc = RC(tau=tau)
             pzs.append_pole(pz_rc.poles[0])
-            pzs.normalize_to_a0(norm_freq = 100)
+            pzs.normalize_to_a0(norm_freq=100)
 
+        resp = getResponse(pzs, freqs, removeZero=False, useSensitivity=False)
 
-        resp  = getResponse(pzs, freqs, removeZero=False, useSensitivity=False)
-
-        title='sta:%s sensor_type:%s f0=%.0f Hz h=%.2f sensitivity=%.2f' % \
-                (station.code, station.sensor_id, f0, damp, sensitivity)
+        title = 'sta:%s sensor_type:%s f0=%.0f Hz h=%.2f sensitivity=%.2f' % \
+            (station.code, station.sensor_id, f0, damp, sensitivity)
         logger.info("Corner freq:%f" % get_corner_freq_from_pole(pzs.poles[0]))
 
         fc_low = -999.
+
         if station.motion == "VELOCITY":
             fc_low = get_corner_freq_from_pole(pzs.poles[0])
-        #elif station.motion == "ACCELERATION":
+        # elif station.motion == "ACCELERATION":
 
         fc_high = 1e6
+
         if pzs.poles.size == 3:
             logger.info("** High-f Corner freq:%f" % get_corner_freq_from_pole(pzs.poles[2]))
             fc_high = get_corner_freq_from_pole(pzs.poles[2])
@@ -253,10 +252,10 @@ def write_OT_xml(sensor_file, sensor_type_file, cable_file, xml_outfile='OT.xml'
         extras['min_frequency'] = {'namespace': ns, 'value': float(fc_low)}
         extras['max_frequency'] = {'namespace': ns, 'value': float(fc_high)}
 
-        #if station.code == '2':
-        #if 1:
-            #plotResponse(resp, freqs, title=title, xmin=1, xmax=10000., ymin=.01, ymax=6, title_font_size=8)
-            #exit()
+        # if station.code == '2':
+        # if 1:
+        # plotResponse(resp, freqs, title=title, xmin=1, xmax=10000., ymin=.01, ymax=6, title_font_size=8)
+        # exit()
 
         from obspy.core.inventory.response import InstrumentSensitivity
         from obspy.core.inventory.util import Frequency
@@ -271,7 +270,6 @@ def write_OT_xml(sensor_file, sensor_type_file, cable_file, xml_outfile='OT.xml'
             output_units_description=None, frequency_range_start=None,
             frequency_range_end=None, frequency_range_db_variation=None):
         """
-
 
         response = station.channels[0].response
         instrument_sensitivity = response.instrument_sensitivity
@@ -292,14 +290,11 @@ def write_OT_xml(sensor_file, sensor_type_file, cable_file, xml_outfile='OT.xml'
         for channel in station.channels:
             channel.response = response
 
-
     inventory.write(xml_outfile, format='STATIONXML', nsmap={ns_tag: ns})
 
     return 1
 
 
-from obspy.core.inventory.response import PolesZerosResponseStage
-import instResp
 def convert_pz_to_obspy(pz: instResp.polezero.polezero) -> PolesZerosResponseStage:
     ''' Convert internal polezero object to obspy PolesZeroResponseStage
     '''
@@ -313,15 +308,15 @@ def convert_pz_to_obspy(pz: instResp.polezero.polezero) -> PolesZerosResponseSta
     poles = pz.poles
 
     if zeros is None:
-       logger.debug("Inside convert_pz: zeros = None")
-       zeros = []
+        logger.debug("Inside convert_pz: zeros = None")
+        zeros = []
 
     if pz.type == 'A':
-       pz_transfer_function_type = "LAPLACE (RADIANS/SECOND)"
+        pz_transfer_function_type = "LAPLACE (RADIANS/SECOND)"
     elif pz.type == 'B':
-       pz_transfer_function_type = "LAPLACE (HERTZ)"
+        pz_transfer_function_type = "LAPLACE (HERTZ)"
     else:
-       pz_transfer_function_type = "DIGITAL (Z-TRANSFORM)"
+        pz_transfer_function_type = "DIGITAL (Z-TRANSFORM)"
 
     input_units = pz.unitsIn
     output_units = pz.unitsOut
@@ -337,8 +332,8 @@ def convert_pz_to_obspy(pz: instResp.polezero.polezero) -> PolesZerosResponseSta
                                        normalization_factor=normalization_factor,
                                        name=pz.name,
                                        )
-    return pz_stage
 
+    return pz_stage
 
 
 def test_read_xml(xmlfile):
@@ -347,12 +342,13 @@ def test_read_xml(xmlfile):
 
     for station in inventory.networks[0].stations:
         print(station.code, station.loc, station.sensor_id, station.extra.damping)
+
         for channel in station.channels:
-            #channel.plot(min_freq=1., output=output)
+            # channel.plot(min_freq=1., output=output)
             print(channel.code, channel.dip, channel.azimuth)
 
-
     return
+
 
 def main():
 
@@ -365,33 +361,30 @@ def main():
 
     inventory = load_inventory_from_excel(xls_file)
     success = fix_OT_responses(inventory)
-    inventory.write('OT.xml', format='STATIONXML', nsmap={ns_tag: ns})
+    xml_out = os.path.join(path, 'OT.xml')
+    inventory.write(xml_out, format='STATIONXML', nsmap={ns_tag: ns})
     exit()
 
     sensor_file = os.path.join(path, 'sensors.csv')
-    sensor_types_file = os.path.join(path,'sensor_types.csv')
+    sensor_types_file = os.path.join(path, 'sensor_types.csv')
     cables_file = os.path.join(path, 'cables.csv')
 
-    success = write_OT_xml(sensor_file, sensor_types_file, cables_file, xml_outfile='OT.xml')
+    success = write_OT_xml(sensor_file, sensor_types_file, cables_file,
+                           xml_outfile=xml_out)
     assert success == 1
     exit()
 
-    #test_read_xml('OT.xml')
-    test_print_OT_xml_summary('OT.xml')
+    # test_read_xml('OT.xml')
+    test_print_OT_xml_summary(xml_out)
     exit()
-
 
     test_read_stationxml('resources/ANMO.xml', 'ANMO2.xml')
     test_read_stationxml('resources/OT.xml', 'OT2.xml')
     test_read_csv_write_stationxml(sensor_csv, 'OT_new.xml')
     test_print_OT_xml_summary('OT_new.xml')
 
-
     return
-
 
 
 if __name__ == "__main__":
     main()
-
-

@@ -1,7 +1,8 @@
+import os
+from glob import glob
 
 import numpy as np
-from glob import glob
-import os
+
 import h5py
 
 
@@ -29,7 +30,7 @@ class H5TTable(object):
             self.dset = self.hf[key]
         else:
             raise KeyError('dataset %s does not exist' % key)
-        
+
     @property
     def shape(self):
         return self.hf.attrs['shape']
@@ -54,6 +55,7 @@ class H5TTable(object):
         iy = ((index - iz) // nz) % ny
         ix = index // (nz * ny)
         loc = np.array([ix, iy, iz], dtype=float) * self.spacing + self.origin
+
         return loc
 
     def xyz_to_icol(self, loc):
@@ -61,11 +63,12 @@ class H5TTable(object):
         ix, iy, iz = ((loc - self.origin) / self.spacing).astype(int)
         nx, ny, nz = self.shape
         # return (iz * nx * ny) + (iy * nx) + ix;
+
         return int((ix * ny * nz) + (iy * nz) + iz)
 
     def close(self):
         self.hf.close()
-      
+
 
 def gdef_to_points(shape, origin, spacing):
     maxes = origin + shape * spacing
@@ -75,11 +78,13 @@ def gdef_to_points(shape, origin, spacing):
     points = np.zeros((np.product(shape), 3), dtype=np.float32)
     # points = np.stack(np.meshgrid(x, y, z), 3).reshape(3, -1).astype(np.float32)
     ix = 0
+
     for xv in x:
         for yv in y:
             for zv in z:
                 points[ix] = [xv, yv, zv]
                 ix += 1
+
     return points
 
 
@@ -92,7 +97,6 @@ def read_nll_header(fle):
     sloc = np.array(dat[12:15], dtype=np.float32) * 1000.
 
     return sloc, shape, origin, spacing
-
 
 
 # f_tt = os.path.join(common_dir, nll_dir, 'time', 'OT.%s.%s.time.buf'
@@ -135,7 +139,8 @@ def array_from_nll_grids(path, phase, prefix='OT'):
 
     # meta = {'spacing': spacing, 'origin': origin, 'shape': shape, 'names': names}
     # data = dict(tts=tts, locations=slocs, origin=origin, spacing=spacing, namedict=ndict)
-    data = dict(ttable=tts, locations=slocs, shape=shape, origin=origin, spacing=spacing, stations=stations, phase=phase)
+    data = dict(ttable=tts, locations=slocs, shape=shape, origin=origin,
+                spacing=spacing, stations=stations, phase=phase)
 
     return data
     # return tts, slocs, ndict, gdef
@@ -162,7 +167,7 @@ def write_h5(fname, tdict, tdict2=None):
 
     if tdict2 is not None:
         hf.create_dataset('tt%s' % tdict2['phase'].lower(), data=tdict2['ttable'])
-    
+
     gdef = np.concatenate((shape, origin, [spacing])).astype(np.int32)
     hf.create_dataset('grid_def', data=gdef)
     hf.create_dataset('stations', data=stations.astype('S4'))

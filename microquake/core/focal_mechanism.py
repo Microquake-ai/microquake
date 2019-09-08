@@ -1,6 +1,4 @@
 
-import logging
-
 import matplotlib.pyplot as plt
 import numpy as np
 from obspy.core.event.base import Comment
@@ -8,11 +6,10 @@ from obspy.core.event.source import FocalMechanism, NodalPlane, NodalPlanes
 from obspy.imaging.beachball import aux_plane
 
 from hashwrap.hashwrapper import calc_focal_mechanisms
+from loguru import logger
 
-logger = logging.getLogger(__name__)
 
-
-def calc(cat, settings, logger_in=None):
+def calc(cat, settings):
     """
     Prepare input arrays needed to calculate focal mechanisms
     and pass these into hashwrap.hashwrapper
@@ -23,8 +20,6 @@ def calc(cat, settings, logger_in=None):
     :type list: list of obspy.core.event.Events or microquake.core.event.Events
     :param settings:hash settings
     :type settings dictionary
-    :param logger_in: Optional logger to use instead of default module logger
-    :type logger_in: Handle to logger object
 
     :returns: obsy_focal_mechanisms, matplotlib_figures
     :rtype: list, list
@@ -33,11 +28,6 @@ def calc(cat, settings, logger_in=None):
     fname = 'calc_focal_mechanism'
 
     plot_focal_mechs = settings.plot_focal_mechs
-
-    global logger
-
-    if logger_in is not None:
-        logger = logger_in
 
     sname = []
     p_pol = []
@@ -66,10 +56,15 @@ def calc(cat, settings, logger_in=None):
 
         for arr in arrivals:
 
+            if not arr.get_pick():
+                logger.warning(
+                    f"Missing pick for arrival {arr.resource_id} on"
+                    f" event {event.resource_id}")
+                continue
+
             if arr.pulse_snr is None:
                 logger.warning("%s P arr pulse_snr == NONE !!!" %
                                arr.pick_id.get_referred_object().waveform_id.station_code)
-
                 continue
 
             sname.append(arr.pick_id.get_referred_object().waveform_id.station_code)
@@ -99,8 +94,7 @@ def calc(cat, settings, logger_in=None):
     events.append(event_dict)
 
     outputs = calc_focal_mechanisms(events, settings,
-                                    phase_format='FPFIT',
-                                    logger_in=logger)
+                                    phase_format='FPFIT')
 
     focal_mechanisms = []
 

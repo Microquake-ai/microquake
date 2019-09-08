@@ -1,16 +1,18 @@
 import os
 
 import numpy as np
+from loguru import logger
 from numpy.linalg import norm
+from obspy.core import UTCDateTime
+from obspy.core.event import WaveformStreamID
 from scipy.interpolate import interp1d
 
-from microquake.core import Trace, UTCDateTime
+from microquake.core import Trace
 from microquake.core.data.grid import read_grid
-from microquake.core.event import Arrival, Pick, WaveformStreamID
-from microquake.core.simul.eik import ray_tracer
-
-from microquake.core.settings import settings
+from microquake.core.event import Arrival, Pick
 from microquake.core.helpers.velocity import get_current_velocity_model_id
+from microquake.core.settings import settings
+from microquake.core.simul.eik import ray_tracer
 
 
 def get_grid(station_code, phase, type='time'):
@@ -322,11 +324,21 @@ def synthetic_arrival_times(event_location, origin_time):
             if (phase == 'S') and (dist < 100):
                 continue
 
-            # at = origin_time + get_grid_point(station, phase,
-            at = origin_time + get_grid_point(station.code, phase,
-                                              event_location,
-                                              grid_coordinates=False)
-
+            try:
+                at = origin_time + get_grid_point(station.code, phase,
+                                                  event_location,
+                                                  grid_coordinates=False)
+            # Catching error when grid file do not exist
+            except OSError as exc:
+                logger.warning(
+                    f'Cannot read grid for station {station.code}'
+                    f' ({station.site.name}), phase {phase}: {exc}')
+                continue
+            except ValueError as exc:
+                logger.warning(
+                    f'Error reading grid for station {station.code}'
+                    f' ({station.site.name}), phase {phase}: {exc}')
+                continue
             wf_id = WaveformStreamID(
                 network_code=settings.get('project_code'),
                 station_code=station.code)

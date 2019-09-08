@@ -37,14 +37,13 @@ from matplotlib.ticker import MaxNLocator, ScalarFormatter
 import scipy.signal as signal
 
 from microquake.core import Stream, Trace
-from obspy import UTCDateTime
+from obspy.core import UTCDateTime
 
 # from microquake.core.util import create_empty_data_chunk as createEmptyDataChunck
 #
 #                             kilometer2degrees, locations2degrees)
 from obspy.geodetics import (flinnengdahl, kilometer2degrees,
                                   locations2degrees)
-from microquake.core.util.decorator import deprecated_keywords
 from obspy.imaging.util import (ObsPyAutoDateFormatter, _timestring)
 from obspy.imaging.util import _id_key as _ID_key
 
@@ -447,7 +446,6 @@ class WaveformPlotting(object):
         ax.set_xlim(xmin, xmax)
         self._draw_overlap_axvspan_legend()
 
-    @deprecated_keywords({'swap_time_axis': None})
     def plotDay(self, *args, **kwargs):
         """
         Extend the seismogram.

@@ -1,8 +1,10 @@
 import numpy as np
+from loguru import logger
 
 """
     Place to keep trace transforms - mainly rotations to ENZ, PSVSH, etc.
 """
+
 
 def rotate_to_P_SV_SH(st, cat, debug=False):
 
@@ -97,15 +99,32 @@ def rotate_to_ENZ(st, inventory):
 
         trs = st_new.select(station=sta)
 
-        if len(trs) == 3 and len(inventory.select(sta).channels) == 3:
-            #trs.plot()
-            #col1 = sta_meta_data[sta]['chans']['x'].cosines
-            #col2 = sta_meta_data[sta]['chans']['y'].cosines
-            #col3 = sta_meta_data[sta]['chans']['z'].cosines
+        if not inventory.select(sta):
+            logger.warning(f'missing station "{sta}" in inventory')
+            continue
 
-            col1 = inventory.get_channel(sta=sta, cha='x').cosines
-            col2 = inventory.get_channel(sta=sta, cha='y').cosines
-            col3 = inventory.get_channel(sta=sta, cha='z').cosines
+        # catching edge case when a uniaxial sensors contains three traces
+        # with two traces containing only NaN.
+
+        if len(trs) == 3:
+            if np.any([np.all(np.isnan(trs[0].data)),
+                       np.all(np.isnan(trs[1].data)),
+                       np.all(np.isnan(trs[2].data))]):
+                continue
+
+        if len(trs) == 3 and len(inventory.select(sta).channels) == 3:
+            # trs.plot()
+            # col1 = sta_meta_data[sta]['chans']['x'].cosines
+            # col2 = sta_meta_data[sta]['chans']['y'].cosines
+            # col3 = sta_meta_data[sta]['chans']['z'].cosines
+
+            try:
+                col1 = inventory.get_channel(sta=sta, cha='X').cosines
+                col2 = inventory.get_channel(sta=sta, cha='Y').cosines
+                col3 = inventory.get_channel(sta=sta, cha='Z').cosines
+            except AttributeError as err:
+                logger.error(err)
+                continue
 
             A = np.column_stack((col1,col2,col3))
             At = A.transpose()

@@ -2,6 +2,44 @@
 
 Microquake is an open source package to be licensed under the [GNU general Public License, version 3 (GPLv3)](http://www.gnu.org/licenses/gpl-3.0.html). Microquake is an extension of Obspy for the processing of microseismic data
 
+### Development
+
+```
+pip install poetry
+poetry config http-basic.microquake {user} {password}
+poetry install
+```
+
+Running tests
+
+```
+poetry run pytest
+```
+
+### How to release a new version
+
+```
+poetry version
+git add pyproject.toml
+gc -m "bump version"
+git tag newversion
+git push --tags
+```
+
+### Automatic tagging and releasing
+
+By adding the following command to your git config you can bump and release a new version with one command
+
+```
+git config --global alias.bump "\!version=\$(poetry version | awk '{print \$NF}' ) && git add pyproject.toml && git commit -m \"Bumping version to \$version\" && git tag \$version && git push --tags"
+```
+
+After running the above command you may release a new version with:
+
+```
+git bump
+```
+
 ### Package structure ###
 
 The package structure is not final and will settle over time
@@ -23,7 +61,7 @@ The package structure is not final and will settle over time
 
 ### What do I need to get microquake running? ###
 
-* Python 2.7
+* Python 3.6+
 * Numpy 1.9+
 * Scipy 0.14+
 * Matplotlib
@@ -40,16 +78,6 @@ The package structure is not final and will settle over time
 * pymongo (only for experimental dB interaction)
 * scikit-fmm'  # for the eikonal solver
 * mplstereonet' # to plot the station (experimental)
-
-### What do I NOT need to get microquake running? ###
-
-* version
-* lxml
-* [Inflect](https://pypi.python.org/pypi/inflect)
-* [PyProj](https://pypi.python.org/pypi/pyproj)
-* MySQLdb
-* [mrjob](https://pythonhosted.org/mrjob/) (deprecated)
-* pytz
 
 ### Contribution guidelines ###
 

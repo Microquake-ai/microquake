@@ -6,6 +6,7 @@ import numpy as np
 __all__ = ['complex_cepstrum', 'real_cepstrum', 'inverse_complex_cepstrum',
            'minimum_phase']
 
+
 def complex_cepstrum(x, n=None):
     """Compute the complex cepstrum of a real sequence.
 
@@ -84,10 +85,12 @@ def complex_cepstrum(x, n=None):
         samples = phase.shape[-1]
         unwrapped = np.unwrap(phase)
         center = (samples+1)//2
+
         if samples == 1:
             center = 0
-        ndelay = np.array(np.round(unwrapped[...,center]/np.pi))
-        unwrapped -= np.pi * ndelay[...,None] * np.arange(samples) / center
+        ndelay = np.array(np.round(unwrapped[..., center]/np.pi))
+        unwrapped -= np.pi * ndelay[..., None] * np.arange(samples) / center
+
         return unwrapped, ndelay
 
     spectrum = np.fft.fft(x, n=n)
@@ -189,12 +192,14 @@ def inverse_complex_cepstrum(ceps, ndelay):
         ndelay = np.array(ndelay)
         samples = phase.shape[-1]
         center = (samples+1)//2
-        wrapped = phase + np.pi * ndelay[...,None] * np.arange(samples) / center
+        wrapped = phase + np.pi * ndelay[..., None] * np.arange(samples) / center
+
         return wrapped
 
     log_spectrum = np.fft.fft(ceps)
     spectrum = np.exp(log_spectrum.real + 1j * _wrap(log_spectrum.imag, ndelay))
     x = np.fft.ifft(spectrum).real
+
     return x
 
 

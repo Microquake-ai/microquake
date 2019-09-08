@@ -1,13 +1,17 @@
 import json
+import urllib.parse
 from io import BytesIO
-from loguru import logger
+from uuid import uuid4
 
 import requests
-import urllib.parse
 from dateutil import parser
+from obspy import UTCDateTime
+from obspy.core.event import Catalog
+from obspy.core.util.attribdict import AttribDict
 
-from microquake.core import AttribDict, UTCDateTime, read, read_events
-from microquake.core.event import Ray
+from loguru import logger
+from microquake.core import read
+from microquake.core.event import Ray, read_events
 
 
 class RequestRay(AttribDict):
@@ -156,8 +160,6 @@ def post_data_from_objects(api_base_url, event_id=None, event=None,
     :return: same as build_request_data_from_bytes
     """
 
-    from microquake.core.event import Catalog
-
     api_url = api_base_url + "events"
 
     if type(event) is Catalog:
@@ -254,7 +256,7 @@ def post_data_from_objects(api_base_url, event_id=None, event=None,
         logger.info('done preparing variable length waveform data')
 
     return post_event_data(api_url, event_resource_id, files,
-                       send_to_bus=send_to_bus)
+                           send_to_bus=send_to_bus)
 
 
 def post_event_data(api_base_url, event_resource_id, request_files,
@@ -268,42 +270,45 @@ def post_event_data(api_base_url, event_resource_id, request_files,
     result = requests.post(url, data={"send_to_bus": send_to_bus},
                            files=request_files)
     logger.info(result)
+
     return result
 
 
 def put_event_from_objects(api_base_url, event_id, event=None,
-                            waveform=None, context=None,
-                            variable_size_waveform=None):
+                           waveform=None, context=None,
+                           variable_size_waveform=None):
     # removing id from URL as no longer used
     # url = api_base_url + "%s" % event_resource_id
 
-    event_id = encode(event_id)
-    url = api_base_url + 'events/%s/files' % event_id
+    # event_id = encode(event_id)
+    url = api_base_url + 'events/%s' % event_id
     logger.info('puting data on %s' % url)
 
     files = {}
+
     if event is not None:
         event_bytes = BytesIO()
         event.write(event_bytes, format='quakeml')
-        files['event'] = event_bytes.getvalue()
+        files['event_file'] = event_bytes.getvalue()
 
     if waveform is not None:
         mseed_bytes = BytesIO()
         waveform.write(mseed_bytes, format='mseed')
-        files['waveform'] = mseed_bytes.getvalue()
+        files['waveform_file'] = mseed_bytes.getvalue()
 
     if context is not None:
         context_bytes = BytesIO()
         context.write(context_bytes, format='mseed')
-        files['context'] = context_bytes.getvalue()
+        files['waveform_context_file'] = context_bytes.getvalue()
 
     if variable_size_waveform is not None:
         vsw_bytes = BytesIO()
         variable_size_waveform(vsw_bytes, format='mseed')
-        files['variable_size_waveform'] = vsw_bytes.getvalue()
+        files['variable_size_waveform_file'] = vsw_bytes.getvalue()
 
     result = requests.put(url, files=files)
     logger.info(result)
+
     return result
 
 
@@ -383,7 +388,6 @@ def post_continuous_stream(api_base_url, stream, post_to_kafka=True,
     if stream_id is not None:
         request_data['stream_id'] = stream_id
     else:
-        from uuid import uuid4
         request_data['stream_id'] = str(uuid4())
 
     result = requests.post(url, data=request_data, files=request_files)
@@ -434,6 +438,7 @@ def get_rays(api_base_url, event_resource_id, origin_resource_id=None,
     url = api_base_url + "rays?"
 
     event_resource_id = encode(event_resource_id)
+
     if event_resource_id:
         url += "event_id=%s&" % event_resource_id
 
@@ -480,10 +485,12 @@ def post_signal_quality(
     return session.post("{}signal_quality".format(api_base_url),
                         json=request_data)
 
+
 def reject_event(api_base_url, event_id):
     session = requests.Session()
-    session.trust_env=False
+    session.trust_env = False
 
     event_id = encode(event_id)
+
     return session.post("{}{}/interactive/reject".format(api_base_url,
-                                                           event_id))
+                                                         event_id))

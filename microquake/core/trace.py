@@ -19,8 +19,11 @@ Expansion of the obspy.core.trace module
 
 import numpy as np
 import obspy.core.trace as obstrace
+from obspy import UTCDateTime
+from obspy.core.event import WaveformStreamID
+from obspy.core.trace import AttribDict
 
-from microquake.core.event import Pick, WaveformStreamID
+from microquake.core.event import Pick
 from microquake.core.util import tools
 
 
@@ -87,7 +90,6 @@ class Trace(obstrace.Trace):
 
     @staticmethod
     def create_from_json(trace_json_object):
-        from obspy.core.trace import UTCDateTime
         # trace_json_object['stats']['starttime'] = UTCDateTime(int(trace_json_object['stats']['starttime']) / 1e9)
         # trace_json_object['stats']['endtime'] = UTCDateTime(int(trace_json_object['stats']['endtime']) / 1e9)
 
@@ -99,7 +101,6 @@ class Trace(obstrace.Trace):
         return trc
 
     def to_json(self):
-        from obspy.core.trace import UTCDateTime, AttribDict
         trace_dict = dict()
         trace_dict['stats'] = dict()
 
