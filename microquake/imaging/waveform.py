@@ -36,7 +36,8 @@ from matplotlib.path import Path
 from matplotlib.ticker import MaxNLocator, ScalarFormatter
 import scipy.signal as signal
 
-from microquake.core import Stream, Trace, UTCDateTime
+from microquake.core import Stream, Trace
+from obspy import UTCDateTime
 
 # from microquake.core.util import create_empty_data_chunk as createEmptyDataChunck
 #
