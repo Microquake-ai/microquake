@@ -36,7 +36,8 @@ class Processor(ProcessingUnit):
         mu = 29.5e9  # rigidity in Pa (shear-wave modulus)
 
         # finding the index for magnitude object that contains the energy
-
+        td_magnitude = None
+        fd_magnitude = None
         for magnitude in reversed(cat[0].magnitudes):
 
             if magnitude.magnitude_type == 'E':
