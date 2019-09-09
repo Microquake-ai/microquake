@@ -24,6 +24,7 @@ import warnings
 import numpy as np
 import obspy.core.event as obsevent
 from obspy.core.event import WaveformStreamID
+from obspy.core.util import AttribDict
 
 debug = False
 
@@ -130,13 +131,47 @@ class Origin(obsevent.Origin):
 
 class Magnitude(obsevent.Magnitude):
     __doc__ = obsevent.Magnitude.__doc__.replace('obspy', 'microquake')
-    extra_keys = ['corner_frequency', 'error']
+
+    extra_keys = ['energy_joule', 'energy_p_joule', 'energy_p_std',
+                  'energy_s_joule', 'energy_s_std', 'corner_frequency_hz',
+                  'corner_frequency_p_hz', 'corner_frequency_s_hz',
+                  'time_domain_moment_magnitude',
+                  'frequency_domain_moment_magnitude',
+                  'moment_magnitude', 'moment_magnitude_uncertainty',
+                  'seismic_moment', 'potency_m3', 'source_volume_m3',
+                  'apparent_stress', 'static_stress_drop_mpa']
 
     def __init__(self, obspy_obj=None, **kwargs):
         _init_handler(self, obspy_obj, **kwargs)
 
     def __setattr__(self, name, value):
         _set_attr_handler(self, name, value)
+
+    @classmethod
+    def from_dict(cls, input_dict, origin_id=None, obspy_obj=None, **kwargs):
+        out_cls = cls(obspy_obj=obspy_obj, **input_dict,
+                      origin_id=origin_id, **kwargs)
+        # for key in input_dict:
+        #     out_cls.__dict__[key] = input_dict[key]
+        #     out_cls.mag = cls.__dict__['moment_magnitude']
+        #     out_cls.magnitude_type = 'Mw'
+        #     out_cls.origin_id = origin_id
+
+        return out_cls
+
+    def __str__(self, **kwargs):
+        string="""
+               Magnitude: {}
+   Corner frequency (Hz): {}
+          Seismic moment: {}
+       Source volume(m3): {}
+Static stress drop (MPa): {}
+    Apparent stress(MPa): {}
+        """.format(self.mag, self.corner_frequency_hz,
+                   self.seismic_moment, self.potency_m3,
+                   self.static_stress_drop_mpa, self.apparent_stress)
+
+        return string
 
 
 class Pick(obsevent.Pick):
@@ -184,9 +219,7 @@ class Arrival(obsevent.Arrival):
                   'smom', 'fit', 'tstar',
                   'hypo_dist_in_m',
                   'vel_flux', 'vel_flux_Q', 'energy',
-                  'fmin', 'fmax',
-                  'traces',
-                  ]
+                  'fmin', 'fmax', 'traces']
 
     # extra_keys = ['ray', 'backazimuth', 'inc_angle', 'velocity_pulse', 'displacement_pulse']
 
@@ -387,6 +420,8 @@ def parse_string_val(val, arr_flag='npy64_'):
     """
     if val is None:  # hack for deepcopy ignoring isfloat try-except
         val = None
+    elif type(val) == AttribDict:
+        val = val
     elif isfloat(val):
         val = float(val)
     elif str(val) == 'None':

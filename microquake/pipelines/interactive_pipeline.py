@@ -114,45 +114,43 @@ def interactive_pipeline(
     quick_magnitude_processor.process(stream=stream, cat=cat_nlloc)
     cat_qm = quick_magnitude_processor.output_catalog(cat_nlloc)
 
-    bytes_out = BytesIO()
-    cat_nlloc.write(bytes_out, format='QUAKEML')
+    # bytes_out = BytesIO()
+    # cat_nlloc.write(bytes_out, format='QUAKEML')
 
     m_amp_processor = measure_amplitudes.Processor()
     cat_amplitude = m_amp_processor.process(cat=cat_qm,
-                                            stream=stream)['cat']
+                                            stream=stream)
 
     smom_processor = measure_smom.Processor()
     cat_smom = smom_processor.process(cat=cat_amplitude,
-                                      stream=stream)['cat']
+                                      stream=stream)
+
+    from ipdb import set_trace; set_trace()
 
     fmec_processor = focal_mechanism.Processor()
     cat_fmec = fmec_processor.process(cat=cat_smom,
-                                      stream=stream)['cat']
+                                      stream=stream)
 
     energy_processor = measure_energy.Processor()
     cat_energy = energy_processor.process(cat=cat_fmec,
-                                          stream=stream)['cat']
+                                          stream=stream)
 
     magnitude_processor = magnitude.Processor()
     cat_magnitude = magnitude_processor.process(cat=cat_energy,
-                                                stream=stream)['cat']
+                                                stream=stream)
 
-    magnitude_f_processor = magnitude.Processor(module_type='frequency')
-    cat_magnitude_f = magnitude_f_processor.process(cat=cat_magnitude,
-                                                    stream=stream)['cat']
+    # magnitude_f_processor = magnitude.Processor(module_type='frequency')
+    # cat_magnitude_f = magnitude_f_processor.process(cat=cat_magnitude,
+    #                                                 stream=stream)
 
-    mag = magnitude_extractor.Processor().process(cat=cat_magnitude_f)
-    # send the magnitude info to the API
+    mag = magnitude_extractor.Processor().process(cat=cat_magnitude)
 
-    origin_id = cat_magnitude_f[0].preferred_origin().resource_id
-    corner_frequency = cat_magnitude_f[0].preferred_origin().comments[0]
-    mag_obj = Magnitude(mag=mag['moment_magnitude'], magnitude_type='Mw',
-                        origin_id=origin_id, evaluation_mode='automatic',
-                        evaluation_status='preliminary',
-                        comments=[corner_frequency])
+    cat_out = cat_nlloc.copy()
+    preferred_origin_id = cat_magnitude_f[0].preferred_origin().resource_id
+    new_mag = Magnitude.from_dict(mag, origin_id=preferred_origin_id)
+    cat_out[0].magnitudes.append(new_mag)
 
-    cat_magnitude_f[0].magnitudes.append(mag_obj)
-    cat_magnitude_f[0].preferred_magnitude_id = mag_obj.resource_id
+    from ipdb import set_trace; set_trace()
 
     return cat_magnitude_f, mag
 

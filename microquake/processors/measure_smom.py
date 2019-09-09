@@ -35,7 +35,7 @@ class Processor(ProcessingUnit):
 
         logger.info("pipeline: measure smom")
 
-        cat = kwargs["cat"]
+        cat = kwargs["cat"].copy()
         stream = kwargs["stream"]
 
         plot_fit = False
@@ -62,16 +62,17 @@ class Processor(ProcessingUnit):
                                                       plot_fit=plot_fit,
                                                       debug_level=1)
                 except Exception as e:
-                    logger.warning("Error in measure_pick_smom. Continuing to next phase in phase_list: \n %s", e)
+                    logger.warning("Error in measure_pick_smom. Continuing "
+                                   "to next phase in phase_list: \n %s", e)
 
                     continue
 
-                comment = Comment(text="corner_frequency_%s=%.2f measured for %s arrivals" %
-                                  (phase, fc, phase))
-                origin.comments.append(comment)
+                comment = Comment(text="corner_frequency_%s=%.2f measured "
+                                       "for %s arrivals" %
+                                       (phase, fc, phase))
+                cat[0].preferred_origin().comments.append(comment)
 
-        self.result = {'cat': cat}
-        return self.result
+        return cat.copy()
 
     def legacy_pipeline_handler(
         self,

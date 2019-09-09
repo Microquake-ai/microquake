@@ -2,10 +2,9 @@ import numpy as np
 
 from scipy import optimize
 from scipy.fftpack import fft, fftfreq, rfft, rfftfreq
-#from scipy.optimize import fmin, fmin_powell, curve_fit
 
-# from spp.utils.application import Application
-from microquake.core.data.inventory import get_sensor_type_from_trace, get_corner_freq_from_pole
+from microquake.core.data.inventory import (get_sensor_type_from_trace,
+                                            get_corner_freq_from_pole)
 from microquake.core.util.tools import copy_picks_to_dict
 
 import matplotlib.pyplot as plt
@@ -50,9 +49,11 @@ def measure_pick_smom(st, inventory, event, synthetic_picks,
     #exit()
 
     if debug_level > 0:
-        logger.debug("%s: pha:%s velocity stack corner freq fc=%.1f" % (fname, P_or_S, peak_f))
+        logger.debug("%s: pha:%s velocity stack corner freq fc=%.1f" %
+                     (fname, P_or_S, peak_f))
     if debug_level > 1:
-        plot_spec(stacked_spec, freqs, title='Stack [%s] Vel spec peak_f=%.1f' % (P_or_S, peak_f))
+        plot_spec(stacked_spec, freqs, title='Stack [%s] Vel spec '
+                                             'peak_f=%.1f' % (P_or_S, peak_f))
 
 # Now recalculate the spectra as Displacment spectra:
 
@@ -62,21 +63,21 @@ def measure_pick_smom(st, inventory, event, synthetic_picks,
     fit, fc_stack = calc_fit1(stacked_spec, freqs, fmin=1, fmax=fmax, fit_displacement=True)
 
     # Calculate fmin/fmax from velocity signal/noise spec
-    #   and add into this diplacement spec dict:
+    # and add into this displacement spec dict:
     for sta_code, sta_dd in sta_dict.items():
         for cha_code, cha_dict in sta_dd['chan_spec'].items():
             cha_dict['fmin'] = vel_dict[sta_code]['chan_spec'][cha_code]['fmin']
             cha_dict['fmax'] = vel_dict[sta_code]['chan_spec'][cha_code]['fmax']
-            #print("sta:%3s cha:%s --> set fmin=%.1f fmax=%.1f" % (sta_code, cha_code, fmin, fmax))
 
-    fit,smom_dict = calc_fit(sta_dict, fc=peak_f, fmin=fmin, fmax=fmax,
-                             plot_fit=plot_fit,
-                             debug=False,
-                             use_fixed_fmin_fmax=use_fixed_fmin_fmax)
+    fit, smom_dict = calc_fit(sta_dict, fc=peak_f, fmin=fmin, fmax=fmax,
+                              plot_fit=plot_fit,
+                              debug=False,
+                              use_fixed_fmin_fmax=use_fixed_fmin_fmax)
 
     phase = P_or_S
     arr_dict = {}
-    arrivals = [arr for arr in event.preferred_origin().arrivals if arr.phase == phase]
+    arrivals = [arr for arr in event.preferred_origin().arrivals if
+                arr.phase == phase]
     for arr in arrivals:
         pk = arr.get_pick()
         sta= pk.get_sta()
@@ -96,8 +97,6 @@ def measure_pick_smom(st, inventory, event, synthetic_picks,
             ts.append(cha_dict['tstar'])
             fmin.append(cha_dict['fmin'])
             fmax.append(cha_dict['fmax'])
-            #print("  cha:%s smom:%s fmin:%s fmax:%s" % (cha, smoms[-1], fmin[-1], fmax[-1]))
-            #print("  cha:%s smom:%s" % (cha, cha_dict['smom']))
 
         smom = np.sqrt(np.sum(np.array(smoms)**2))
         fit = np.sum(np.array(fits))/float(len(fits))
@@ -106,11 +105,8 @@ def measure_pick_smom(st, inventory, event, synthetic_picks,
         min_f = np.max(fmin)
         max_f = np.min(fmax)
 
-        #print("%s: sta:%3s pha:%s smom:%12.10g ts:%.4f nchans:%d fmin:%s" % \
-                         #(fname, sta, phase, smom, tstar, len(fits), fmin))
-
         if debug_level > 0:
-            logger.debug("%s: sta:%3s pha:%s smom:%12.10g ts:%.4f nchans:%d" % \
+            logger.debug("%s: sta:%3s pha:%s smom:%12.10g ts:%.4f nchans:%d" %
                          (fname, sta, phase, smom, tstar, len(fits)))
 
         arr = arr_dict[sta][phase]
@@ -119,11 +115,9 @@ def measure_pick_smom(st, inventory, event, synthetic_picks,
         arr.tstar = tstar
         arr.fmin = min_f
         arr.fmax = max_f
-        #arr.fmin = max(fmin)
-        #arr.fmax = min(fmax)
-        print("%s: sta:%3s pha:%s smom:%12.10g ts:%.4f nchans:%d fmin:%f fmax:%f" % \
-                         (fname, sta, phase, smom, tstar, len(fits), min_f, max_f))
-
+        print("%s: sta:%3s pha:%s smom:%12.10g ts:%.4f nchans:%d fmin:%f "
+              "fmax:%f" % (fname, sta, phase, smom, tstar, len(fits), min_f,
+                           max_f))
 
     return smom_dict, peak_f
 

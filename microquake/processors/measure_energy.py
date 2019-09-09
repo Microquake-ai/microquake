@@ -17,7 +17,7 @@ class Processor(ProcessingUnit):
     ):
         logger.info("pipeline: measure energy")
 
-        cat = kwargs["cat"]
+        cat = kwargs["cat"].copy()
         stream = kwargs["stream"]
 
         correct_attenuation = self.params.correct_attenuation
@@ -53,8 +53,7 @@ class Processor(ProcessingUnit):
         calculate_energy_from_flux(cat,
                                    use_sdr_rad=use_sdr_rad)
 
-        self.result = {'cat': cat}
-        return self.result
+        return cat.copy()
 
     def legacy_pipeline_handler(
         self,

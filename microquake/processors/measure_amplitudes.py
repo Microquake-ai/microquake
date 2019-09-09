@@ -35,7 +35,7 @@ class Processor(ProcessingUnit):
 
         logger.info("pipeline: measure_amplitudes")
 
-        cat = kwargs["cat"]
+        cat = kwargs["cat"].copy()
         stream = kwargs["stream"]
 
         pulse_min_width = self.params.pulse_min_width
@@ -71,8 +71,7 @@ class Processor(ProcessingUnit):
                           pulse_min_snr_S=pulse_min_snr_S,
                           debug=False)
 
-        self.result = {'cat': cat}
-        return self.result
+        return cat.copy()
 
     def legacy_pipeline_handler(
         self,

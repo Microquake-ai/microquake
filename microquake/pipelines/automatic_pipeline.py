@@ -175,7 +175,6 @@ def automatic_pipeline_api(event_id, **kwargs):
     return cat_out, mag
 
 
-
 def automatic_processor(cat, stream):
 
     start_processing_time = time()
@@ -226,27 +225,27 @@ def automatic_processor(cat, stream):
 
     m_amp_processor = measure_amplitudes.Processor()
     cat_amplitude = m_amp_processor.process(cat=cat_nlloc,
-                                            stream=fixed_length)['cat']
+                                            stream=fixed_length)
 
     smom_processor = measure_smom.Processor()
     cat_smom = smom_processor.process(cat=cat_amplitude,
-                                      stream=fixed_length)['cat']
+                                      stream=fixed_length)
 
     fmec_processor = focal_mechanism.Processor()
     cat_fmec = fmec_processor.process(cat=cat_smom,
-                                      stream=fixed_length)['cat']
+                                      stream=fixed_length)
 
     energy_processor = measure_energy.Processor()
     cat_energy = energy_processor.process(cat=cat_fmec,
-                                          stream=fixed_length)['cat']
+                                          stream=fixed_length)
 
     magnitude_processor = magnitude.Processor()
     cat_magnitude = magnitude_processor.process(cat=cat_energy,
-                                                stream=fixed_length)['cat']
+                                                stream=fixed_length)
 
     magnitude_f_processor = magnitude.Processor(module_type='frequency')
     cat_magnitude_f = magnitude_f_processor.process(cat=cat_magnitude,
-                                                    stream=fixed_length)['cat']
+                                                    stream=fixed_length)
 
     end_processing_time = time()
 
@@ -257,7 +256,7 @@ def automatic_processor(cat, stream):
 
     origin_id = cat_magnitude_f[0].preferred_origin().resource_id
     corner_frequency = cat_magnitude_f[0].preferred_origin().comments[0]
-    mag_obj = Magnitude(mag=mag['moment_magnitude'], magnitude_type='Mw',
+    mag_dict = Magnitude(mag=mag['moment_magnitude'], magnitude_type='Mw',
                         origin_id=origin_id, evaluation_mode='automatic',
                         evaluation_status='preliminary',
                         comments=[corner_frequency])
@@ -265,4 +264,7 @@ def automatic_processor(cat, stream):
     cat_magnitude_f[0].magnitudes.append(mag_obj)
     cat_magnitude_f[0].preferred_magnitude_id = mag_obj.resource_id
 
-    return cat_magnitude_f, mag
+    preferred_origin_id = cat[0].nlloc.preferred_origin().resource_id
+    new_mag = Magnitude.from_dict(mag_dict, preferred_origin_id)
+
+    return cat_magnitude_f

@@ -30,7 +30,7 @@ class Processor(ProcessingUnit):
 
         logger.info("pipeline: focal_mechanism")
 
-        cat = kwargs["cat"]
+        cat = kwargs["cat"].copy()
 
         focal_mechanisms, figs = calc(cat, self.params)
 
@@ -46,8 +46,7 @@ class Processor(ProcessingUnit):
                 for i, fig in enumerate(figs):
                     fig.savefig('foc_mech_%d.png' % i)
 
-        self.result = {'cat': cat}
-        return self.result
+        return cat.copy()
 
     def legacy_pipeline_handler(
         self,

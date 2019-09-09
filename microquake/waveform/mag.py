@@ -8,7 +8,8 @@ import warnings
 import numpy as np
 from microquake.core.event import Pick
 from obspy.core.event import Comment, ResourceIdentifier, WaveformStreamID
-from obspy.core.event.magnitude import Magnitude, StationMagnitude, StationMagnitudeContribution
+from obspy.core.event.magnitude import (Magnitude, StationMagnitude,
+                                        StationMagnitudeContribution)
 
 from loguru import logger
 from microquake.waveform.amp_measures import measure_pick_amps
@@ -113,7 +114,8 @@ def calc_magnitudes_from_lambda(cat,
 # Don't loop over event here, do it in the calling routine
 #   so that vp/vs can be set for correct source depth
     event = cat[0]
-    origin = event.preferred_origin() if event.preferred_origin() else event.origins[0]
+    origin = event.preferred_origin() if event.preferred_origin() else \
+        event.origins[0]
     ev_loc = origin.loc
     origin_id = origin.resource_id
 
@@ -129,15 +131,17 @@ def calc_magnitudes_from_lambda(cat,
         mag_type = 'Mw_S'
 
     if use_smom:
-        magnitude_comment = 'station magnitude measured in frequeny-domain (smom)'
+        magnitude_comment = 'station magnitude measured in frequeny-domain (' \
+                            'smom)'
         lambda_key = 'smom'
     else:
-        magnitude_comment = 'station magnitude measured in time-domain (dis_pulse_area)'
+        magnitude_comment = 'station magnitude measured in time-domain (' \
+                            'dis_pulse_area)'
         lambda_key = 'dis_pulse_area'
 
     if use_free_surface_correction and np.abs(ev_loc[2]) > 0.:
-        logger.warning("%s: Free surface correction requested for event [h=%.1f] > 0" %
-                       (fname, ev_loc[2]))
+        logger.warning("%s: Free surface correction requested for event ["
+                       "h=%.1f] > 0" % (fname, ev_loc[2]))
 
     if use_sdr_rad and 'sdr' not in kwargs:
         logger.warning("%s: use_sdr_rad requested but NO [sdr] given!" % fname)
@@ -147,12 +151,10 @@ def calc_magnitudes_from_lambda(cat,
 
     Mw_P = []
 
-    arrivals = [arr for arr in event.preferred_origin().arrivals if arr.phase == P_or_S]
+    arrivals = [arr for arr in event.preferred_origin().arrivals if
+                arr.phase == P_or_S]
 
     for arr in arrivals:
-
-        # for sta in sorted([sta for sta in st.unique_stations()],
-                    # key=lambda x: int(x)):
 
         try:
             pk = arr.pick_id.get_referred_object()
@@ -177,7 +179,8 @@ def calc_magnitudes_from_lambda(cat,
                 # MTH: The free surface corrections are returned as <x1,x2,x3>=<
                 fs_factor = 1.
             else:
-                logger.warning("%s: sta:%s cha:%s pha:%s: inc_angle NOT set in arrival dict --> use default" %
+                logger.warning("%s: sta:%s cha:%s pha:%s: inc_angle NOT set "
+                               "in arrival dict --> use default" %
                                (fname, sta, cha, arr.phase))
 
         if use_sdr_rad and 'sdr' in kwargs:
@@ -190,17 +193,18 @@ def calc_magnitudes_from_lambda(cat,
                                             strike, dip, rake, phase=P_or_S)
                 rad = np.abs(rad)
                 logger.debug("%s: phase=%s rad=%f" % (fname, P_or_S, rad))
-                magnitude_comment += ' rad_pat calculated for (s,d,r)=\
-                        (%.1f,%.1f,%.1f) theta:%.1f az:%.1f pha:%s |rad|=%f' % \
-                    (strike, dip, rake, takeoff_angle, takeoff_azimuth, P_or_S, rad)
+                magnitude_comment += ' radiation pattern calculated for (s,' \
+                                     'd,r)= (%.1f,%.1f,%.1f) theta:%.1f ' \
+                                     'az:%.1f pha:%s |rad|=%f' % \
+                    (strike, dip, rake, takeoff_angle, takeoff_azimuth,
+                     P_or_S, rad)
                 # logger.info(magnitude_comment)
             else:
-                logger.warnng("%s: sta:%s cha:%s pha:%s: takeoff_angle/azimuth NOT set in arrival dict --> use default radpat" %
+                logger.warnng("%s: sta:%s cha:%s pha:%s: "
+                              "takeoff_angle/azimuth NOT set in arrival dict --> use default radiation pattenr" %
                               (fname, sta, cha, arr.phase))
 
         _lambda = getattr(arr, lambda_key)
-
-        #print("phase=%s lambda=%s" % (arr.phase, _lambda))
 
         if _lambda is not None:
 
@@ -211,7 +215,10 @@ def calc_magnitudes_from_lambda(cat,
         # MTH: obspy arrival.distance = *epicentral* distance in degrees
         #   >> Add attribute hypo_dist_in_m to microquake arrival class
         #         to make it clear
-            R = arr.hypo_dist_in_m
+            if arr.distance:
+                R = arr.distance
+            else:
+                R = arr.hypo_dist_in_m
 
             if R >= min_dist:
 
@@ -225,16 +232,15 @@ def calc_magnitudes_from_lambda(cat,
                                                station_magnitude_type=mag_type,
                                                comments=[Comment(text=magnitude_comment)],
                                                waveform_id=WaveformStreamID(
-                                                   network_code=net,
-                                                   station_code=sta,
-                                                   channel_code=cha,
-                                               ),
-                                               )
+                                                    network_code=net,
+                                                    station_code=sta,
+                                                    channel_code=cha))
                 station_mags.append(station_mag)
 
             else:
-                logger.info("arrival sta:%s pha:%s dist=%.2f < min_dist(=%.2f) --> Skip" %
-                            (fname, sta, arr.phase, R, min_dist))
+                logger.info("arrival sta:%s pha:%s dist=%.2f < min_dist("
+                            "=%.2f) --> Skip" % (fname, sta, arr.phase, R,
+                                                 min_dist))
 
         # else:
             # logger.warning("arrival sta:%s cha:%s arr pha:%s lambda_key:%s is NOT SET --> Skip" \
