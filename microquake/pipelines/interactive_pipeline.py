@@ -4,10 +4,11 @@ from io import BytesIO
 import numpy as np
 from dateutil.parser import parse
 from loguru import logger
-from obspy import read_events, UTCDateTime
-from obspy.core.event import CreationInfo, ResourceIdentifier, WaveformStreamID
+from microquake.core import read_events, read
+from obspy import UTCDateTime
+from obspy.core.event import (CreationInfo, ResourceIdentifier,
+                              WaveformStreamID)
 
-from microquake.core import read
 from microquake.core.event import Arrival, Origin, Pick, Magnitude
 from microquake.core.settings import settings
 from microquake.processors import (focal_mechanism, magnitude,
@@ -125,8 +126,6 @@ def interactive_pipeline(
     cat_smom = smom_processor.process(cat=cat_amplitude,
                                       stream=stream)
 
-    from ipdb import set_trace; set_trace()
-
     fmec_processor = focal_mechanism.Processor()
     cat_fmec = fmec_processor.process(cat=cat_smom,
                                       stream=stream)
@@ -139,18 +138,18 @@ def interactive_pipeline(
     cat_magnitude = magnitude_processor.process(cat=cat_energy,
                                                 stream=stream)
 
-    # magnitude_f_processor = magnitude.Processor(module_type='frequency')
-    # cat_magnitude_f = magnitude_f_processor.process(cat=cat_magnitude,
-    #                                                 stream=stream)
+    magnitude_f_processor = magnitude.Processor(module_type='frequency')
+    cat_magnitude_f = magnitude_f_processor.process(cat=cat_magnitude,
+                                                    stream=stream)
 
-    mag = magnitude_extractor.Processor().process(cat=cat_magnitude)
+    mag = magnitude_extractor.Processor().process(cat=cat_magnitude_f)
 
     cat_out = cat_nlloc.copy()
     preferred_origin_id = cat_magnitude_f[0].preferred_origin().resource_id
     new_mag = Magnitude.from_dict(mag, origin_id=preferred_origin_id)
+
     cat_out[0].magnitudes.append(new_mag)
+    cat_out[0].preferred_magnitude_id = new_mag.resource_id
 
-    from ipdb import set_trace; set_trace()
-
-    return cat_magnitude_f, mag
+    return cat_out, mag
 

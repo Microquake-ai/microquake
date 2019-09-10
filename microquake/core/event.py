@@ -47,6 +47,7 @@ class Event(obsevent.Event):
     def __init__(self, obspy_obj=None, **kwargs):
         _init_handler(self, obspy_obj, **kwargs)
 
+
     def __setattr__(self, name, value):
         _set_attr_handler(self, name, value)
 
@@ -60,7 +61,8 @@ class Event(obsevent.Event):
 
         if self.origins:
             og = self.preferred_origin() or self.origins[0]
-            out += '%s | %s, %s, %s | %s' % (og.time, og.x, og.y, og.z, og.evaluation_mode)
+            out += '%s | %s, %s, %s | %s' % (og.time, og.x, og.y, og.z,
+                                             og.evaluation_mode)
 
         if self.magnitudes:
             magnitude = self.preferred_magnitude() or self.magnitudes[0]
@@ -139,7 +141,8 @@ class Magnitude(obsevent.Magnitude):
                   'frequency_domain_moment_magnitude',
                   'moment_magnitude', 'moment_magnitude_uncertainty',
                   'seismic_moment', 'potency_m3', 'source_volume_m3',
-                  'apparent_stress', 'static_stress_drop_mpa']
+                  'apparent_stress', 'static_stress_drop_mpa',
+                  'quick_magnitude']
 
     def __init__(self, obspy_obj=None, **kwargs):
         _init_handler(self, obspy_obj, **kwargs)
@@ -151,11 +154,8 @@ class Magnitude(obsevent.Magnitude):
     def from_dict(cls, input_dict, origin_id=None, obspy_obj=None, **kwargs):
         out_cls = cls(obspy_obj=obspy_obj, **input_dict,
                       origin_id=origin_id, **kwargs)
-        # for key in input_dict:
-        #     out_cls.__dict__[key] = input_dict[key]
-        #     out_cls.mag = cls.__dict__['moment_magnitude']
-        #     out_cls.magnitude_type = 'Mw'
-        #     out_cls.origin_id = origin_id
+        out_cls.mag = input_dict['moment_magnitude']
+        out_cls.magnitude_type = 'Mw'
 
         return out_cls
 
@@ -183,7 +183,10 @@ class Pick(obsevent.Pick):
         # MTH  - this seems to have been left out ??
         if obspy_obj:
             wid = self.waveform_id
-            self.trace_id = "%s.%s.%s.%s" % (wid.network_code, wid.station_code, wid.location_code, wid.channel_code)
+            self.trace_id = "%s.%s.%s.%s" % (wid.network_code,
+                                             wid.station_code,
+                                             wid.location_code,
+                                             wid.channel_code)
 
     def __setattr__(self, name, value):
         _set_attr_handler(self, name, value)
@@ -221,7 +224,8 @@ class Arrival(obsevent.Arrival):
                   'vel_flux', 'vel_flux_Q', 'energy',
                   'fmin', 'fmax', 'traces']
 
-    # extra_keys = ['ray', 'backazimuth', 'inc_angle', 'velocity_pulse', 'displacement_pulse']
+    # extra_keys = ['ray', 'backazimuth', 'inc_angle', 'velocity_pulse',
+    # 'displacement_pulse']
 
     def __init__(self, obspy_obj=None, **kwargs):
         _init_handler(self, obspy_obj, **kwargs)
@@ -232,6 +236,9 @@ class Arrival(obsevent.Arrival):
     def get_pick(self):
         if self.pick_id is not None:
             return self.pick_id.get_referred_object()
+
+    def get_sta(self):
+        self.pick_id_get_referred_object().get_sta()
 
 
 def get_arrival_from_pick(arrivals, pick):
@@ -260,8 +267,30 @@ def get_arrival_from_pick(arrivals, pick):
 
 def read_events(*args, **kwargs):
 
+    # converting the obspy object into microquake objects
     cat = obsevent.read_events(*args, **kwargs)
-    cat.events = [Event(ev) for ev in cat.events]
+    events = []
+    for event in cat:
+        origins = []
+        preferred_origin_id = event.preferred_origin_id
+        mq_event = Event(event)
+        for origin in event.origins:
+            mq_origin = Origin(origin)
+            arrivals = [Arrival(arrival) for arrival in origin.arrivals]
+            mq_origin.arrivals = arrivals
+            origins.append(mq_origin)
+
+        picks = [Pick(pick) for pick in event.picks]
+        magnitudes = [Magnitude(magnitude) for magnitude in event.magnitudes]
+
+        mq_event.origins = origins
+        mq_event.picks = picks
+        mq_event.magnitudes = magnitudes
+
+        events.append(mq_event)
+
+    cat.events = events
+
     return cat
 
 
@@ -287,7 +316,8 @@ def _init_handler(self, obspy_obj, **kwargs):
     else:
         extra_kwargs = pop_keys_matching(kwargs, self.extra_keys)
         super(type(self), self).__init__(**kwargs)  # init obspy_origin args
-        [self.__setattr__(k, v) for k, v in extra_kwargs.items()]  # init extra_args
+        [self.__setattr__(k, v) for k, v in extra_kwargs.items()]  # init
+        # extra_args
 
 
 def _init_from_obspy_object(mquake_obj, obspy_obj):

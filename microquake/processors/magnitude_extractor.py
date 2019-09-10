@@ -66,7 +66,7 @@ class Processor(ProcessingUnit):
             if len(magnitude.comments) == 0:
                 continue
 
-            if 'frequency' in magnitude.comments[0].text:
+            if 'frequency-domain' in magnitude.comments[0].text:
                 fd_magnitude = magnitude.mag
                 dict_out['frequency_domain_moment_magnitude'] = fd_magnitude
 
@@ -87,9 +87,9 @@ class Processor(ProcessingUnit):
         cf = np.mean(cfs)
         dict_out['corner_frequency_hz'] = cf
 
-        if (td_magnitude is None) and (fd_magnitude is None):
-            mw = None
-            mw_uncertainty = None
+        if (td_magnitude is not None) and (fd_magnitude is not None):
+            mw = np.mean([td_magnitude, fd_magnitude])
+            mw_uncertainty = np.abs(td_magnitude - fd_magnitude)
 
         elif td_magnitude:
             mw = fd_magnitude
@@ -100,8 +100,8 @@ class Processor(ProcessingUnit):
             mw_uncertainty = None
 
         else:
-            mw = np.mean([td_magnitude, fd_magnitude])
-            mw_uncertainty = np.abs(td_magnitude - fd_magnitude)
+            mw = None
+            mw_uncertainty = None
 
         dict_out['moment_magnitude'] = mw
         dict_out['moment_magnitude_uncertainty'] = mw_uncertainty

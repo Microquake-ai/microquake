@@ -254,17 +254,13 @@ def automatic_processor(cat, stream):
     mag = magnitude_extractor.Processor().process(cat=cat_magnitude_f)
     # send the magnitude info to the API
 
-    origin_id = cat_magnitude_f[0].preferred_origin().resource_id
-    corner_frequency = cat_magnitude_f[0].preferred_origin().comments[0]
-    mag_dict = Magnitude(mag=mag['moment_magnitude'], magnitude_type='Mw',
-                        origin_id=origin_id, evaluation_mode='automatic',
-                        evaluation_status='preliminary',
-                        comments=[corner_frequency])
+    mag = magnitude_extractor.Processor().process(cat=cat_magnitude_f)
 
-    cat_magnitude_f[0].magnitudes.append(mag_obj)
-    cat_magnitude_f[0].preferred_magnitude_id = mag_obj.resource_id
+    cat_out = cat_nlloc.copy()
+    preferred_origin_id = cat_magnitude_f[0].preferred_origin().resource_id
+    new_mag = Magnitude.from_dict(mag, origin_id=preferred_origin_id)
 
-    preferred_origin_id = cat[0].nlloc.preferred_origin().resource_id
-    new_mag = Magnitude.from_dict(mag_dict, preferred_origin_id)
+    cat_out[0].magnitudes.append(new_mag)
+    cat_out[0].preferred_magnitude_id = new_mag.resource_id
 
-    return cat_magnitude_f
+    return cat_out[0], mag
