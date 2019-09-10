@@ -142,7 +142,7 @@ class Magnitude(obsevent.Magnitude):
                   'moment_magnitude', 'moment_magnitude_uncertainty',
                   'seismic_moment', 'potency_m3', 'source_volume_m3',
                   'apparent_stress', 'static_stress_drop_mpa',
-                  'quick_magnitude']
+                  'quick_magnitude', 'error']
 
     def __init__(self, obspy_obj=None, **kwargs):
         _init_handler(self, obspy_obj, **kwargs)
