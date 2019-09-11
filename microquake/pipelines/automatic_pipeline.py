@@ -8,7 +8,7 @@ from time import time
 from loguru import logger
 from microquake.clients.api_client import put_event_from_objects, reject_event
 from microquake.core.event import Event, Magnitude
-from obspy.core.event import Comment
+from microquake.clients.api_client import post_data_from_objects
 from microquake.core.settings import settings
 from microquake.db.connectors import RedisQueue, record_processing_logs_pg
 from microquake.db.models.redis import get_event, set_event
@@ -119,12 +119,6 @@ def put_data_api(event_id, **kwargs):
 
 
 def automatic_pipeline(event_id, **kwargs):
-    """
-    automatic pipeline
-    :param fixed_length: fixed length stream encoded as mseed
-    :param catalogue: catalog object encoded in quakeml
-    :return:
-    """
 
     api_message_queue = settings.API_MESSAGE_QUEUE
     api_queue = RedisQueue(api_message_queue)
@@ -143,18 +137,18 @@ def automatic_pipeline(event_id, **kwargs):
     cat_out, mag = automatic_processor(cat, stream)
 
     set_event(event_id, catalogue=cat)
-    api_queue.submit_task(put_data_api, event_id=event_id)
+    api_queue.submit_task(post_event_api, event_id=event_id)
+
+    end_processing_time = time()
+    processing_time = end_processing_time - start_processing_time
+
+    record_processing_logs_pg(event, 'success', __processing_step__,
+                              __processing_step_id__, processing_time)
 
     return cat_out, mag
 
 
 def automatic_pipeline_api(event_id, **kwargs):
-    """
-    automatic pipeline
-    :param fixed_length: fixed length stream encoded as mseed
-    :param catalogue: catalog object encoded in quakeml
-    :return:
-    """
 
     start_processing_time = time()
 
@@ -169,10 +163,32 @@ def automatic_pipeline_api(event_id, **kwargs):
 
     cat_out, mag = automatic_processor(cat, stream)
 
-    record_processing_logs_pg(cat_magnitude_f, 'success', __processing_step__,
-                              __processing_step_id__, processing_time)
-
     return cat_out, mag
+
+
+def post_event_api(event_id, **kwargs):
+
+    api_message_queue = settings.API_MESSAGE_QUEUE
+    api_queue = RedisQueue(api_message_queue)
+
+    processing_step = 'post_event_api'
+    processing_step_id = 4
+    start_processing_time = time()
+
+    event = get_event(event_id)
+    response = post_data_from_objects(api_base_url, event_id=None,
+                                      event=event['catalogue'],
+                                      stream=event['fixed_length'],
+                                      tolerance=None,
+                                      send_to_bus=False)
+
+    if response.status_code != requests.codes.ok:
+        logger.info('request failed, resending to the queue')
+
+        result = api_queue.submit_task(post_event_api, event_id=event_id)
+
+
+        return result
 
 
 def automatic_processor(cat, stream):
