@@ -321,8 +321,8 @@ def synthetic_arrival_times(event_location, origin_time):
 
             dist = norm(st_loc - event_location)
 
-            if (phase == 'S') and (dist < 100):
-                continue
+            # if (phase == 'S') and (dist < 100):
+            #     continue
 
             try:
                 at = origin_time + get_grid_point(station.code, phase,

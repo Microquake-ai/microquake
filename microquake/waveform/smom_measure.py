@@ -16,6 +16,7 @@ from loguru import logger
                      smom (long-period plateau) in the frequency domain
 """
 
+
 def measure_pick_smom(st, inventory, event, synthetic_picks,
                       fmin=20, fmax=1000,
                       use_fixed_fmin_fmax=False,
@@ -32,8 +33,9 @@ def measure_pick_smom(st, inventory, event, synthetic_picks,
 
 
 # Get P(S) spectra at all stations/channels that have a P(S) arrival:
-    sta_dict = get_spectra(st, event, inventory, synthetic_picks, calc_displacement=False,
-                           S_win_len=.1, P_or_S=P_or_S)
+    sta_dict = get_spectra(st, event, inventory, synthetic_picks,
+                           calc_displacement=False, S_win_len=.1,
+                           P_or_S=P_or_S)
 
     vel_dict = copy.deepcopy(sta_dict)
 
@@ -180,7 +182,8 @@ def stack_spectra(sta_dict):
     return stack/np.amax(stack), freqs
 
 
-def get_spectra(st, event, inventory, synthetic_picks,calc_displacement=False,
+def get_spectra(st, event, inventory, synthetic_picks,
+                                               calc_displacement=False,
                 S_win_len=.1, P_or_S='P'):
     """ Calculate the fft at each channel in the stream that has an arrival in event.arrivals
 
@@ -221,8 +224,8 @@ def get_spectra(st, event, inventory, synthetic_picks,calc_displacement=False,
     arr_dict = {}
     for arr in arrivals:
         pk = arr.pick_id.get_referred_object()
-        sta= pk.waveform_id.station_code
-        pha= arr.phase
+        sta = pk.waveform_id.station_code
+        pha = arr.phase
         if sta not in arr_dict:
             arr_dict[sta] = {}
         arr_dict[sta][pha] = arr
@@ -246,28 +249,30 @@ def get_spectra(st, event, inventory, synthetic_picks,calc_displacement=False,
     # For now, let's be explicit about our assumptions:
     # For each trace, we'll use P-.01 to S-.01 to calculate the P spectrum, so
     #   let's use the max expected S-P time (at the farthest station) to fix NFFT
-    dt   = st[0].stats.delta # For now, let's assume ALL traces are sampled at this rate
+    dt = st[0].stats.delta # For now, let's assume ALL traces are sampled
+    # at this rate
     npts = int(max_S_P_time/dt)
     nfft = npow2(npts) * 2 # Fix nfft for all calcs
-    df   = 1/(float(nfft)*dt)
+    df = 1/(float(nfft)*dt)
     #print("%s: Set nfft=%d --> df=%.3f" % (fname, nfft, df))
 
 
-# 1. Create a dict of keys=sta_code for all 'P' arrivals with the necessary pick/sta info inside
+    # 1. Create a dict of keys=sta_code for all 'P' arrivals with the
+    # necessary pick/sta info inside
     sta_dict = {}
     for sta_code in sta_codes:
 
         d = {}
 
         if 'P' in pick_dict[sta_code] and pick_dict[sta_code]['P'].evaluation_status != "rejected":
-            d['ptime']   = pick_dict[sta_code]['P'].time
+            d['ptime'] = pick_dict[sta_code]['P'].time
         else:
-            d['ptime']   = synthetic_dict[sta_code]['P'].time
+            d['ptime'] = synthetic_dict[sta_code]['P'].time
 
         if 'S' in pick_dict[sta_code] and pick_dict[sta_code]['S'].evaluation_status != "rejected":
-            d['stime']   = pick_dict[sta_code]['S'].time
+            d['stime'] = pick_dict[sta_code]['S'].time
         else:
-            d['stime']   = synthetic_dict[sta_code]['S'].time
+            d['stime'] = synthetic_dict[sta_code]['S'].time
 
         found = False
 

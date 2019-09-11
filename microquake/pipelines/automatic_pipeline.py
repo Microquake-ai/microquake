@@ -2,7 +2,7 @@ from io import BytesIO
 
 import numpy as np
 import requests
-from obspy.core.event import Catalog
+from microquake.core.event import Catalog
 from time import time
 
 from loguru import logger
@@ -218,7 +218,7 @@ def automatic_processor(cat, stream):
 
     loc = cat_nlloc[0].preferred_origin().loc
     event_time_utc = cat_nlloc[0].preferred_origin().time
-    picker_sp_processor = picker.Processor(module_type=picker_type)
+    picker_sp_processor = picker.Processor(module_type='second_pass')
     response = picker_sp_processor.process(stream=fixed_length, location=loc,
                                            event_time_utc=event_time_utc)
 
@@ -235,9 +235,6 @@ def automatic_processor(cat, stream):
 
     # Removing the Origin object used to hold the picks
     del cat_nlloc[0].origins[-2]
-
-    bytes_out = BytesIO()
-    cat_nlloc.write(bytes_out, format='QUAKEML')
 
     m_amp_processor = measure_amplitudes.Processor()
     cat_amplitude = m_amp_processor.process(cat=cat_nlloc,
@@ -272,11 +269,11 @@ def automatic_processor(cat, stream):
 
     mag = magnitude_extractor.Processor().process(cat=cat_magnitude_f)
 
-    cat_out = cat_nlloc.copy()
+    cat_out = cat_magnitude_f.copy()
     preferred_origin_id = cat_magnitude_f[0].preferred_origin().resource_id
     new_mag = Magnitude.from_dict(mag, origin_id=preferred_origin_id)
 
     cat_out[0].magnitudes.append(new_mag)
     cat_out[0].preferred_magnitude_id = new_mag.resource_id
 
-    return cat_out[0], mag
+    return cat_out, mag

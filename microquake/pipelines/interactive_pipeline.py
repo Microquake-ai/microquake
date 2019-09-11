@@ -144,7 +144,7 @@ def interactive_pipeline(
 
     mag = magnitude_extractor.Processor().process(cat=cat_magnitude_f)
 
-    cat_out = cat_nlloc.copy()
+    cat_out = cat_magnitude_f.copy()
     preferred_origin_id = cat_magnitude_f[0].preferred_origin().resource_id
     new_mag = Magnitude.from_dict(mag, origin_id=preferred_origin_id)
 

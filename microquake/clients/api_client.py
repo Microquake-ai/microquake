@@ -6,7 +6,7 @@ from uuid import uuid4
 import requests
 from dateutil import parser
 from obspy import UTCDateTime
-from obspy.core.event import Catalog
+from microquake.core.event import Catalog
 from obspy.core.util.attribdict import AttribDict
 
 from loguru import logger

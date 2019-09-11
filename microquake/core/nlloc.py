@@ -35,6 +35,7 @@ from microquake.core.event import Arrival, Origin
 from obspy.core import AttribDict
 from obspy import UTCDateTime
 from struct import unpack
+from microquake.core.event import Catalog
 
 
 def read_nlloc_hypocenter_file(filename, picks=None,
@@ -47,7 +48,7 @@ def read_nlloc_hypocenter_file(filename, picks=None,
     :return: seismic catalogue
     :rtype: ~microquake.core.event.Catalog
     """
-    cat = obspy.core.event.Catalog()
+    cat = Catalog()
 
     with open(filename) as hyp_file:
 
@@ -402,7 +403,8 @@ def read_NLL_grid(base_name):
     """
 
     from microquake.core import GridData
-    # Testing the presence of the .buf or .hdr extension at the end of base_name
+    # Testing the presence of the .buf or .hdr extension at the end of
+    # base_name
 
     if ('.buf' == base_name[-4:]) or ('.hdr' == base_name[-4:]):
         # removing the extension
@@ -503,7 +505,8 @@ def write_nll_grid(base_name, data, origin, spacing, grid_type, seed=None,
     "TIME" and "ANGLE" grids
     :type label: str
     :param velocity_to_slow_len: convert "VELOCITY" to "SLOW_LEN". NLLoc
-    Grid2Time program requires that "VELOCITY" be expressed in "SLOW_LEN" units.
+    Grid2Time program requires that "VELOCITY" be expressed in "SLOW_LEN"
+    units.
     Has influence only if the grid_type is "VELOCITY"
     :type velocity_to_slow_len: bool
     :rtype: None
@@ -633,7 +636,8 @@ class NLL(object):
 
     def _prepare_project_folder(self):
 
-        self.worker_folder = tempfile.mkdtemp(dir=self.base_folder).split('/')[-1]
+        self.worker_folder = tempfile.mkdtemp(dir=self.base_folder).split(
+            '/')[-1]
 
         os.mkdir(os.path.join(self.base_folder, self.worker_folder, 'loc'))
         os.mkdir(os.path.join(self.base_folder, self.worker_folder, 'obs'))
@@ -642,8 +646,10 @@ class NLL(object):
 
     def _finishNLL(self):
         '''
-        file = "%s/run/%s_%s.in" % (self.base_folder, self.base_name, self.worker_folder)
-        print("_finishNLL: Don't remove tmp=%s/%s" % (self.base_folder, self.worker_folder))
+        file = "%s/run/%s_%s.in" % (self.base_folder, self.base_name,
+        self.worker_folder)
+        print("_finishNLL: Don't remove tmp=%s/%s" % (self.base_folder,
+        self.worker_folder))
         return
         '''
 
@@ -681,7 +687,8 @@ class NLL(object):
         self.ctrlfile.basefolder = self.base_folder
 
         # hdr = "%d %d %d  %.2f %.2f %.2f  %.4f %.4f %.4f  SLOW_LEN" % (
-        self.ctrlfile.locgrid = "LOCGRID  %d %d %d  %.2f %.2f %.2f  %.4f %.4f %.4f  MISFIT  SAVE" % (
+        self.ctrlfile.locgrid = "LOCGRID  %d %d %d  %.2f %.2f %.2f  %.4f " \
+                                "%.4f %.4f  MISFIT  SAVE" % (
             (self.gridpar.grids.vp.shape[0] - 1) * 10 + 1,
             (self.gridpar.grids.vp.shape[1] - 1) * 10 + 1,
             (self.gridpar.grids.vp.shape[2] - 1) * 10 + 1,
@@ -742,8 +749,8 @@ class NLL(object):
     def prepare(self, create_time_grids=True, create_angle_grids=True,
                 create_distance_grids=False, tar_files=False):
         """
-        Creates the NLL folder and prepare the NLL configuration files based on the
-        given configuration
+        Creates the NLL folder and prepare the NLL configuration files based
+        on the given configuration
 
         :param create_time_grids: if True, runs Vel2Grid and Grid2Time
         :type create_time_grids: bool
@@ -755,9 +762,11 @@ class NLL(object):
         self._make_base_folder()
         logger.debug(os.getcwd())
 
-        self.hdrfile.write('%s/run/%s.hdr' % (self.base_folder, self.base_name))
+        self.hdrfile.write('%s/run/%s.hdr' % (self.base_folder,
+                                              self.base_name))
         self._write_velocity_grids()
-        self.ctrlfile.write('%s/run/%s.in' % (self.base_folder, self.base_name))
+        self.ctrlfile.write('%s/run/%s.in' % (self.base_folder,
+                                              self.base_name))
 
         if create_time_grids:
             self._create_time_grids()
@@ -774,7 +783,8 @@ class NLL(object):
     def _create_time_grids(self):
         self.ctrlfile.phase = 'P'
         self.ctrlfile.vgtype = 'P'
-        self.ctrlfile.write('%s/run/%s.in' % (self.base_folder, self.base_name))
+        self.ctrlfile.write('%s/run/%s.in' % (self.base_folder,
+                                              self.base_name))
 
         if self.gridpar.vp:
             if self.gridpar.homogeneous:
@@ -895,7 +905,8 @@ class NLL(object):
         # will (incorrectly) create one!
         event2 = self.gen_observations_from_event(evt)
 
-        new_in = '%s/run/%s_%s.in' % (self.base_folder, self.base_name, self.worker_folder)
+        new_in = '%s/run/%s_%s.in' % (self.base_folder, self.base_name,
+                                      self.worker_folder)
         # print("new_in=%s" % new_in)
 
         self.ctrlfile.workerfolder = self.worker_folder
@@ -903,21 +914,25 @@ class NLL(object):
 
         os.system('NLLoc %s' % new_in)
 
-        filename = "%s/%s/loc/last.hyp" % (self.base_folder, self.worker_folder)
-        logger.debug('%s.%s: scan hypo from filename = %s' % (__name__, fname, filename))
+        filename = "%s/%s/loc/last.hyp" % (self.base_folder,
+                                           self.worker_folder)
+        logger.debug('%s.%s: scan hypo from filename = %s' % (__name__,
+                                                              fname, filename))
 
         if not glob(filename):
             logger.error("%s.%s: location failed" % (__name__, fname))
-            return obspy.core.event.Catalog(events=[evt])
+            return Catalog(events=[evt])
 
         if event.origins:
             if event.preferred_origin():
-                logger.debug('%s.%s: event.pref_origin exists --> set eval mode' % (__name__, fname))
+                logger.debug('%s.%s: event.pref_origin exists --> set eval '
+                             'mode' % (__name__, fname))
                 evaluation_mode = event.preferred_origin().evaluation_mode
                 evaluation_status = event.preferred_origin().evaluation_status
             else:
                 logger.debug(
-                    '%s.%s: event.pref_origin does NOT exist --> set eval mode on origins[0]' % (__name__, fname))
+                    '%s.%s: event.pref_origin does NOT exist --> set eval '
+                    'mode on origins[0]' % (__name__, fname))
                 evaluation_mode = event.origins[0].evaluation_mode
                 evaluation_status = event.origins[0].evaluation_status
 
@@ -930,7 +945,8 @@ class NLL(object):
 
     def gen_observations_from_event(self, event):
         """
-        Create NLLoc compatible observation file from an microquake event catalog file.
+        Create NLLoc compatible observation file from an microquake event
+        catalog file.
         input:
 
         :param event: event containing a preferred origin with arrivals
@@ -1005,7 +1021,8 @@ class NLL(object):
                     sensor_id = arrival.get_pick().waveform_id.station_code
                     phase = arrival.phase
     
-                    fname = '%s.%s.%s.time' % (self.base_name, phase, sensor_id)
+                    fname = '%s.%s.%s.time' % (self.base_name, phase,
+                                               sensor_id)
     
                     fpath = os.path.join(self.base_folder, 'time', fname)
     
@@ -1024,17 +1041,13 @@ class NLL(object):
                         f' phase {phase}: {exc}', exc_info=True)
                     arrival.distance = None
 
-                # print("nlloc read_hyp_loc: arr sta:%s pha:%s dist:%f ray_dist:%f" % \
-                # (sta, arrival.phase, dist, arrival.distance))
-
-                # arrival.ray = ray.nodes
         et = time()
         logger.info('completed ray tracing in %0.3f' % (et - st))
 
         event.origins.append(origin)
         event.preferred_origin_id = origin.resource_id
 
-        return obspy.core.event.Catalog(events=[event])
+        return Catalog(events=[event])
 
     def take_off_angle(self, station):
         fname = '%s/time/%s.P.%s.take_off' % (self.base_folder, self.base_name,
@@ -1073,8 +1086,10 @@ class NLLHeader(AttribDict):
             self.gridpar = AttribDict()
             self.gridpar.grids = AttribDict()
             self.gridpar.grids.v = AttribDict()
-            self.gridpar.shape = tuple([int(line[0]), int(line[1]), int(line[2])])
-            self.gridpar.origin = np.array([float(line[3]), float(line[4]), float(line[5])])
+            self.gridpar.shape = tuple([int(line[0]), int(line[1]),
+                                        int(line[2])])
+            self.gridpar.origin = np.array([float(line[3]), float(line[4]),
+                                            float(line[5])])
             self.gridpar.origin *= 1000
             self.gridpar.spacing = float(line[6]) * 1000
 
@@ -1156,7 +1171,7 @@ VGTYPE S
 GTFILES  <BASEFOLDER>/model/<MODELNAME>  <BASEFOLDER>/time/<MODELNAME> <PHASE>
 
 GTMODE GRID3D ANGLES_NO
-# MTH Uncomment these if you want Grid2Time to calculate angles.buf (takeoff + azimuth)
+# MTH Uncomment these if you want Grid2Time to calculate angles.buf (takeoff + azimuth) 
 #     and for the resulting angles to appear on the last.hyp phase lines
 #GTMODE GRID3D ANGLES_YES
 #LOCANGLES ANGLES_YES 5

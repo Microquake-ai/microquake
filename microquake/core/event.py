@@ -25,8 +25,51 @@ import numpy as np
 import obspy.core.event as obsevent
 from obspy.core.event import WaveformStreamID
 from obspy.core.util import AttribDict
+from copy import deepcopy
 
 debug = False
+
+
+class Catalog(obsevent.Catalog):
+
+    extra_keys = []
+
+    __doc__ = obsevent.Catalog.__doc__.replace('obspy', 'microquake')
+
+    def __init__(self, obspy_obj=None, **kwargs):
+        if obspy_obj and len(kwargs) > 0:
+            raise AttributeError("Initialize from either \
+                                  obspy_obj or kwargs, not both")
+
+        if obspy_obj:
+
+            for key in obspy_obj.__dict__.keys():
+                if key == 'events':
+                    events = []
+                    for event in obspy_obj:
+                        events.append(Event(obspy_obj=event))
+                    self.events = events
+                else:
+                    self.__dict__[key] = obspy_obj.__dict__[key]
+
+        else:
+            super(type(self), self).__init__(
+                **kwargs)
+
+    def __setattr__(self, name, value):
+        super(type(self), self).__setattr__(name, value)
+
+    def write(self, fileobj, format='quakeml', **kwargs):
+        for event in self.events:
+            for ori in event.origins:
+                for ar in ori.arrivals:
+                    if 'extra' in ar.keys():
+                        del ar.extra
+
+        return obsevent.Catalog.write(self, fileobj, format=format, **kwargs)
+
+    def copy(self):
+        return deepcopy(self)
 
 
 class Event(obsevent.Event):
@@ -46,7 +89,6 @@ class Event(obsevent.Event):
 
     def __init__(self, obspy_obj=None, **kwargs):
         _init_handler(self, obspy_obj, **kwargs)
-
 
     def __setattr__(self, name, value):
         _set_attr_handler(self, name, value)
@@ -72,6 +114,15 @@ class Event(obsevent.Event):
         return out
 
         self.picks += picks
+
+    def write(self, fileobj, **kwargs):
+        for ori in self.origins:
+            arrivals = []
+            for ar in ori.arrivals:
+                if 'extra' in ar.keys():
+                    del ar.extra
+
+        return obsevent.Event.write(self, fileobj, **kwargs)
 
 
 class Origin(obsevent.Origin):
@@ -160,7 +211,7 @@ class Magnitude(obsevent.Magnitude):
         return out_cls
 
     def __str__(self, **kwargs):
-        string="""
+        string = """
                Magnitude: {}
    Corner frequency (Hz): {}
           Seismic moment: {}
@@ -214,18 +265,12 @@ class Pick(obsevent.Pick):
 class Arrival(obsevent.Arrival):
     __doc__ = obsevent.Arrival.__doc__.replace('obspy', 'microquake')
 
-    # extra_keys = ['ray', 'backazimuth', 'inc_angle']
     extra_keys = ['ray', 'backazimuth', 'inc_angle', 'polarity',
                   'peak_vel', 'tpeak_vel', 't1', 't2', 'pulse_snr',
                   'peak_dis', 'tpeak_dis', 'max_dis', 'tmax_dis',
-                  'dis_pulse_width', 'dis_pulse_area',
-                  'smom', 'fit', 'tstar',
-                  'hypo_dist_in_m',
-                  'vel_flux', 'vel_flux_Q', 'energy',
-                  'fmin', 'fmax', 'traces']
-
-    # extra_keys = ['ray', 'backazimuth', 'inc_angle', 'velocity_pulse',
-    # 'displacement_pulse']
+                  'dis_pulse_width', 'dis_pulse_area', 'smom', 'fit',
+                  'tstar', 'hypo_dist_in_m', 'vel_flux', 'vel_flux_Q',
+                  'energy', 'fmin', 'fmax', 'traces']
 
     def __init__(self, obspy_obj=None, **kwargs):
         _init_handler(self, obspy_obj, **kwargs)
@@ -238,7 +283,8 @@ class Arrival(obsevent.Arrival):
             return self.pick_id.get_referred_object()
 
     def get_sta(self):
-        self.pick_id_get_referred_object().get_sta()
+        if self.pick_id is not None:
+            self.pick_id_get_referred_object().get_sta()
 
 
 def get_arrival_from_pick(arrivals, pick):
@@ -269,29 +315,30 @@ def read_events(*args, **kwargs):
 
     # converting the obspy object into microquake objects
     cat = obsevent.read_events(*args, **kwargs)
-    events = []
-    for event in cat:
-        origins = []
-        preferred_origin_id = event.preferred_origin_id
-        mq_event = Event(event)
-        for origin in event.origins:
-            mq_origin = Origin(origin)
-            arrivals = [Arrival(arrival) for arrival in origin.arrivals]
-            mq_origin.arrivals = arrivals
-            origins.append(mq_origin)
+    # events = []
+    mq_catalog = Catalog(obspy_obj=cat)
+    # for event in cat:
+    #     origins = []
+    #     preferred_origin_id = event.preferred_origin_id
+    #     mq_event = Event(event)
+    #     for origin in event.origins:
+    #         mq_origin = Origin(origin)
+    #         arrivals = [Arrival(arrival) for arrival in origin.arrivals]
+    #         mq_origin.arrivals = arrivals
+    #         origins.append(mq_origin)
+    #
+    #     picks = [Pick(pick) for pick in event.picks]
+    #     magnitudes = [Magnitude(magnitude) for magnitude in event.magnitudes]
+    #
+    #     mq_event.origins = origins
+    #     mq_event.picks = picks
+    #     mq_event.magnitudes = magnitudes
+    #
+    #     events.append(mq_event)
+    #
+    # mq_catalog.events = events
 
-        picks = [Pick(pick) for pick in event.picks]
-        magnitudes = [Magnitude(magnitude) for magnitude in event.magnitudes]
-
-        mq_event.origins = origins
-        mq_event.picks = picks
-        mq_event.magnitudes = magnitudes
-
-        events.append(mq_event)
-
-    cat.events = events
-
-    return cat
+    return mq_catalog
 
 
 def _init_handler(self, obspy_obj, **kwargs):
