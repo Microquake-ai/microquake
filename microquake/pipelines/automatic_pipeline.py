@@ -84,6 +84,8 @@ def picker_election(location, event_time_utc, cat, stream):
 
 def put_data_api(event_id, **kwargs):
 
+    import requests
+
     api_message_queue = settings.API_MESSAGE_QUEUE
     api_queue = RedisQueue(api_message_queue)
 
@@ -93,17 +95,9 @@ def put_data_api(event_id, **kwargs):
     event_key = event_id
     event = get_event(event_key)
 
-    event_id = event['catalogue'][0].resource_id.id
-
-    response = put_event_from_objects(api_base_url, event_id,
-                                      event=event['catalogue'])
+    response = put_data_processor(event['catalogue'])
 
     if response.status_code != requests.codes.ok:
-        # Those line will need to be removed once the issue with the API is
-        # fixed, the API currently returns code 400 even if the request is
-        # successful.
-        if response.status_code == 400:
-            return response
 
         logger.info('request failed, resending to the queue')
 
@@ -115,6 +109,30 @@ def put_data_api(event_id, **kwargs):
                                   processing_step, processing_step_id,
                                   processing_time)
 
+    return response
+
+
+def put_data_processor(catalog):
+    from uuid import uuid4
+
+    event_id = catalog[0].resource_id.id
+
+    base_url = api_base_url
+    if base_url[-1] == '/':
+        base_url = base_url[:-1]
+
+    url = f'{base_url}/events/{event_id}/files'
+
+    cat_bytes = BytesIO()
+    catalog.write(cat_bytes)
+
+    file_name = str(uuid4()) + '.xml'
+    cat_bytes.name = file_name
+    cat_bytes.seek(0)
+
+    files = {'event': cat_bytes}
+
+    response = requests.put(url, files=files)
     return response
 
 
@@ -137,13 +155,14 @@ def automatic_pipeline(event_id, **kwargs):
     cat_out, mag = automatic_processor(cat, stream)
 
     set_event(event_id, catalogue=cat)
-    api_queue.submit_task(post_event_api, event_id=event_id)
+    api_queue.submit_task(put_event_api, event_id=event_id)
 
     end_processing_time = time()
     processing_time = end_processing_time - start_processing_time
 
-    record_processing_logs_pg(event, 'success', __processing_step__,
-                              __processing_step_id__, processing_time)
+    record_processing_logs_pg(event['catalogue'], 'success',
+                              __processing_step__, __processing_step_id__,
+                              processing_time)
 
     return cat_out, mag
 
