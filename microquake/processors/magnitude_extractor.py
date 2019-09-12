@@ -92,7 +92,7 @@ class Processor(ProcessingUnit):
             mw = np.mean([td_magnitude, fd_magnitude])
             mw_uncertainty = np.abs(td_magnitude - fd_magnitude)
 
-        elif td_magnitude:
+        elif td_magnitude is None:
             mw = fd_magnitude
             mw_uncertainty = None
 

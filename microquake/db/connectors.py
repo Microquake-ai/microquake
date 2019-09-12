@@ -36,7 +36,7 @@ class RedisWrapper(object):
 
 
 class RedisQueue:
-    def __init__(self, queue, timeout=600):
+    def __init__(self, queue, timeout=1800):
         self.redis = Redis.from_url(url=settings.REDIS_RQ_URL)
         self.timeout = timeout
         self.queue = queue
