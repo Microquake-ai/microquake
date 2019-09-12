@@ -51,10 +51,6 @@ class Processor(ProcessingUnit):
                 dict_out['energy_s_std'] = energy_s_dict['std_Es']
                 break
 
-        if energy is None:
-            raise ValueError(
-                f'Failed to calculate energy for event {cat[0].resource_id}')
-
         for magnitude in reversed(cat[0].magnitudes):
 
             if len(magnitude.comments) == 0:
@@ -116,7 +112,10 @@ class Processor(ProcessingUnit):
             potency = sm / mu
             dict_out['potency_m3'] = potency
             dict_out['source_volume_m3'] = potency
-            dict_out['apparent_stress'] = 2 * energy / potency
+            if energy is None:
+                dict_out['apparent_stress'] = 2 * energy / potency
+            else:
+                dict_out['apparent_stress'] = None
 
             ssd = calc_static_stress_drop(mw, cf)
             dict_out['static_stress_drop_mpa'] = ssd
