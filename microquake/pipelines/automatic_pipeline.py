@@ -190,6 +190,8 @@ def automatic_pipeline_api(event_id, **kwargs):
 
     cat_out, mag = automatic_processor(cat, stream)
 
+    set_event(event_id, catalogue=cat_out)
+
     return cat_out, mag
 
 

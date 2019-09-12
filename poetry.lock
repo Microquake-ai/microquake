@@ -1031,7 +1031,7 @@ type = "legacy"
 url = "https://pkg.microquake.org/simple"
 
 [metadata]
-content-hash = "64283c1c11cb181a8ef42041a905a620c688d7855c29d87978eb50b4c031469a"
+content-hash = "211f87523ea117c2cfd150a4bbec8e4c7dfe70cd8491254c5792a5e12d27f0f8"
 python-versions = "^3.6 || ^3.7"
 
 [metadata.hashes]

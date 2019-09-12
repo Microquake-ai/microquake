@@ -4,7 +4,7 @@ from scipy.optimize import curve_fit
 from scipy.ndimage.interpolation import map_coordinates
 from loguru import logger
 from obspy.core.trace import Stats
-from microquake.core.stream import Trace
+from microquake.core.stream import Trace, Stream
 from microquake.core.data import GridData
 from microquake.core import event
 
@@ -637,7 +637,7 @@ def triggered_sensor_sta_lta_grid(stloc, Rho, Vp, Vs, Qp, Qs, Mw=-1,
 # ---------------------------------------------------
 
 # defining the spectral function
-def SF(f, log_Omega0, f0):
+def spectral_function(f, log_Omega0, f0):
     """Defines the far-field displacement spectrum
     according to Brune, 1970.
 
@@ -648,7 +648,7 @@ def SF(f, log_Omega0, f0):
     to find the parameters log_Omega0 and f0 that fit a cloud of
     points in the spectral domain:
 
-    poptP, pcovP = curve_fit(SF, Freq[fi],
+    poptP, pcovP = curve_fit(spectral_function, Freq[fi],
         np.log10(PSpectrum[fi] + 1e-10), (1e6, 100))
 
     :param f: frequency at which to calculate the power spectrum
@@ -1044,8 +1044,8 @@ def measure_sensitivity(raypath, Mw_min=-3., Mw_max=2., Mw_spacing=0.1,
 
 
 def moment_magnitude(stream, evt, inventory, vp, vs, only_triaxial=True,
-                     density=2700, min_dist=20, win_length=0.02,
-                     len_spectrum=2 ** 14):
+                     density=2700, min_dist=20, win_length=0.04,
+                     len_spectrum=2 ** 12, clipped_fraction=0.1, mu = 29.5e9):
     """
     WARNING
     Calculate the moment magnitude for an event.
@@ -1069,10 +1069,13 @@ def moment_magnitude(stream, evt, inventory, vp, vs, only_triaxial=True,
     :type win_length: float
     :param min_dist: minimum distance between sensor an event to allow
     magnitude calculation
+    :param len_spectrum: length of the spectrum
+    :param clipped_fraction: allowed clipped fraction (fraction of the
+    signal equal to the min or the max.
     :rtype: microquake.core.event.Event
     """
 
-    from microquake.core.event import Comment
+      # rigidity in Pa (shear-wave modulus)
 
     if only_triaxial:
         logger.info(
@@ -1081,144 +1084,168 @@ def moment_magnitude(stream, evt, inventory, vp, vs, only_triaxial=True,
     fcs = []
 
     for origin in evt.origins:
-        evloc = np.array([origin.x, origin.y, origin.z])
+        ev_loc = np.array([origin.x, origin.y, origin.z])
 
         if not ((type(vp) == np.float) or (type(vp) == np.int)):
-            vpsrc = vp.interpolate(evloc, grid_coordinate=False)
-            vssrc = vs.interpolate(evloc, grid_coordinate=False)
+            vp_src = vp.interpolate(ev_loc, grid_coordinate=False)
+            vs_src = vs.interpolate(ev_loc, grid_coordinate=False)
         else:
-            vpsrc = vp
-            vssrc = vs
+            vp_src = vp
+            vs_src = vs
 
-        Mw = []
+        moment_magnitudes = []
+        corner_frequencies = []
         stations = []
 
         for k, arr in enumerate(origin.arrivals):
-            pick = arr.pick_id.get_referred_object()
+            pick = arr.get_pick()
+            sta_code = pick.get_sta()
             # ensuring backward compatibility
             if not pick:
                 pick = evt.picks[k]
             at = pick.time
             phase = pick.phase_hint
 
-            sta_code = pick.waveform_id.station_code
-            station = site.stations(station=sta_code)
-            if not station:
+            sensor_response = inventory.select(sta_code)
+            st_loc = sensor_response.loc
+            if not sensor_response:
+                logger.warning(f'sensor response not found for sensor '
+                               f'{sta_code}')
                 continue
 
-            station = station[0]
-            stloc = station.loc
-            sttrs = stream.select(station=sta_code)
+            poles = np.abs(sensor_response[0].response.get_paz().poles)
+            st_trs = stream.select(station=sta_code)
 
-            if len(sttrs) == 0:
+            if len(st_trs) == 0:
                 continue
 
-            if (only_triaxial) and (len(sttrs) < 3):
+            if only_triaxial and (len(st_trs) < 3):
                 continue
-
-            signal = sttrs.copy()
 
             # creating displacement pulse
-            signal.detrend('demean').detrend('linear')
-            signal.taper(max_percentage=0.05, type='cosine')
-            csignal = np.mean([tr.data ** 2 for tr in signal], axis=0)
+            st_trs.detrend('demean').detrend('linear')
+            st_trs.taper(max_percentage=0.05, type='cosine')
 
-            len_max = len(csignal[csignal == np.max(csignal)]) + \
-                      len(csignal[csignal == np.min(csignal)])
+            data = st_trs.composite()[0].data
 
-            # very basic clipping detection
-            if len_max > 0.1 * (len(csignal)):
+            len_max = len(data[data == np.max(data)]) + \
+                      len(data[data == np.min(data)])
+
+            if len_max / len(data) > clipped_fraction:
+
                 logger.info('Clipped waveform detected: station %s '
                             'will not be used for magnitude calculation' %
-                            station.code)
+                            sensor_response.code)
                 continue
 
-            ct = signal.copy().composite()
-            ct = ct.detrend('demean').detrend('demean')
-            ct = ct.filter('highpass', freq=freq)
-            ct = ct.trim(starttime=at - 0.01, endtime=at + 2 * win_length)
-            ct = ct.taper(type='cosine', max_percentage=0.5, max_length=0.08,
+            pulse = st_trs.copy()
+
+            # filter the pulse using the corner frequency of the sensor
+            low_bp_freq = np.min(poles) / (2 * np.pi)
+            high_bp_freq = np.max(poles) / (2 * np.pi)
+            if high_bp_freq > pulse[0].stats.sampling_rate / 2:
+                high_bp_freq = pulse[0].stats.sampling_rate / 2
+
+            # ideally the sensor signal should be deconvolved and a larger
+            # portion of the spectrum should be used. It is possible to get
+            # to frequency lower than the corner frequency of the sensor
+            pulse.filter('bandpass', freqmin=low_bp_freq, freqmax=high_bp_freq)
+            pulse = pulse.taper(max_percentage=0.05, type='cosine')
+
+            if sensor_response.motion == 'ACCELERATION':
+                dp = pulse.copy().integrate().integrate()
+            elif sensor_response.motion == 'VELOCITY':
+                dp = pulse.copy().integrate()
+
+            # creating a signal containing only one for comparison
+            tr_one = Trace(data=np.ones(len(pulse[0].data)))
+            tr_one.stats = pulse[0].stats
+            st_one = Stream(traces=[tr_one])
+
+            dp = dp.trim(starttime=at-0.01, endtime=at+2*win_length)
+            dp = dp.taper(type='cosine', max_percentage=0.5, max_length=0.08,
                           side='left')
-            ct = ct.taper(type='cosine', max_percentage=0.5,
-                          max_length=win_length, side='right')
 
-            if station.sensor_type.lower() == 'accelerometer':
-                displacement = ct.copy().integrate().integrate()
-            elif station.sensor_type.lower() == 'geophone':
-                displacement = ct.copy().integrate()
+            # applying the same operation to the one signal
+            st_one_trimmed = st_one.trim(starttime=at-0.01,
+                                         endtime=at+2*win_length)
+            st_one_taper = st_one_trimmed.taper(type='cosine',
+                                                max_percentage=0.5,
+                                                max_length=0.08,
+                                                side='left')
 
-            # displacement.trim(starttime=at - 0.01, endtime=at + 2 *
-            # win_length)
-            # displacement = displacement.taper(type='cosine',
-            # max_percentage=0.5, max_length=0.08, side='left')
-            # displacement = displacement.taper(type='cosine',
-            # max_percentage=0.5, max_length=win_length, side='right')
-            R = np.linalg.norm(stloc - evloc)
+            dp_spectrum = np.zeros(len_spectrum)
+            water_level = 1e-15
+            for tr in dp:
+                dp_spectrum += np.abs(np.fft.fft(tr.data, n=len_spectrum))
+            one_spectrum = np.fft.fft(st_one_taper[0].data, n=len_spectrum)
+            dp_spectrum_scaled = dp_spectrum / (one_spectrum + water_level)
 
-            if (R < min_dist):
+            if arr.distance is not None:
+                hypo_dist = arr.distance
+            else:
+                hypo_dist = np.linalg.norm(st_loc - ev_loc)
+
+            if hypo_dist < min_dist:
                 continue
 
             radiation = radiation_pattern_attenuation()
             if phase.lower() == 'P':
                 radiation = radiation[0]
-                vsrc = vpsrc
+                v_src = vp_src
             else:
                 radiation = radiation[1]
-                vsrc = vssrc
+                v_src = vs_src
 
-            sr = tr.stats.sampling_rate
+            sr = dp[0].stats.sampling_rate
             # to be checked
             # np.abs(fft) already divides by N
             # only need to divide the spectrum by sr rather then len_spectrum
             # to get the spectral density
-            spectrum = np.sqrt(np.mean([np.abs(fft(tr.data, len_spectrum))
-                                        ** 2 for tr in displacement], axis=0))
-            spectrum_norm = spectrum / radiation * R * 4 * \
-                            np.pi * density * vsrc ** 3 / (sr)
+            spectrum_norm = dp_spectrum / radiation * hypo_dist * 4 * \
+                            np.pi * density * v_src ** 3 / sr
 
             f = np.fft.fftfreq(len_spectrum, 1 / sr)
-            fi = np.nonzero((f >= 20) & (f <= 1000))[0]
+            fi = np.nonzero((f >= low_bp_freq) & (f <= high_bp_freq))[0]
 
             if not np.any(fi):
                 continue
-            try:
-                popt, pcov = curve_fit(SF, f[fi],
-                                       np.log10(spectrum_norm[fi] + 1e-10),
-                                       (1e6, 100))
-            except:
-                continue
+            p_opt, p_cov = curve_fit(spectral_function, f[fi],
+                                     np.log10(spectrum_norm[fi] * 2 + 1e-10),
+                                     (1e6, 100))
 
-            M0 = np.power(10, popt[0])
+            scalar_moment = np.power(10, p_opt[0])
 
-            if len(sttrs) == 1:
-                M0 = M0 * np.sqrt(3)  # uniaxial sensor
+            if len(st_trs) == 1:
+                scalar_moment = scalar_moment * np.sqrt(3)  # uniaxial sensor
 
-            fc = popt[1]
+            corner_freq = p_opt[1]
 
-            Mw.append(2 / 3.0 * np.log10(M0) - 6.07)
+            moment_magnitudes.append(2 / 3.0 * np.log10(scalar_moment) - 6.07)
 
-            fcs.append(fc)
+            corner_frequencies.append(corner_freq)
 
-            if station not in stations:
-                stations.append(station)
+        moment_magnitudes = np.array(moment_magnitudes)
+        corner_frequencies = np.array(corner_frequencies)
 
-        stcount = len(stations)
+        st_count = len(moment_magnitudes)
 
-        Mw = np.array(Mw)
-        fcs = np.array(fcs)
+        moment_magnitudes = moment_magnitudes[~np.isnan(moment_magnitudes)]
+        moment_magnitudes = moment_magnitudes[~np.isinf(moment_magnitudes)]
 
-        Mw = Mw[~np.isnan(Mw)]
-        Mw = Mw[~np.isinf(Mw)]
+        corner_frequencies = corner_frequencies[~np.isnan(moment_magnitudes)]
+        corner_frequencies = corner_frequencies[~np.isinf(moment_magnitudes)]
 
-        fcs = fcs[~np.isnan(Mw)]
-        fcs = fcs[~np.isinf(Mw)]
+        moment_magnitudes = -999 if not np.any(moment_magnitudes) else \
+            moment_magnitudes
 
-        Mw = -999 if not np.any(Mw) else Mw
+        fc = 0 if not np.any(corner_frequencies) else np.median(
+            corner_frequencies)
 
-        fc = 0 if not np.any(fcs) else np.median(fcs)
+        mw = np.median(moment_magnitudes)
 
-        mag = event.Magnitude(mag=np.median(Mw),
-                              station_count=stcount, magnitude_type='Mw',
+        mag = event.Magnitude(mag=np.median(moment_magnitudes),
+                              station_count=st_count, magnitude_type='Mw',
                               evaluation_mode=origin.evaluation_mode,
                               evaluation_status=origin.evaluation_status,
                               origin_id=origin.resource_id)
@@ -1226,7 +1253,7 @@ def moment_magnitude(stream, evt, inventory, vp, vs, only_triaxial=True,
         mag.corner_frequency_hz = fc
 
         from obspy.core.event import QuantityError
-        mag.mag_errors = QuantityError(uncertainty=np.std(Mw))
+        mag.mag_errors = QuantityError(uncertainty=np.std(moment_magnitudes))
         evt.magnitudes.append(mag)
         if origin.resource_id == evt.preferred_origin().resource_id:
             evt.preferred_magnitude_id = mag.resource_id.id

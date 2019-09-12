@@ -284,7 +284,7 @@ class Arrival(obsevent.Arrival):
 
     def get_sta(self):
         if self.pick_id is not None:
-            self.pick_id_get_referred_object().get_sta()
+            self.pick_id.get_referred_object().get_sta()
 
 
 def get_arrival_from_pick(arrivals, pick):
