@@ -82,7 +82,7 @@ def picker_election(location, event_time_utc, cat, stream):
     return cat_pickers[i_max], picker_types[i_max]
 
 
-def put_data_api(event_id, **kwargs):
+def put_data(event_id, **kwargs):
 
     import requests
 
@@ -96,12 +96,13 @@ def put_data_api(event_id, **kwargs):
     event = get_event(event_key)
 
     response = put_data_processor(event['catalogue'])
+    logger.info(response.status_code)
 
     if response.status_code != requests.codes.ok:
 
         logger.info('request failed, resending to the queue')
 
-        result = api_queue.submit_task(put_data_api, event_id=event_key)
+        result = api_queue.submit_task(put_data, event_id=event_key)
 
         processing_end_time = time()
         processing_time = processing_end_time - processing_start_time
@@ -113,6 +114,7 @@ def put_data_api(event_id, **kwargs):
 
 
 def put_data_processor(catalog):
+
     from uuid import uuid4
 
     event_id = catalog[0].resource_id.id
@@ -132,7 +134,11 @@ def put_data_processor(catalog):
 
     files = {'event': cat_bytes}
 
+    logger.info(f'attempting to PUT catalog for event {event_id}')
+
     response = requests.put(url, files=files)
+
+    logger.info(f'API responded with {response.status_code} code')
     return response
 
 
@@ -155,7 +161,7 @@ def automatic_pipeline(event_id, **kwargs):
     cat_out, mag = automatic_processor(cat, stream)
 
     set_event(event_id, catalogue=cat)
-    api_queue.submit_task(put_data_api, event_id=event_id)
+    api_queue.submit_task(put_data, event_id=event_id)
 
     end_processing_time = time()
     processing_time = end_processing_time - start_processing_time
@@ -163,6 +169,8 @@ def automatic_pipeline(event_id, **kwargs):
     record_processing_logs_pg(event['catalogue'], 'success',
                               __processing_step__, __processing_step_id__,
                               processing_time)
+
+    logger.info(f'automatic processing completed in {processing_time} seconds')
 
     return cat_out, mag
 

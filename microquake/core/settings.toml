@@ -152,10 +152,10 @@ picker.low_frequencies.s_wave.search_window.end = 20e-3           # end of the s
 picker.low_frequencies.s_wave.search_window.resolution = 0.0005   # time resolution of search window (s)
 
 
-picker.second_pass.p_wave.search_window.start = -30e-3
+picker.second_pass.p_wave.search_window.start = -60e-3
 picker.second_pass.p_wave.search_window.end = 30e-3
 picker.second_pass.p_wave.search_window.resolution = 0.0005
-picker.second_pass.s_wave.search_window.start = -30e-3
+picker.second_pass.s_wave.search_window.start = -60e-3
 picker.second_pass.s_wave.search_window.end = 30e-3
 picker.second_pass.s_wave.search_window.resolution = 0.0005
 picker.second_pass.waveform_filter.frequency_min = 100
