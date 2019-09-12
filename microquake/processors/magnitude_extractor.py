@@ -107,12 +107,12 @@ class Processor(ProcessingUnit):
         dict_out['moment_magnitude'] = mw
         dict_out['moment_magnitude_uncertainty'] = mw_uncertainty
         if mw is not None:
-            sm = 10 ** (3 / 2 * mw + 6.02)
+            sm = 10 ** (3 / 2 * (mw + 6.02))
             dict_out['seismic_moment'] = sm
             potency = sm / mu
             dict_out['potency_m3'] = potency
             dict_out['source_volume_m3'] = potency
-            if energy is None:
+            if energy is not None:
                 dict_out['apparent_stress'] = 2 * energy / potency
             else:
                 dict_out['apparent_stress'] = None
