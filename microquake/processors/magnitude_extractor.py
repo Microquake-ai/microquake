@@ -37,6 +37,7 @@ class Processor(ProcessingUnit):
         # finding the index for magnitude object that contains the energy
         td_magnitude = None
         fd_magnitude = None
+        energy = None
         for magnitude in reversed(cat[0].magnitudes):
 
             if magnitude.magnitude_type == 'E':
@@ -49,6 +50,10 @@ class Processor(ProcessingUnit):
                 dict_out['energy_s_joule'] = energy_s_dict['Es']
                 dict_out['energy_s_std'] = energy_s_dict['std_Es']
                 break
+
+        if energy is None:
+            raise ValueError(
+                f'Failed to calculate energy for event {cat[0].resource_id}')
 
         for magnitude in reversed(cat[0].magnitudes):
 
