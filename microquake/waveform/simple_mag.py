@@ -1045,7 +1045,7 @@ def measure_sensitivity(raypath, Mw_min=-3., Mw_max=2., Mw_spacing=0.1,
 
 def moment_magnitude(stream, evt, inventory, vp, vs, only_triaxial=True,
                      density=2700, min_dist=20, win_length=0.04,
-                     len_spectrum=2 ** 12, clipped_fraction=0.1, mu = 29.5e9):
+                     len_spectrum=2 ** 12, clipped_fraction=0.1):
     """
     WARNING
     Calculate the moment magnitude for an event.

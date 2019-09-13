@@ -1,8 +1,8 @@
 from loguru import logger
 import numpy as np
 
-# from microquake.core.settings import settings
 from microquake.processors.processing_unit import ProcessingUnit
+from microquake.processors import quick_magnitude
 from microquake.waveform.mag_utils import calc_static_stress_drop
 
 
@@ -18,6 +18,7 @@ class Processor(ProcessingUnit):
         logger.info("pipeline: measure_amplitudes")
 
         cat = kwargs["cat"].copy()
+        stream = kwargs["stream"]
 
         dict_out = {}
         dict_keys = ['energy_joule', 'energy_p_joule', 'energy_p_std',
@@ -38,6 +39,7 @@ class Processor(ProcessingUnit):
         td_magnitude = None
         fd_magnitude = None
         energy = None
+        cf = None
         for magnitude in reversed(cat[0].magnitudes):
 
             if magnitude.magnitude_type == 'E':
@@ -85,12 +87,18 @@ class Processor(ProcessingUnit):
                     dict_out['corner_frequency_s_hz'] = cf
                 cfs.append(cf)
 
-        cf = np.mean(cfs)
-        dict_out['corner_frequency_hz'] = cf
+        cfs = [cf for cf in cfs if not np.isnan(cf)]
+        if cfs:
+            cf = np.mean(cfs)
+            dict_out['corner_frequency_hz'] = cf
 
         if (td_magnitude is not None) and (fd_magnitude is not None):
             mw = np.mean([td_magnitude, fd_magnitude])
             mw_uncertainty = np.abs(td_magnitude - fd_magnitude)
+
+        elif (td_magnitude is None) and (fd_magnitude is None):
+            mw, mw_uncertainty = quick_magnitude.Processor(
+            ).process(cat=cat, stream=stream)
 
         elif td_magnitude is None:
             mw = fd_magnitude
@@ -98,10 +106,6 @@ class Processor(ProcessingUnit):
 
         elif fd_magnitude is None:
             mw = td_magnitude
-            mw_uncertainty = None
-
-        else:
-            mw = None
             mw_uncertainty = None
 
         dict_out['moment_magnitude'] = mw
@@ -117,7 +121,8 @@ class Processor(ProcessingUnit):
             else:
                 dict_out['apparent_stress'] = None
 
-            ssd = calc_static_stress_drop(mw, cf)
-            dict_out['static_stress_drop_mpa'] = ssd
+            if cf is not None:
+                ssd = calc_static_stress_drop(mw, cf)
+                dict_out['static_stress_drop_mpa'] = ssd
 
         return dict_out

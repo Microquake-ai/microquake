@@ -142,7 +142,8 @@ def interactive_pipeline(
     cat_magnitude_f = magnitude_f_processor.process(cat=cat_magnitude,
                                                     stream=stream)
 
-    mag = magnitude_extractor.Processor().process(cat=cat_magnitude_f)
+    mag = magnitude_extractor.Processor().process(cat=cat_magnitude_f,
+                                                  stream=stream)
 
     cat_out = cat_magnitude_f.copy()
     preferred_origin_id = cat_magnitude_f[0].preferred_origin().resource_id
