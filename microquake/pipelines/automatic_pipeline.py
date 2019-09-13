@@ -293,7 +293,6 @@ def automatic_processor(cat, stream):
 
     processing_time = end_processing_time - start_processing_time
 
-    mag = magnitude_extractor.Processor().process(cat=cat_magnitude_f)
     # send the magnitude info to the API
 
     mag = magnitude_extractor.Processor().process(cat=cat_magnitude_f,
