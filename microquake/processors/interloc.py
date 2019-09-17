@@ -29,7 +29,7 @@ class Processor(ProcessingUnit):
     ):
         logger.info("pipeline: interloc")
 
-        # TODO: copy not necessary testapplication is broken
+        # TODO: copy not necessary test application is broken
         stream = kwargs["stream"].copy()
 
         nthreads = self.params.nthreads
@@ -43,9 +43,14 @@ class Processor(ProcessingUnit):
                                        dtype=np.float32)
 
         stalocs = self.htt.locations
-        ttable = (self.htt.hf["ttp"][:] * samplerate_decimated).astype(np.uint16)
+        ttable = (self.htt.hf["ttp"][:] * samplerate_decimated).astype(
+            np.uint16)
+        ttable_s = (self.htt.hf["tts"][:] * samplerate_decimated).astype(
+            np.uint16)
         ngrid = ttable.shape[1]
         ttable_row_ptrs = np.array(
+            [row.__array_interface__["data"][0] for row in ttable])
+        ttable_rwo_ptrs_s = np.array(
             [row.__array_interface__["data"][0] for row in ttable])
 
         logger.info("preparing data for Interloc")
@@ -56,23 +61,27 @@ class Processor(ProcessingUnit):
 
         for trace in stream:
             if trace.stats.station not in self.htt.stations:
-                logger.info('removing trace for station %s' % trace.stats.station)
+                logger.info('removing trace for station %s' %
+                            trace.stats.station)
                 stream.remove(trace)
             elif np.max(trace.data) == 0:
-                logger.info('removing trace for station %s' % trace.stats.station)
+                logger.info('removing trace for station %s' %
+                            trace.stats.station)
                 stream.remove(trace)
             elif trace.stats.station in self.settings.sensors.black_list:
-                logger.info('removing trace for station %s' % trace.stats.station)
+                logger.info('removing trace for station %s' %
+                            trace.stats.station)
                 stream.remove(trace)
 
-        data, samplerate, t0 = stream.as_array(fixed_wlen_sec)
+        data, sample_rate, t0 = stream.as_array(fixed_wlen_sec)
         data = np.nan_to_num(data)
-        decimate_factor = int(samplerate / samplerate_decimated)
-        data = tools.decimate(data, samplerate, decimate_factor)
+        decimate_factor = int(sample_rate / sample_rate_decimated)
+        data = tools.decimate(data, sample_rate, decimate_factor)
         channel_map = stream.channel_map().astype(np.uint16)
 
         ikeep = self.htt.index_sta(stream.unique_stations())
-        debug_file = os.path.join(self.debug_file_dir, "iloc_" + str(t0) + ".npz")
+        debug_file = os.path.join(self.debug_file_dir, "iloc_" + str(t0) +
+                                  ".npz")
         t5 = time()
         logger.info(
             "done preparing data for Interloc in %0.3f seconds" % (t5 - t4))
@@ -80,8 +89,10 @@ class Processor(ProcessingUnit):
         logger.info("Locating event with Interloc")
         t6 = time()
         logger.info(
-            "samplerate_decimated {}, ngrid {}, nthreads {}, debug {}, debug_file {}",
-            samplerate_decimated, ngrid, nthreads, self.debug_level, debug_file)
+            "samplerate_decimated {}, ngrid {}, nthreads {}, debug {}, "
+            "debug_file {}",
+            samplerate_decimated, ngrid, nthreads, self.debug_level,
+            debug_file)
 
         out = xspy.pySearchOnePhase(
             data,
@@ -99,11 +110,37 @@ class Processor(ProcessingUnit):
             debug_file
         )
 
+        out_s = xspy.pySearchOnePhase(
+            data,
+            samplerate_decimated,
+            channel_map,
+            stalocs[ikeep],
+            ttable_row_ptrs[ikeep],
+            ngrid,
+            whiten_corner_freqs,
+            pair_dist_min,
+            pair_dist_max,
+            cc_smooth_length_sec,
+            nthreads,
+            self.debug_level,
+            debug_file
+        )
+
         vmax, imax, iot = out
+        vmax_s, imax_s, iot_s = out_s
+
+        if vmax_s > vmax:
+            vmax = vmax_s
+            imax = imax_s
+            iot = iot_s
+            logger.info('stacking along the s-wave moveout curve yielded '
+                        'better result')
+
         normed_vmax = vmax * fixed_wlen_sec
         lmax = self.htt.icol_to_xyz(imax)
         t7 = time()
-        logger.info("Done locating event with Interloc in %0.3f seconds" % (t7 - t6))
+        logger.info("Done locating event with Interloc in %0.3f seconds" % (
+                t7 - t6))
 
         ot_epoch = tools.datetime_to_epoch_sec(
             (t0 + iot / samplerate_decimated).datetime)

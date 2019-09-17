@@ -205,12 +205,12 @@ def estimate_origin_time(stream, event_location):
     stacked_tr.stats.starttime = min_starttime
     stacked_tr.stats.sampling_rate = max_sampling_rate
 
-    # o_i = np.argmax(stacked_tr)
-    k = kurtosis(stacked_tr, win=30e-3)
-    diff_k = np.diff(k)
+    o_i = np.argmax(stacked_tr)
+    # k = kurtosis(stacked_tr, win=30e-3)
+    # diff_k = np.diff(k)
 
-    o_i = np.argmax(np.abs(diff_k[i_max - w_len_samp: i_max + w_len_samp])) \
-          + i_max - w_len_samp
+    # o_i = np.argmax(np.abs(diff_k[i_max - w_len_samp: i_max + w_len_samp])) \
+    #       + i_max - w_len_samp
 
     origin_time = min_starttime + o_i / max_sampling_rate
     # Tracer()()
