@@ -52,6 +52,7 @@ class Processor(ProcessingUnit):
         """
         # cat = kwargs["cat"]
         stream = kwargs['stream']
+        phase_filter = None
 
         if "location" and "event_time_utc" in kwargs:
             o_loc = kwargs['location']  # a list containing the location
@@ -62,6 +63,9 @@ class Processor(ProcessingUnit):
             ot_utc = estimate_origin_time(stream, o_loc)
         else:
             raise Exception("Missing parameters to run this module.")
+
+        if 'phase_filter' in kwargs:
+            phase_filter = kwargs['phase_filter']
 
         logger.info('cleaning the input stream')
         st = stream.detrend("demean")
@@ -78,49 +82,59 @@ class Processor(ProcessingUnit):
         t3 = time()
         logger.info("done predicting picks in %0.3f seconds" % (t3 - t2))
 
-        logger.info("picking P-waves")
-        t4 = time()
-        search_window = np.arange(
-            self.p_wave_window_start,
-            self.p_wave_window_end,
-            self.p_wave_window_resolution,
-        )
+        snrs_p = []
+        snrs_s = []
+        p_snr_picks = []
+        s_snr_picks = []
 
-        snr_window = (
-            self.p_wave_signal,
-            self.p_wave_noise,
-        )
+        if phase_filter is None:
+            phase_filter = 'PS'
 
-        st_c = st.copy().composite()
-        snrs_p, p_snr_picks = snr_picker(
-            st_c, picks, snr_dt=search_window, snr_window=snr_window,
-            filter="P"
-        )
+        if 'P' in phase_filter.upper():
+            logger.info("picking P-waves")
+            t4 = time()
+            search_window = np.arange(
+                self.p_wave_window_start,
+                self.p_wave_window_end,
+                self.p_wave_window_resolution,
+            )
 
-        t5 = time()
-        logger.info("done picking P-wave in %0.3f seconds" % (t5 - t4))
+            snr_window = (
+                self.p_wave_signal,
+                self.p_wave_noise,
+            )
 
-        logger.info("picking S-waves")
-        t6 = time()
+            st_c = st.copy().composite()
+            snrs_p, p_snr_picks = snr_picker(
+                st_c, picks, snr_dt=search_window, snr_window=snr_window,
+                filter="P"
+            )
 
-        search_window = np.arange(
-            self.s_wave_window_start,
-            self.s_wave_window_end,
-            self.s_wave_window_resolution,
-        )
+            t5 = time()
+            logger.info("done picking P-wave in %0.3f seconds" % (t5 - t4))
 
-        snr_window = (
-            self.s_wave_signal,
-            self.s_wave_noise,
-        )
+        if 'S' in phase_filter.upper():
+            logger.info("picking S-waves")
+            t6 = time()
 
-        snrs_s, s_snr_picks = snr_picker(
-            st_c, picks, snr_dt=search_window, snr_window=snr_window,
-            filter="S"
-        )
-        t7 = time()
+            search_window = np.arange(
+                self.s_wave_window_start,
+                self.s_wave_window_end,
+                self.s_wave_window_resolution,
+            )
 
-        logger.info("done picking S-wave in %0.3f seconds" % (t7 - t6))
+            snr_window = (
+                self.s_wave_signal,
+                self.s_wave_noise,
+            )
+
+            snrs_s, s_snr_picks = snr_picker(
+                st_c, picks, snr_dt=search_window, snr_window=snr_window,
+                filter="S"
+            )
+            t7 = time()
+
+            logger.info("done picking S-wave in %0.3f seconds" % (t7 - t6))
 
         snr_picks = p_snr_picks + s_snr_picks
 
@@ -136,28 +150,30 @@ class Processor(ProcessingUnit):
 
             if snr > self.snr_threshold
         ]
+        logger.info(f'srn_threshold: {self.snr_threshold}')
 
-        logger.info("correcting bias in origin time")
+        # logger.info("correcting bias in origin time")
         t0 = time()
         residuals = []
 
         for snr_pk in snr_picks_filtered:
             for pk in picks:
                 if (pk.phase_hint == snr_pk.phase_hint) and (
-                    pk.waveform_id.station_code == snr_pk.waveform_id.station_code
+                    pk.waveform_id.station_code ==
+                    snr_pk.waveform_id.station_code
                 ):
                     residuals.append(pk.time - snr_pk.time)
 
-        ot_utc -= np.mean(residuals)
+        # ot_utc -= np.mean(residuals)
 
-        biais = np.mean(residuals)
-        residuals -= biais
+        # biais = np.mean(residuals)
+        # residuals -= biais
         indices = np.nonzero(np.abs(residuals) < self.residual_tolerance)[0]
         snr_picks_filtered = [snr_picks_filtered[i] for i in indices]
 
         t1 = time()
-        logger.info("done correcting bias in origin time in %0.3f" % (t1 - t0))
-        logger.info("bias in origin time was %0.3f seconds" % biais)
+        # logger.info("done correcting bias in origin time in %0.3f" % (t1 - t0))
+        # logger.info("bias in origin time was %0.3f seconds" % biais)
 
         logger.info("creating arrivals")
         t8 = time()
