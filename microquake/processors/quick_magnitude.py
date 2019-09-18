@@ -5,6 +5,8 @@ from obspy.core.event import QuantityError
 from microquake.core.event import Magnitude
 from microquake.core.settings import settings
 from microquake.processors.processing_unit import ProcessingUnit
+from microquake.waveform.mag_utils import calc_static_stress_drop
+
 
 
 class Processor(ProcessingUnit):
@@ -26,6 +28,8 @@ class Processor(ProcessingUnit):
         cat = kwargs['cat']
 
         mags = []
+        fcs = []
+        ppvs = []
 
         # This function will need to return a tuple with station code and
         # location
@@ -46,22 +50,59 @@ class Processor(ProcessingUnit):
 
             motion_type = inventory.select(station).motion
 
+            st_stream = st_stream.detrend('demean')
+
             if motion_type != 'VELOCITY':
                 if motion_type == 'ACCELERATION':
-                    velocity = st_stream.composite().copy().integrate()[0].data
+                    velocity = st_stream.composite().detrend(
+                        'demean').copy().integrate()[0].data
                 else:
                     continue
 
             else:
-                velocity = st_stream.composite().copy()[0].data
+                velocity = st_stream.composite().detrend('demean').copy()[
+                    0].data
+
+            # finding the dominant frequency as an estimate of the corner
+            # frequency
+
+            v_tr = st_stream.composite()[0]
+
+            n_max = np.argmax(np.abs(v_tr.data))
+
+            buffer = 0.03
+            t_left = v_tr.stats.starttime + n_max * v_tr.stats.delta - buffer
+            t_right = v_tr.stats.starttime + n_max * v_tr.stats.delta + \
+                      buffer
+
+            v = v_tr.copy()
+            v = v.trim(starttime=t_left, endtime=t_right).detrend(
+                'demean').taper(max_percentage=0.1)
+
+            v_data = v.data
+
+            len_sign = int(2 ** np.ceil(np.log10(len(v_tr.data)) / np.log10(
+                2)))
+            velocity_f = np.fft.fft(v_data, len_sign)
+            f = np.fft.fftfreq(len_sign, d=st_stream[0].stats.delta)
+            i = np.argmax(np.abs(velocity_f[0:int(len_sign/2)]))
+            fcs.append(f[i])
+
+
 
             # The PPV/Mag relationship is valid for mm/s, the velocity is
             # expressed in m/s in the file, we need to multiply by 1000
-            ppv = np.max(velocity) * 1000 * dist
+            ppv = np.max(np.abs(velocity)) * 1000 * dist
+            ppvs.append(np.max(np.abs(velocity)))
 
             mags.append((np.log10(ppv) - self.params.c) / self.params.a)
 
         mags = np.array(mags)[np.nonzero(np.isnan(mags) == False)[0]]
+        indices = np.argsort(ppvs)
+
+        # use the station with the 10 largest PPV to measure the dominant
+        # frequency
+        self.corner_frequency_hz = np.median(np.array(fcs)[indices[-10:]])
 
         self.mag = np.median(mags)
         self.mag_uncertainty = np.std(mags)
@@ -78,7 +119,13 @@ class Processor(ProcessingUnit):
                         evaluation_status='preliminary',
                         station_count=self.station_count,
                         mag_errors=error,
-                        origin_id=catalog[0].preferred_origin_id)
+                        origin_id=catalog[0].preferred_origin_id,
+                        corner_frequency_hz=self.corner_frequency_hz)
+        mag.seismic_moment = 10 ** (3 / 2 * (self.mag + 6.02))
+        mag.potency_m3 = mag.seismic_moment / 29.5e9
+        ssd = calc_static_stress_drop(mag.mag, mag.corner_frequency_hz)
+        mag.static_stress_drop_mpa = ssd
+        mag.corner_frequency_hz = self.corner_frequency_hz
 
         catalog[0].magnitudes.append(mag)
         catalog[0].preferred_magnitude_id = mag.resource_id
