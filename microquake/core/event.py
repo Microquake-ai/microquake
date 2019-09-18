@@ -66,7 +66,16 @@ class Catalog(obsevent.Catalog):
                     if 'extra' in ar.keys():
                         del ar.extra
 
-        return obsevent.Catalog.write(self, fileobj, format=format, **kwargs)
+        result = obsevent.Catalog.write(self, fileobj, format=format, **kwargs)
+
+        for event in self.events:
+            for ori in event.origins:
+                ars = []
+                for ar in ori.arrivals:
+                    ars.append(Arrival(obspy_obj=ar))
+                ori.arrivals = ars
+
+        return result
 
     def copy(self):
         return deepcopy(self)

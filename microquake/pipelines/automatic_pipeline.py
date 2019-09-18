@@ -109,7 +109,23 @@ def automatic_pipeline(event_id, **kwargs):
 
     cat_picked = picking_meta_processor(cat, fixed_length)
 
+    min_number_pick = settings.get('picker').min_num_picks
+    n_picks = len(cat_picked[0].preferred_origin().arrivals)
+    if n_picks < min_number_pick:
+        logger.warning(f'number of picks ({n_picks}) is lower than the '
+                       f'minimum number of picks ({min_number_pick}). '
+                       f'Aborting automatic processing!')
+        return cat_picked
+
     cat_located = location_meta_processor(cat_picked)
+
+    max_uncertainty = settings.get('location').max_uncertainty
+    uncertainty = cat_located[0].preferred_origin().uncertainty
+    if uncertainty > max_uncertainty:
+        logger.warning(f'uncertainty ({uncertainty} m) is above the '
+                       f'threshold of {max_uncertainty} m. Aborting '
+                       f'automatic processing!')
+        return cat_located
 
     set_event(event_id, catalogue=cat_located)
     api_queue.submit_task(put_data, event_id=event_id)
@@ -167,14 +183,24 @@ def automatic_pipeline_test(cat, stream):
 
     cat_picked = picking_meta_processor(cat, fixed_length)
 
+    min_number_pick = settings.get('picker').min_num_picks
+    if len(cat_picked[0].preferred_origin().arrivals) < min_number_pick:
+        return cat
+
     cat_located = location_meta_processor(cat_picked)
+
+    max_uncertainty = settings.get('location').max_uncertainty
+    if cat_located[0].preferred_origin().uncertainty > max_uncertainty:
+        return cat
+
+    # put_data_processor(cat_located)
 
     cat_magnitude, mag = magnitude_meta_processor(cat_located, fixed_length)
 
-    put_data_processor(cat_magnitude)
+    # put_data_processor(cat_magnitude)
 
     end_processing_time = time()
     processing_time = end_processing_time - start_processing_time
     logger.info(f'done automatic pipeline in {processing_time} seconds')
 
-    return cat_magnitude, mag
+    return cat_magnitude

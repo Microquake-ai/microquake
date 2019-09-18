@@ -150,9 +150,7 @@ class Processor(ProcessingUnit):
 
             if snr > self.snr_threshold
         ]
-        logger.info(f'srn_threshold: {self.snr_threshold}')
 
-        # logger.info("correcting bias in origin time")
         t0 = time()
         residuals = []
 
@@ -164,16 +162,10 @@ class Processor(ProcessingUnit):
                 ):
                     residuals.append(pk.time - snr_pk.time)
 
-        # ot_utc -= np.mean(residuals)
-
-        # biais = np.mean(residuals)
-        # residuals -= biais
         indices = np.nonzero(np.abs(residuals) < self.residual_tolerance)[0]
         snr_picks_filtered = [snr_picks_filtered[i] for i in indices]
 
         t1 = time()
-        # logger.info("done correcting bias in origin time in %0.3f" % (t1 - t0))
-        # logger.info("bias in origin time was %0.3f seconds" % biais)
 
         logger.info("creating arrivals")
         t8 = time()
