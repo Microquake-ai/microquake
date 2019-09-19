@@ -582,6 +582,9 @@ class Ray:
         self.station_code = None
         self.arrival_id = None
         self.phase = None
+        self.azimuth = None
+        self.takeoff_angle = None
+        self.travel_time = None
         self.resource_id = obsevent.ResourceIdentifier()
 
     def __setattr__(self, key, value):

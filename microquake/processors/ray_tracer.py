@@ -4,7 +4,7 @@ from microquake.processors.processing_unit import ProcessingUnit
 from loguru import logger
 
 from microquake.core.simul.eik import ray_tracer
-from microquake.core.helpers.grid import get_ray
+from microquake.core.helpers.grid import get_ray, get_grid_point
 
 
 class Processor(ProcessingUnit):
@@ -39,6 +39,13 @@ class Processor(ProcessingUnit):
                     ray.station_code = station_code
                     ray.phase = phase
                     ray.arrival_id = p_ori.get_arrival_id(phase, station_code)
+                    ray.travel_time = get_grid_point(station_code, phase,
+                                                     ev_loc, grid_type='time')
+                    ray.azimuth = get_grid_point(station_code, phase,
+                                                 ev_loc, grid_type='azimuth')
+                    ray.takeoff_angle = get_grid_point(station_code, phase,
+                                                       ev_loc,
+                                                       grid_type='take_off')
                     self.rays.append(ray)
                 except FileNotFoundError:
                     logger.warning(f'travel time grid for station '
