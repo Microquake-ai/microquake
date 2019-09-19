@@ -160,7 +160,12 @@ class Origin(obsevent.Origin):
 
     def __getattr__(self, item):
         if item == 'rays':
-            return self.__decode_rays__(self)
+            try:
+                return self.__decode_rays__(self)
+            except pickle.UnpicklingError:
+                self.__encoded_rays__ = eval(self.__encoded_rays__)
+                return self.__decode_rays__(self)
+
         else:
             return self.__dict__[item]
 
