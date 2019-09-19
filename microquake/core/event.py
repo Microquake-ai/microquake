@@ -26,6 +26,10 @@ import obspy.core.event as obsevent
 from obspy.core.event import WaveformStreamID
 from obspy.core.util import AttribDict
 from copy import deepcopy
+from loguru import logger
+from base64 import b64encode, b64decode
+from io import BytesIO
+import pickle
 
 debug = False
 
@@ -100,6 +104,11 @@ class Event(obsevent.Event):
         _init_handler(self, obspy_obj, **kwargs)
 
     def __setattr__(self, name, value):
+        if name == 'rays':
+            logger.warning('rays need to be set using the "add_ray" or '
+                           '"set_rays" method')
+            return
+
         _set_attr_handler(self, name, value)
 
     def __str__(self):
@@ -137,13 +146,48 @@ class Event(obsevent.Event):
 class Origin(obsevent.Origin):
     __doc__ = obsevent.Origin.__doc__.replace('obspy', 'microquake')
     extra_keys = ['x', 'y', 'z', 'x_error', 'y_error', 'z_error', 'scatter',
-                  'interloc_vmax', 'interloc_time']
+                  'interloc_vmax', 'interloc_time', '__encoded_rays__']
 
     def __init__(self, obspy_obj=None, **kwargs):
         _init_handler(self, obspy_obj, **kwargs)
 
     def __setattr__(self, name, value):
-        _set_attr_handler(self, name, value)
+
+        if name == 'rays':
+            self.__encoded_rays__ = self.__encode_rays__(self, value)
+        else:
+            _set_attr_handler(self, name, value)
+
+    def __getattr__(self, item):
+        if item == 'rays':
+            return self.__decode_rays__(self)
+        else:
+            return self.__dict__[item]
+
+    @staticmethod
+    def __encode_rays__(self, rays):
+        return b64encode(pickle.dumps(rays))
+
+    @staticmethod
+    def __decode_rays__(self):
+        if self.__encoded_rays__ is None:
+            return
+
+        return pickle.loads(b64decode(self.__encoded_rays__))
+
+    def get_arrival_id(self, phase, station_code):
+        arrival_id = None
+        for arrival in self.arrivals:
+            if (arrival.phase == phase) and (arrival.get_sta() ==
+                                             station_code):
+                arrival_id = arrival.resource_id
+
+        return arrival_id
+
+    def append_ray(self, item):
+        if self.rays is None:
+            self.rays = [item]
+        self.rays = self.rays + [item]
 
     @property
     def loc(self):
@@ -293,7 +337,8 @@ class Arrival(obsevent.Arrival):
 
     def get_sta(self):
         if self.pick_id is not None:
-            self.pick_id.get_referred_object().get_sta()
+            pick = self.pick_id.get_referred_object()
+            return pick.get_sta()
 
 
 def get_arrival_from_pick(arrivals, pick):
@@ -324,28 +369,7 @@ def read_events(*args, **kwargs):
 
     # converting the obspy object into microquake objects
     cat = obsevent.read_events(*args, **kwargs)
-    # events = []
     mq_catalog = Catalog(obspy_obj=cat)
-    # for event in cat:
-    #     origins = []
-    #     preferred_origin_id = event.preferred_origin_id
-    #     mq_event = Event(event)
-    #     for origin in event.origins:
-    #         mq_origin = Origin(origin)
-    #         arrivals = [Arrival(arrival) for arrival in origin.arrivals]
-    #         mq_origin.arrivals = arrivals
-    #         origins.append(mq_origin)
-    #
-    #     picks = [Pick(pick) for pick in event.picks]
-    #     magnitudes = [Magnitude(magnitude) for magnitude in event.magnitudes]
-    #
-    #     mq_event.origins = origins
-    #     mq_event.picks = picks
-    #     mq_event.magnitudes = magnitudes
-    #
-    #     events.append(mq_event)
-    #
-    # mq_catalog.events = events
 
     return mq_catalog
 
@@ -517,10 +541,52 @@ def parse_string_val(val, arr_flag='npy64_'):
     return val
 
 
+class RayCollection:
+    def __init__(self, rays=[]):
+        self.__encoded_rays__ = self.__encode_rays__(self, rays)
+        self.origin_id = None
+
+    def __setattr__(self, key, value):
+        if key == 'rays':
+            self.__encoded_rays__ = self.__encode_rays__(self, value)
+        else:
+            self.__dict__[key] = value
+
+    def __getattr__(self, item):
+        if item == 'rays':
+            return self.__decode_rays__(self)
+        else:
+            return self.__dict__[item]
+
+    @staticmethod
+    def __encode_rays__(self, rays):
+        return b64encode(pickle.dumps(rays))
+
+    @staticmethod
+    def __decode_rays__(self):
+        return pickle.loads(b64decode(self.__encoded_rays__))
+
+    def append(self, item):
+        self.rays = self.rays + [item]
+
+
 class Ray:
 
     def __init__(self, nodes=[]):
         self.nodes = np.array(nodes)
+        self.station_code = None
+        self.arrival_id = None
+        self.phase = None
+        self.resource_id = obsevent.ResourceIdentifier()
+
+    def __setattr__(self, key, value):
+        if key == 'phase':
+            if value is None:
+                self.__dict__[key] = value
+            else:
+                self.__dict__[key] = value.upper()
+        else:
+            self.__dict__[key] = value
 
     def length(self):
         if len(self.nodes) < 2:
@@ -535,6 +601,20 @@ class Ray:
 
     def __len__(self):
         return self.length()
+
+    def __str__(self):
+        txt = \
+            f"""
+      station code: {self.station_code}
+        arrival id: {self.arrival_id}
+             phase: {self.phase}
+        length (m): {self.length()}
+   number of nodes: {len(self.nodes)}
+            """
+        return txt
+
+    def __repr__(self):
+        return self.__str__()
 
 
 def break_down(event):

@@ -6,7 +6,7 @@ from microquake.core.event import Magnitude
 from microquake.processors import (focal_mechanism, magnitude,
                                    measure_amplitudes, measure_energy,
                                    measure_smom, nlloc, picker,
-                                   magnitude_extractor)
+                                   magnitude_extractor, ray_tracer)
 
 
 def picker_election(location, event_time_utc, cat, stream):
@@ -113,7 +113,16 @@ def location_meta_processor(cat):
     processing_time = end_processing_time - start_processing_time
     logger.info(f'done locating event in {processing_time} seconds')
 
-    return cat_nlloc
+    logger.info('calculating rays')
+    rt_start_time = time()
+    rtp = ray_tracer.Processor()
+    rtp.process(cat=cat_nlloc)
+    cat_ray_tracer = rtp.output_catalog(cat_nlloc)
+    rt_end_time = time()
+    rt_processing_time = rt_end_time - rt_start_time
+    logger.info(f'done calculating rays in {rt_processing_time} seconds')
+
+    return cat_ray_tracer
 
 
 def magnitude_meta_processor(cat, fixed_length):

@@ -1,22 +1,16 @@
 from io import BytesIO
 
-import numpy as np
 import requests
 from microquake.core.event import Catalog
 from time import time
 
 from loguru import logger
-from microquake.clients.api_client import put_event_from_objects, reject_event
-from microquake.core.event import Event, Magnitude
+from microquake.core.event import Event
 from microquake.clients.api_client import post_data_from_objects
 from microquake.core.settings import settings
 from microquake.db.connectors import RedisQueue, record_processing_logs_pg
 from microquake.db.models.redis import get_event, set_event
-from microquake.processors import (clean_data, focal_mechanism, magnitude,
-                                   measure_amplitudes, measure_energy,
-                                   measure_smom, nlloc, picker,
-                                   magnitude_extractor)
-
+from microquake.processors import clean_data
 from microquake.pipelines.pipeline_meta_processors import (
     picking_meta_processor, location_meta_processor, magnitude_meta_processor)
 
