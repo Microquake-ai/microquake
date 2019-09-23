@@ -1,6 +1,7 @@
 import copy
 
 import matplotlib.pyplot as plt
+import numba
 import numpy as np
 from loguru import logger
 from scipy import optimize
@@ -428,6 +429,7 @@ def brune_omega3(fc: float, mom: float, ts: float, f: float) -> float:
     return mom * 1. / (1 + np.power(f/fc, 3.)) * np.exp(-np.pi * ts * f)
 
 
+@numba.jit(nopython=True)
 def brune_dis_spec(fc: float, mom: float, ts: float, f: float) -> float:
     return mom * (fc * fc) / (fc * fc + f * f) * np.exp(-np.pi * ts * f)
 
@@ -582,9 +584,7 @@ def calc_fit(sta_dict, fc, fmin=20., fmax=1000.,
              plot_fit=False,
              use_fixed_fmin_fmax=False):
 
-    # from collections import defaultdict
-    # ldict = defaultdict(float)
-    ldict = []
+    # frequencies = []
     fit = 0.
     smom_dict = {}
 
@@ -597,8 +597,7 @@ def calc_fit(sta_dict, fc, fmin=20., fmax=1000.,
 
         for cha_code, cha in sta['chan_spec'].items():
             signal_fft, freqs, noise_fft = (cha['signal_fft'], cha['freqs'], cha['noise_fft'])
-            # ldict = set(list(ldict) + list(freqs))
-            # logger.info(len(freqs))
+            # frequencies = set(list(frequencies) + list(freqs))
 
             model_func = brune_vel_spec
 
