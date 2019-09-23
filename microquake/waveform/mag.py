@@ -6,15 +6,14 @@
 import warnings
 
 import numpy as np
-from microquake.core.event import Pick
-from obspy.core.event import Comment, ResourceIdentifier, WaveformStreamID
-from obspy.core.event.magnitude import (Magnitude, StationMagnitude,
-                                        StationMagnitudeContribution)
-
 from loguru import logger
+from obspy.core.event import Comment, ResourceIdentifier, WaveformStreamID
+from obspy.core.event.magnitude import Magnitude, StationMagnitude, StationMagnitudeContribution
+
+from microquake.core.event import Pick
 from microquake.waveform.amp_measures import measure_pick_amps
 from microquake.waveform.mag_utils import double_couple_rad_pat, free_surface_displacement_amplification
-from microquake.waveform.smom_measure import measure_pick_smom
+from microquake.waveform.smom_measure_legacy import measure_pick_smom
 
 warnings.simplefilter("ignore", UserWarning)
 warnings.simplefilter("ignore")
@@ -27,6 +26,7 @@ def moment_magnitude_new(st, event,
                          fmin=20, fmax=1000,
                          use_smom=False):
 
+    #TODO: this moment_magnitude_new function looks broken
     picks = event.picks
 
     if use_smom:
@@ -55,8 +55,6 @@ def moment_magnitude_new(st, event,
 
     station_mags = station_mags_P + station_mags_S
     set_new_event_mag(event, station_mags, Mw, comment)
-
-    return
 
 
 def set_new_event_mag(event, station_mags, Mw, comment, make_preferred=False):
@@ -163,6 +161,7 @@ def calc_magnitudes_from_lambda(cat,
             net = pk.waveform_id.network_code
         except AttributeError:
             logger.warning('Missing data on arrival', exc_info=True)
+
             continue
 
         fs_factor = 1.
@@ -232,9 +231,9 @@ def calc_magnitudes_from_lambda(cat,
                                                station_magnitude_type=mag_type,
                                                comments=[Comment(text=magnitude_comment)],
                                                waveform_id=WaveformStreamID(
-                                                    network_code=net,
-                                                    station_code=sta,
-                                                    channel_code=cha))
+                                                   network_code=net,
+                                                   station_code=sta,
+                                                   channel_code=cha))
                 station_mags.append(station_mag)
 
             else:
@@ -289,6 +288,7 @@ def calculate_energy_from_flux(cat,
                 logger.warning(
                     f'Cannot get station for arrival "{arr.resource_id}"'
                     f' for event "{event.resource_id}".')
+
                 continue
             phase = arr.phase
 
@@ -357,10 +357,10 @@ def calculate_energy_from_flux(cat,
         comment = 'Energy [N-m] calculated from sum of median P + median S ' \
                   'energy'
         comment_ep = '"Ep":{}, "std_Ep":{}'.format(np.median(P_energy),
-                                               np.std(P_energy))
+                                                   np.std(P_energy))
         comment_ep = '{' + comment_ep + '}'
         comment_es = '"Es":{}, "std_Es":{}'.format(np.median(S_energy),
-                                               np.std(S_energy))
+                                                   np.std(S_energy))
         comment_es = '{' + comment_es + '}'
 
         if E > 0:
