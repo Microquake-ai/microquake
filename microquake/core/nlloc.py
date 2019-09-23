@@ -25,17 +25,17 @@ import shutil
 import tempfile
 from datetime import datetime
 from glob import glob
+from struct import unpack
 from time import time
 
 import numpy as np
 import obspy.core.event
 from loguru import logger
-from microquake.core.data.grid import read_grid
-from microquake.core.event import Arrival, Origin
-from obspy.core import AttribDict
 from obspy import UTCDateTime
-from struct import unpack
-from microquake.core.event import Catalog
+from obspy.core import AttribDict
+
+from microquake.core.data.grid import read_grid
+from microquake.core.event import Arrival, Catalog, Origin
 
 
 def read_nlloc_hypocenter_file(filename, picks=None,
@@ -689,15 +689,15 @@ class NLL(object):
         # hdr = "%d %d %d  %.2f %.2f %.2f  %.4f %.4f %.4f  SLOW_LEN" % (
         self.ctrlfile.locgrid = "LOCGRID  %d %d %d  %.2f %.2f %.2f  %.4f " \
                                 "%.4f %.4f  MISFIT  SAVE" % (
-            (self.gridpar.grids.vp.shape[0] - 1) * 10 + 1,
-            (self.gridpar.grids.vp.shape[1] - 1) * 10 + 1,
-            (self.gridpar.grids.vp.shape[2] - 1) * 10 + 1,
-            self.gridpar.grids.vp.origin[0] / 1000,
-            self.gridpar.grids.vp.origin[1] / 1000,
-            self.gridpar.grids.vp.origin[2] / 1000,
-            self.gridpar.grids.vp.spacing / 10000,
-            self.gridpar.grids.vp.spacing / 10000,
-            self.gridpar.grids.vp.spacing / 10000)
+                                    (self.gridpar.grids.vp.shape[0] - 1) * 10 + 1,
+                                    (self.gridpar.grids.vp.shape[1] - 1) * 10 + 1,
+                                    (self.gridpar.grids.vp.shape[2] - 1) * 10 + 1,
+                                    self.gridpar.grids.vp.origin[0] / 1000,
+                                    self.gridpar.grids.vp.origin[1] / 1000,
+                                    self.gridpar.grids.vp.origin[2] / 1000,
+                                    self.gridpar.grids.vp.spacing / 10000,
+                                    self.gridpar.grids.vp.spacing / 10000,
+                                    self.gridpar.grids.vp.spacing / 10000)
 
         self.ctrlfile.locsig = self.params.locsig
         self.ctrlfile.loccom = self.params.loccom
@@ -1020,15 +1020,15 @@ class NLL(object):
                 try:
                     sensor_id = arrival.get_pick().waveform_id.station_code
                     phase = arrival.phase
-    
+
                     fname = '%s.%s.%s.time' % (self.base_name, phase,
                                                sensor_id)
-    
+
                     fpath = os.path.join(self.base_folder, 'time', fname)
-    
+
                     ttg = read_grid(fpath, format='NLLOC')
                     ray = ray_tracer(ttg, origin.loc, grid_coordinates=False)
-    
+
                     '''
                     dist = arrival.distance
                     pk = arrival.pick_id.get_referred_object()
@@ -1171,7 +1171,7 @@ VGTYPE S
 GTFILES  <BASEFOLDER>/model/<MODELNAME>  <BASEFOLDER>/time/<MODELNAME> <PHASE>
 
 GTMODE GRID3D ANGLES_NO
-# MTH Uncomment these if you want Grid2Time to calculate angles.buf (takeoff + azimuth) 
+# MTH Uncomment these if you want Grid2Time to calculate angles.buf (takeoff + azimuth)
 #     and for the resulting angles to appear on the last.hyp phase lines
 #GTMODE GRID3D ANGLES_YES
 #LOCANGLES ANGLES_YES 5
