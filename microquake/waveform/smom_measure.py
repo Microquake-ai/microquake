@@ -106,8 +106,8 @@ def measure_pick_smom(st, inventory, event, synthetic_picks,
         min_f = np.max(fmin)
         max_f = np.min(fmax)
 
-        logger.debug("sta:%3s pha:%s smom:%12.10g ts:%.4f nchans:%d" %
-                     (sta, phase, smom, tstar, len(fits)))
+        # logger.debug("sta:%3s pha:%s smom:%12.10g ts:%.4f nchans:%d" %
+        #              (sta, phase, smom, tstar, len(fits)))
 
         arr = arr_dict[sta][phase]
         arr.smom = smom
@@ -115,9 +115,9 @@ def measure_pick_smom(st, inventory, event, synthetic_picks,
         arr.tstar = tstar
         arr.fmin = min_f
         arr.fmax = max_f
-        logger.info("sta:%3s pha:%s smom:%12.10g ts:%.4f nchans:%d fmin:%f "
-                    "fmax:%f" % (sta, phase, smom, tstar, len(fits), min_f,
-                                 max_f))
+        # logger.info("sta:%3s pha:%s smom:%12.10g ts:%.4f nchans:%d fmin:%f "
+        #             "fmax:%f" % (sta, phase, smom, tstar, len(fits), min_f,
+        #                          max_f))
 
     return smom_dict, peak_f
 
@@ -588,6 +588,16 @@ def calc_fit(sta_dict, fc, fmin=20., fmax=1000.,
     fit = 0.
     smom_dict = {}
 
+    # Give it a starting vector:
+    #     smom    tstar
+    # MTH: this should be wert origin time anyway ...
+    # tt_s = sta['stime'] - tr.stats.starttime
+    tt_s = .02
+    # pp = [1e-5, tt_s/500.]
+    # pp = [1e-5, tt_s/200.]
+    start = np.array([1e-10, tt_s/200.])
+
+    # (sol,fopt, _)= optimize.fmin(residfit, np.array(pp),xtol=10**-12,ftol=10**-12,disp=False, full_output=1)
     for sta_code, sta in sta_dict.items():
         if 'chan_spec' not in sta:
             logger.debug("sta:%3s: Has no chan_spec --> Skip" % sta_code)
@@ -611,22 +621,13 @@ def calc_fit(sta_dict, fc, fmin=20., fmax=1000.,
                 fmin = cha['fmin']
                 fmax = cha['fmax']
 
-            logger.debug("calc_fit sta:%3s cha:%s fmin:%.1f fmax:%.1f" %
-                         (sta_code, cha_code, fmin, fmax))
+            # logger.debug("calc_fit sta:%3s cha:%s fmin:%.1f fmax:%.1f" %
+            #              (sta_code, cha_code, fmin, fmax))
 
             residfit = getresidfit(np.abs(signal_fft), model_func, fc, freqs, Lnorm=Lnorm,
                                    weight_fr=weight_fr, fmin=fmin, fmax=fmax)
 
-            # Give it a starting vector:
-            #     smom    tstar
-            # MTH: this should be wert origin time anyway ...
-            # tt_s = sta['stime'] - tr.stats.starttime
-            tt_s = .02
-            # pp = [1e-5, tt_s/500.]
-            # pp = [1e-5, tt_s/200.]
-            pp = [1e-10, tt_s/200.]
-            # (sol,fopt, _)= optimize.fmin(residfit, np.array(pp),xtol=10**-12,ftol=10**-12,disp=False, full_output=1)
-            (sol, fopt, *rest) = optimize.fmin(residfit, np.array(pp), ftol=.01, disp=False, full_output=1)
+            (sol, fopt, *rest) = optimize.fmin(residfit, start, ftol=.01, disp=False, full_output=1)
 
             if sol[0] < 0.:
                 logger.info("Ummm smom < 0 !!!")
@@ -642,8 +643,8 @@ def calc_fit(sta_dict, fc, fmin=20., fmax=1000.,
             ch_dict['fmin'] = cha['fmin']
             ch_dict['fmax'] = cha['fmax']
 
-            logger.debug("calc_fit: sta:%s cha:%s smom:%12.10g fit:%.2f ts=%f" %
-                         (sta_code, cha_code, sol[0], fopt, sol[1]))
+            # logger.debug("calc_fit: sta:%s cha:%s smom:%12.10g fit:%.2f ts=%f" %
+            #              (sta_code, cha_code, sol[0], fopt, sol[1]))
 
             # if plot_fit and cha['P_or_S'] == "S":
             plot_fit = 0
@@ -833,18 +834,19 @@ def plot_signal(signal, noise=None):
     plt.show()
 
 
+
+@numba.jit(nopython=True)
 def unpack_rfft(rfft, df):
     n = rfft.size
 
     if n % 2 == 0:
         n2 = int(n/2)
     else:
-        logger.error("n is odd!!")
-        exit()
+        raise Exception("n is odd!!")
     # print("n2=%d" % n2)
 
-    c_arr = np.array(np.zeros(n2+1,), dtype=np.complex_)
-    freqs = np.array(np.zeros(n2+1,), dtype=np.float_)
+    c_arr = np.zeros(n2+1, dtype=np.complex_)
+    freqs = np.zeros(n2+1, dtype=np.float_)
 
     c_arr[0] = rfft[0]
     c_arr[n2] = rfft[n-1]
