@@ -1,15 +1,15 @@
-import numpy as np
-
-from scipy import optimize
-from scipy.fftpack import fft, fftfreq, rfft, rfftfreq
-
-from microquake.core.data.inventory import (get_sensor_type_from_trace,
-                                            get_corner_freq_from_pole)
-from microquake.core.util.tools import copy_picks_to_dict
+import copy
 
 import matplotlib.pyplot as plt
-import copy
+import numpy as np
 from loguru import logger
+from scipy import optimize
+from scipy.fftpack import fftfreq, rfft, rfftfreq
+from scipy.signal import savgol_filter
+
+from microquake.core.data.inventory import get_corner_freq_from_pole, get_sensor_type_from_trace
+from microquake.core.util.tools import copy_picks_to_dict
+
 
 """
     smom_measures - A collection of functions used in the calculation of
@@ -238,8 +238,6 @@ def get_spectra(st, event, inventory, synthetic_picks,
     for tr in st:
         st_stations.add(tr.stats.station)
 
-    stations_without_trace = arr_stations - st_stations
-
     # Only keep stations that have at least one arrival and at least one trace
     sta_codes = arr_stations.intersection(st_stations)
 
@@ -273,8 +271,6 @@ def get_spectra(st, event, inventory, synthetic_picks,
             d['stime'] = pick_dict[sta_code]['S'].time
         else:
             d['stime'] = synthetic_dict[sta_code]['S'].time
-
-        found = False
 
         sta_loc = inventory.select(sta_code).loc
         if sta_loc is None:
@@ -322,7 +318,6 @@ def get_spectra(st, event, inventory, synthetic_picks,
 
                 cha_code = tr.stats.channel
 
-                tt_s = sta['stime'] - tr.stats.starttime
                 tr.detrend('demean').detrend('linear').taper(type='cosine', max_percentage=0.05, side='both')
 
                 signal = tr.copy()
@@ -446,11 +441,11 @@ def getresidfit(data_spec, model_func, fc: float, freqs: list, Lnorm='L1',
         if smom < 0. or ts < 0.:
             return 1e12
 
-        for i,f in enumerate(freqs):
+        for i, f in enumerate(freqs):
             if f < fmin or f > fmax:
                 continue
             if model_func(fc, smom, ts, f) < 0.:
-                print("** OOPS: f=%f vel_spec=%g smom=%g ts=%g model_func=%g" % (f, vel_spec[i], smom, ts, model_func(fc,smom,ts,f)))
+                print("** OOPS: f=%f smom=%g ts=%g model_func=%g" % (f, smom, ts, model_func(fc,smom,ts,f)))
                 pass
             diff = np.log10(data_spec[i]) - np.log10(model_func(fc, smom, ts, f))
             if Lnorm=='L2':
@@ -504,7 +499,7 @@ def getresidfit3(data_spec, model_func, freqs: list, Lnorm='L1', weight_fr=False
             if f < fmin or f > fmax:
                 continue
             if model_func(fc, smom, ts, f) < 0.:
-                print("** OOPS: f=%f vel_spec=%g smom=%g ts=%g model_func=%g" % (f, vel_spec[i], smom, ts, model_func(fc,smom,ts,f)))
+                print("** OOPS: f=%f smom=%g ts=%g model_func=%g" % (f,  smom, ts, model_func(fc,smom,ts,f)))
                 pass
             diff = np.log10(data_spec[i]) - np.log10(model_func(fc, smom, ts, f))
             if Lnorm=='L2':
@@ -529,7 +524,7 @@ def calc_fit1(spec, freqs, fmin=1., fmax=1000., Lnorm='L2', weight_fr=False, fit
     # Give it a starting vector:
     #    smom  t* fc
     pp = [1., .001, 100]
-    (sol,fit,*rest)= optimize.fmin(residfit, np.array(pp),xtol=10**-12,ftol=10**-6,disp=False, full_output=1)
+    (sol,fit, _)= optimize.fmin(residfit, np.array(pp),xtol=10**-12,ftol=10**-6,disp=False, full_output=1)
     mom, ts, fc = sol[0], sol[1], sol[2]
     #print(fc)
     if sol[0] < 0. :
@@ -545,35 +540,14 @@ def calc_fit1(spec, freqs, fmin=1., fmax=1000., Lnorm='L2', weight_fr=False, fit
 
     return fit, fc
 
-def calc_fit2(spec, freqs, fmin=10., fmax=1000., Lnorm='L2', weight_fr=False):
-
-    model_func = brune_vel_spec2
-
-    residfit = getresidfit2(spec, model_func, freqs, Lnorm=Lnorm, \
-                            weight_fr=weight_fr, fmin=fmin, fmax=fmax)
-
-    # Give it a starting vector:
-    pp = [1., 100]
-    (sol,fit,*rest)= optimize.fmin(residfit, np.array(pp),xtol=10**-12,ftol=10**-6,disp=False, full_output=1)
-    if sol[0] < 0. :
-        print("Ummm smom < 0 !!!")
-
-    print("solution=",sol)
-    plot_fit = 1
-    if plot_fit:
-        model_spec = np.array( np.zeros(freqs.size), dtype=np.float_)
-        for i,f in enumerate(freqs):
-            model_spec[i] = model_func(100., 1., f)
-            #model_spec[i] = model_func(80., sol[0], f)
-            #model_spec[i] = model_func(sol[1], sol[0], f)
-        plot_spec2(freqs, spec, model_spec, title="Fit to spec stack fc=%f" % sol[1])
-    return fit
-
 def calc_fit(sta_dict, fc, fmin=20., fmax=1000.,
              Lnorm='L2', weight_fr=False,
              plot_fit=False, debug=False,
              use_fixed_fmin_fmax=False):
 
+    # from collections import defaultdict
+    # ldict = defaultdict(float)
+    ldict = []
     fit = 0.
     smom_dict = {}
     for sta_code, sta in sta_dict.items():
@@ -585,6 +559,8 @@ def calc_fit(sta_dict, fc, fmin=20., fmax=1000.,
         dd  = {}
         for cha_code, cha in sta['chan_spec'].items():
             signal_fft, freqs, noise_fft = (cha['signal_fft'], cha['freqs'], cha['noise_fft'])
+            # ldict = set(list(ldict) + list(freqs))
+            # logger.info(len(freqs))
 
             model_func = brune_vel_spec
             if cha['disp_or_vel'] == 'DISPLACEMENT':
@@ -612,8 +588,8 @@ def calc_fit(sta_dict, fc, fmin=20., fmax=1000.,
             #pp = [1e-5, tt_s/500.]
             #pp = [1e-5, tt_s/200.]
             pp = [1e-10, tt_s/200.]
-            #(sol,fopt,*rest)= optimize.fmin(residfit, np.array(pp),xtol=10**-12,ftol=10**-12,disp=False, full_output=1)
-            (sol,fopt,*rest)= optimize.fmin(residfit, np.array(pp),ftol=.01, disp=False, full_output=1)
+            #(sol,fopt, _)= optimize.fmin(residfit, np.array(pp),xtol=10**-12,ftol=10**-12,disp=False, full_output=1)
+            (sol,fopt, _)= optimize.fmin(residfit, np.array(pp),ftol=.01, disp=False, full_output=1)
             if sol[0] < 0. :
                 print("Ummm smom < 0 !!!")
 
@@ -665,6 +641,7 @@ def calc_fit(sta_dict, fc, fmin=20., fmax=1000.,
             dd[cha_code] = ch_dict
         smom_dict[sta_code] = dd
 
+    # logger.info(len(ldict))
     return fit, smom_dict
 
 def plot_spec5(freqs, signal_fft, noise_fft, model_spec,
@@ -693,7 +670,6 @@ def plot_spec5(freqs, signal_fft, noise_fft, model_spec,
         plt.title(subtitle)
     plt.grid()
     plt.show()
-    return
 
 
 def plot_spec3(freqs, signal_fft, noise_fft, model_spec, title=None, subtitle=None):
@@ -713,10 +689,6 @@ def plot_spec3(freqs, signal_fft, noise_fft, model_spec, title=None, subtitle=No
     plt.grid()
     plt.show()
 
-    return
-
-
-from scipy.signal import savgol_filter
 
 def find_fmin_fmax_from_spec(signal_fft, noise_fft, snr_thresh, fc, df):
 
@@ -750,7 +722,6 @@ def find_fmin_fmax_from_spec(signal_fft, noise_fft, snr_thresh, fc, df):
     return fmin, fmax
 
 
-from scipy.signal import savgol_filter
 def plot_spec(freqs, signal_fft, noise_fft=None, title=None):
 
     npoly = 2
@@ -866,11 +837,11 @@ def smooth(x,window_len=11,window='hanning'):
     """
 
     if x.ndim != 1:
-        raise(ValueError, "smooth only accepts 1 dimension arrays.")
+        raise ValueError("smooth only accepts 1 dimension arrays.")
         #raise ValueError, "smooth only accepts 1 dimension arrays."
 
     if x.size < window_len:
-        raise(ValueError, "Input vector needs to be bigger than window size.")
+        raise ValueError("Input vector needs to be bigger than window size.")
         #raise ValueError, "Input vector needs to be bigger than window size."
 
 
@@ -878,19 +849,19 @@ def smooth(x,window_len=11,window='hanning'):
         return x
 
 
-    if not window in ['flat', 'hanning', 'hamming', 'bartlett', 'blackman']:
-        raise(ValueError, "Window is on of 'flat', 'hanning', 'hamming', 'bartlett', 'blackman'")
+    if window not in ['flat', 'hanning', 'hamming', 'bartlett', 'blackman']:
+        raise ValueError("Window is on of 'flat', 'hanning', 'hamming', 'bartlett', 'blackman'")
         #raise ValueError, "Window is on of 'flat', 'hanning', 'hamming', 'bartlett', 'blackman'"
 
 
-    s=numpy.r_[x[window_len-1:0:-1],x,x[-2:-window_len-1:-1]]
+    s=np.r_[x[window_len-1:0:-1],x,x[-2:-window_len-1:-1]]
     #print(len(s))
     if window == 'flat': #moving average
-        w=numpy.ones(window_len,'d')
+        w=np.ones(window_len,'d')
     else:
-        w=eval('numpy.'+window+'(window_len)')
+        w=eval('np.'+window+'(window_len)')
 
-    y=numpy.convolve(w/w.sum(),s,mode='valid')
+    y=np.convolve(w/w.sum(),s,mode='valid')
     return y
 
 
@@ -904,7 +875,3 @@ def npow2(n: int) -> int:
     while (nfft < n):
         nfft = (nfft << 1)
     return nfft
-
-if __name__ == '__main__':
-
-    main()
