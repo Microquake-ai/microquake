@@ -94,8 +94,8 @@ quick_magnitude.c = 1.1
 
 picker.snr_threshold = 3
 picker.residual_tolerance = 100e-3
-picker.p_s_tolerance = 2e-3  # P and S must be at least separated by p_s_tolerance
-picker.min_num_picks = 10
+picker.p_s_tolerance = 5e-3  # P and S must be at least separated by p_s_tolerance
+picker.min_num_picks = 20
 picker.waveform_filter.frequency_min = 100
 picker.waveform_filter.frequency_max = 1000
 
@@ -112,7 +112,7 @@ picker.s_wave.search_window.start = -100e-3        # start of search window rela
 picker.s_wave.search_window.end = 20e-3           # end of the search window relative to predicted arrival time (s)
 picker.s_wave.search_window.resolution = 0.0005   # time resolution of search window (s)
 
-picker.high_frequencies.residual_tolerance = 20e3
+picker.high_frequencies.residual_tolerance = 40e3
 picker.high_frequencies.waveform_filter.frequency_min = 100
 picker.high_frequencies.waveform_filter.frequency_max = 1000
 picker.high_frequencies.p_wave.snr_window.noise = 0.005
@@ -152,13 +152,12 @@ picker.low_frequencies.s_wave.search_window.start = -100e-3        # start of se
 picker.low_frequencies.s_wave.search_window.end = 20e-3           # end of the search window relative to predicted arrival time (s)
 picker.low_frequencies.s_wave.search_window.resolution = 0.0005   # time resolution of search window (s)
 
-
 picker.second_pass.snr_threshold = 6
-picker.second_pass.residual_tolerance = 30e-3
-picker.second_pass.p_wave.search_window.start = -20e-3
+picker.second_pass.residual_tolerance = 20e-3
+picker.second_pass.p_wave.search_window.start = -30e-3
 picker.second_pass.p_wave.search_window.end = 20e-3
 picker.second_pass.p_wave.search_window.resolution = 0.0005
-picker.second_pass.s_wave.search_window.start = -20e-3
+picker.second_pass.s_wave.search_window.start = -30e-3
 picker.second_pass.s_wave.search_window.end = 20e-3
 picker.second_pass.s_wave.search_window.resolution = 0.0005
 picker.second_pass.waveform_filter.frequency_min = 60
@@ -167,6 +166,8 @@ picker.second_pass.p_wave.snr_window.noise = 0.005
 picker.second_pass.p_wave.snr_window.signal = 0.01
 picker.second_pass.s_wave.snr_window.noise = 0.005
 picker.second_pass.s_wave.snr_window.signal = 0.01
+
+location.max_uncertainty = 75
 
 magnitude.ttpath = 'None'
 magnitude.only_triaxial = true

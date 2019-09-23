@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "microquake"
-version = "0.1.97"
+version = "0.1.106"
 description = "Python library that is an extension/expansion/adaptation of ObsPy to microseismic data"
 authors = ["Your Name <you@example.com>"]
 license = "GPL-3.0"
@@ -97,6 +97,7 @@ readFormat = "microquake.plugin.waveform:read_nlloc_hypo"
 NLLOC = "microquake.plugin.grid"
 VTK = "microquake.plugin.grid"
 PICKLE = "microquake.plugin.grid"
+CSV = "microquake.plugin.grid"
 
 [tool.poetry.plugins."microquake.plugin.site"]
 CSV = "microquake.plugin.site"
@@ -113,6 +114,10 @@ writeFormat = "microquake.plugin.grid:write_vtk"
 [tool.poetry.plugins."microquake.plugin.grid.PICKLE"]
 readFormat = "microquake.plugin.grid:read_pickle"
 writeFormat = "microquake.plugin.grid:write_pickle"
+
+[tool.poetry.plugins."microquake.plugin.grid.CSV"]
+writeFormat = "microquake.plugin.grid:write_csv"
+readFormat = "microquake.plugin.grid:read_csv"
 
 [tool.poetry.plugins."microquake.plugin.site.CSV"]
 readFormat = "microquake.plugin.site:read_csv"

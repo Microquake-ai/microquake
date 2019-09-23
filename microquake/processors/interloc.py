@@ -34,7 +34,7 @@ class Processor(ProcessingUnit):
 
         nthreads = self.params.nthreads
         fixed_wlen_sec = self.params.fixed_wlen_sec
-        samplerate_decimated = self.params.samplerate_decimated
+        sample_rate_decimated = self.params.samplerate_decimated
         pair_dist_min = self.params.pair_dist_min
         pair_dist_max = self.params.pair_dist_max
         cc_smooth_length_sec = self.params.cc_smooth_length_sec
@@ -43,9 +43,9 @@ class Processor(ProcessingUnit):
                                        dtype=np.float32)
 
         stalocs = self.htt.locations
-        ttable = (self.htt.hf["ttp"][:] * samplerate_decimated).astype(
+        ttable = (self.htt.hf["ttp"][:] * sample_rate_decimated).astype(
             np.uint16)
-        ttable_s = (self.htt.hf["tts"][:] * samplerate_decimated).astype(
+        ttable_s = (self.htt.hf["tts"][:] * sample_rate_decimated).astype(
             np.uint16)
         ngrid = ttable.shape[1]
         ttable_row_ptrs = np.array(
@@ -89,14 +89,14 @@ class Processor(ProcessingUnit):
         logger.info("Locating event with Interloc")
         t6 = time()
         logger.info(
-            "samplerate_decimated {}, ngrid {}, nthreads {}, debug {}, "
+            "sample_rate_decimated {}, ngrid {}, nthreads {}, debug {}, "
             "debug_file {}",
-            samplerate_decimated, ngrid, nthreads, self.debug_level,
+            sample_rate_decimated, ngrid, nthreads, self.debug_level,
             debug_file)
 
         out = xspy.pySearchOnePhase(
             data,
-            samplerate_decimated,
+            sample_rate_decimated,
             channel_map,
             stalocs[ikeep],
             ttable_row_ptrs[ikeep],
@@ -112,7 +112,7 @@ class Processor(ProcessingUnit):
 
         out_s = xspy.pySearchOnePhase(
             data,
-            samplerate_decimated,
+            sample_rate_decimated,
             channel_map,
             stalocs[ikeep],
             ttable_row_ptrs[ikeep],
@@ -143,7 +143,7 @@ class Processor(ProcessingUnit):
                 t7 - t6))
 
         ot_epoch = tools.datetime_to_epoch_sec(
-            (t0 + iot / samplerate_decimated).datetime)
+            (t0 + iot / sample_rate_decimated).datetime)
 
         method = "%s" % ("INTERLOC",)
 

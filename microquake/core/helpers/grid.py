@@ -27,6 +27,7 @@ def get_grid(station_code, phase, grid_type='time'):
     nll_dir = settings.nll_base
     f_tt = os.path.join(nll_dir, 'time', 'OT.%s.%s.%s.buf'
                         % (phase.upper(), station_code, grid_type))
+
     tt_grid = read_grid(f_tt, format='NLLOC')
 
     return tt_grid
