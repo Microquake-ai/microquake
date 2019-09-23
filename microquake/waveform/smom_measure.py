@@ -15,6 +15,8 @@ from microquake.core.util.tools import copy_picks_to_dict
     smom_measures - A collection of functions used in the calculation of
                      smom (long-period plateau) in the frequency domain
 """
+
+
 def measure_pick_smom(st, inventory, event, synthetic_picks,
                       fmin=20, fmax=1000,
                       use_fixed_fmin_fmax=False,
@@ -288,6 +290,8 @@ def get_spectra(st, event, inventory, synthetic_picks,
 
 
 # 2. Calc/save signal/noise fft spectra at all channels that have P(S) arrivals:
+    st.detrend('demean').detrend('linear').taper(type='cosine', max_percentage=0.05, side='both')
+
     for sta_code, sta in sta_dict.items():
 
         if P_or_S == 'P':
@@ -318,8 +322,6 @@ def get_spectra(st, event, inventory, synthetic_picks,
                 ch = {}
 
                 cha_code = tr.stats.channel
-
-                tr.detrend('demean').detrend('linear').taper(type='cosine', max_percentage=0.05, side='both')
 
                 signal = tr.copy()
                 signal.trim(starttime=signal_start, endtime=signal_end)
@@ -456,6 +458,7 @@ def getresidfit(data_spec, model_func, fc: float, freqs: list, Lnorm='L1',
                 continue
 
             res = model_func(fc, smom, ts, f)
+
             if res < 0.:
                 logger.info("** OOPS: f=%f smom=%g ts=%g model_func=%g" % (f, smom, ts, res))
                 pass
@@ -522,6 +525,7 @@ def getresidfit3(data_spec, model_func, freqs: list, Lnorm='L1', weight_fr=False
                 continue
 
             res = model_func(fc, smom, ts, f)
+
             if res < 0.:
                 logger.info("** OOPS: f=%f smom=%g ts=%g model_func=%g" % (f,  smom, ts, res))
                 pass
@@ -553,7 +557,7 @@ def calc_fit1(spec, freqs, fmin=1., fmax=1000., Lnorm='L2', weight_fr=False, fit
     # Give it a starting vector:
     #    smom  t* fc
     pp = [1., .001, 100]
-    (sol, fit, _) = optimize.fmin(residfit, np.array(pp), xtol=10**-12, ftol=10**-6, disp=False, full_output=1)
+    (sol, fit, *rest) = optimize.fmin(residfit, np.array(pp), xtol=10**-12, ftol=10**-6, disp=False, full_output=1)
     mom, ts, fc = sol[0], sol[1], sol[2]
     # print(fc)
 
@@ -623,7 +627,7 @@ def calc_fit(sta_dict, fc, fmin=20., fmax=1000.,
             # pp = [1e-5, tt_s/200.]
             pp = [1e-10, tt_s/200.]
             # (sol,fopt, _)= optimize.fmin(residfit, np.array(pp),xtol=10**-12,ftol=10**-12,disp=False, full_output=1)
-            (sol, fopt, _) = optimize.fmin(residfit, np.array(pp), ftol=.01, disp=False, full_output=1)
+            (sol, fopt, *rest) = optimize.fmin(residfit, np.array(pp), ftol=.01, disp=False, full_output=1)
 
             if sol[0] < 0.:
                 logger.info("Ummm smom < 0 !!!")
