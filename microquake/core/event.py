@@ -151,6 +151,7 @@ class Origin(obsevent.Origin):
     def __init__(self, obspy_obj=None, **kwargs):
         _init_handler(self, obspy_obj, **kwargs)
 
+
     def __setattr__(self, name, value):
 
         if name == 'rays':
@@ -375,6 +376,11 @@ def read_events(*args, **kwargs):
     # converting the obspy object into microquake objects
     cat = obsevent.read_events(*args, **kwargs)
     mq_catalog = Catalog(obspy_obj=cat)
+
+    if mq_catalog[0].preferred_origin():
+        if mq_catalog[0].preferred_origin().__encoded_rays__:
+            mq_catalog[0].preferred_origin().__encoded_rays__ = eval(
+                mq_catalog[0].preferred_origin().__encoded_rays__)
 
     return mq_catalog
 
