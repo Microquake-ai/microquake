@@ -120,10 +120,10 @@ class Borehole:
         poly_data.SetLines(lines)
         return poly_data
 
-    def write_to_vtk(self, vtk_file_name):
+    def write_to_vtp(self, vtp_file_name):
         """
         write the borehole trace to a VTP file
-        :param vtk_file_name:
+        :param vtp_file_name:
         :return:
         """
 
