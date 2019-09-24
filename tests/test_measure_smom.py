@@ -7,9 +7,8 @@ pytest.test_data_name = "test_output_amplitude"
 def test_measure_smom(catalog, waveform_stream):
     processor = Processor()
     processor.process(cat=catalog, stream=waveform_stream)
-    output_catalog = processor.output_catalog(catalog)
 
-    check_smom_data(output_catalog)
+    check_smom_data(catalog)
 
 
 def check_smom_data(output_catalog):

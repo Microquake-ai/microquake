@@ -58,8 +58,7 @@ class Processor(ProcessingUnit):
                                                   P_or_S=phase,
                                                   fmin=self.fmin, fmax=self.fmax,
                                                   use_fixed_fmin_fmax=self.use_fixed_fmin_fmax,
-                                                  plot_fit=plot_fit,
-                                                  debug_level=1)
+                                                  plot_fit=plot_fit)
                 # except Exception as e:
                 #     logger.error(e)
                 #     logger.warning("Error in measure_pick_smom. Continuing "
