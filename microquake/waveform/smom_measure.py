@@ -445,6 +445,16 @@ def brune_acc_spec(fc: float, mom: float, ts: float, f: float) -> float:
 def getresidfit(data_spec, model_func, fc: float, freqs: list, Lnorm='L1',
                 weight_fr=False, fmin=1., fmax=3000.) -> float:
 
+    # Give it a starting vector:
+    #     smom    tstar
+    # MTH: this should be wert origin time anyway ...
+    # tt_s = sta['stime'] - tr.stats.starttime
+    # pp = [1e-5, tt_s/500.]
+    # pp = [1e-5, tt_s/200.]
+    tt_s = .02
+    start = np.array([1e-10, tt_s/200.])
+
+    @numba.jit(nopython=True)
     def inner(p):
         smom = p[0]
         ts = p[1]
@@ -462,7 +472,7 @@ def getresidfit(data_spec, model_func, fc: float, freqs: list, Lnorm='L1',
             res = model_func(fc, smom, ts, f)
 
             if res < 0.:
-                logger.info("** OOPS: f=%f smom=%g ts=%g model_func=%g" % (f, smom, ts, res))
+                # logger.info("** OOPS: f=%f smom=%g ts=%g model_func=%g" % (f, smom, ts, res))
                 pass
             diff = np.log10(data_spec[i]) - np.log10(res)
 
@@ -475,7 +485,9 @@ def getresidfit(data_spec, model_func, fc: float, freqs: list, Lnorm='L1',
 
         return fit
 
-    return inner
+    (sol, fopt, *rest) = optimize.fmin(inner, start, ftol=.01, disp=False, full_output=1)
+
+    return (sol, fopt)
 
 
 def getresidfit2(data_spec, model_func, freqs: list, Lnorm='L1', weight_fr=False,
@@ -588,16 +600,22 @@ def calc_fit(sta_dict, fc, fmin=20., fmax=1000.,
     fit = 0.
     smom_dict = {}
 
-    # Give it a starting vector:
-    #     smom    tstar
-    # MTH: this should be wert origin time anyway ...
-    # tt_s = sta['stime'] - tr.stats.starttime
-    tt_s = .02
-    # pp = [1e-5, tt_s/500.]
-    # pp = [1e-5, tt_s/200.]
-    start = np.array([1e-10, tt_s/200.])
+    # for _, sta in sta_dict.items():
+    #     if 'chan_spec' not in sta:
+    #         logger.debug("sta:%3s: Has no chan_spec --> Skip" % sta_code)
+
+    #         continue
+    #     dd = {}
+
+    #     for _, cha in sta['chan_spec'].items():
+    #         freqs = cha['freqs']
+    #         frequencies = set(list(frequencies) + list(freqs))
+
+    # for f in frequencies:
+    #     res_dict[(fc, f)] = (fc * fc) / (fc * fc + f * f)
 
     # (sol,fopt, _)= optimize.fmin(residfit, np.array(pp),xtol=10**-12,ftol=10**-12,disp=False, full_output=1)
+
     for sta_code, sta in sta_dict.items():
         if 'chan_spec' not in sta:
             logger.debug("sta:%3s: Has no chan_spec --> Skip" % sta_code)
@@ -607,7 +625,6 @@ def calc_fit(sta_dict, fc, fmin=20., fmax=1000.,
 
         for cha_code, cha in sta['chan_spec'].items():
             signal_fft, freqs, noise_fft = (cha['signal_fft'], cha['freqs'], cha['noise_fft'])
-            # frequencies = set(list(frequencies) + list(freqs))
 
             model_func = brune_vel_spec
 
@@ -624,10 +641,8 @@ def calc_fit(sta_dict, fc, fmin=20., fmax=1000.,
             # logger.debug("calc_fit sta:%3s cha:%s fmin:%.1f fmax:%.1f" %
             #              (sta_code, cha_code, fmin, fmax))
 
-            residfit = getresidfit(np.abs(signal_fft), model_func, fc, freqs, Lnorm=Lnorm,
-                                   weight_fr=weight_fr, fmin=fmin, fmax=fmax)
-
-            (sol, fopt, *rest) = optimize.fmin(residfit, start, ftol=.01, disp=False, full_output=1)
+            (sol, fopt) = getresidfit(np.abs(signal_fft), model_func, fc, freqs, Lnorm=Lnorm,
+                                      weight_fr=weight_fr, fmin=fmin, fmax=fmax)
 
             if sol[0] < 0.:
                 logger.info("Ummm smom < 0 !!!")
@@ -832,7 +847,6 @@ def plot_signal(signal, noise=None):
     plt.title("%s: P window" % signal.get_id())
     plt.grid()
     plt.show()
-
 
 
 @numba.jit(nopython=True)
