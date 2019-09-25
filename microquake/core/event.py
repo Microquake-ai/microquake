@@ -621,7 +621,7 @@ class Ray:
         if len(self.nodes) > 2:
             v = self.nodes[-2] - self.nodes[-1]
             baz = np.arctan2(v[0], v[1])
-        return baz * 180 / np.pi
+        return baz
 
     @property
     def back_azimuth(self):
@@ -634,7 +634,7 @@ class Ray:
             v = self.nodes[-2] - self.nodes[-1]
             h = np.sqrt(v[0] ** 2 + v[1] ** 2)
             ia = np.arctan2(h, v[2])
-        return ia * 180 / np.pi
+        return ia
 
 
     def __len__(self):
