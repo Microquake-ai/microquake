@@ -7,7 +7,7 @@ from obspy.core.trace import Stats
 from microquake.core.stream import Trace, Stream
 from microquake.core.data import GridData
 from microquake.core import event
-
+from microquake.waveform.mag_utils import calc_static_stress_drop
 from microquake.core.util.cli import ProgressBar
 
 
@@ -87,7 +87,7 @@ def radiation_pattern_attenuation():
 
     >>> (PRadiation, SRadiation) = radiation_pattern_attenuation()
     """
-    return (0.52, 0.63)
+    return 0.52, 0.63
 
 
 def geometrical_spreading_attenuation(raypath, velocity=None, quality=None,
@@ -103,14 +103,14 @@ def geometrical_spreading_attenuation(raypath, velocity=None, quality=None,
     and the attenuation related to anelastic absorbtion and scattering
     """
 
-    Ar = geometrical_spreading(raypath)
+    ar = geometrical_spreading(raypath)
     if quality:
-        Aq = anelastic_scattering_attenuation(raypath, velocity, quality, Mw)
-        Att = Ar * Aq
+        aq = anelastic_scattering_attenuation(raypath, velocity, quality, Mw)
+        att = ar * aq
     else:
-        Att = Ar
+        att = ar
 
-    return Att
+    return att
 
 
 def calculate_attenuation(raypath, velocity, quality=None, Mw=-1):
@@ -123,14 +123,14 @@ def calculate_attenuation(raypath, velocity, quality=None, Mw=-1):
     the attenuation related to anelastic absorbtion and scattering
     """
 
-    Ar = geometrical_spreading(raypath)
+    ar = geometrical_spreading(raypath)
     if quality:
-        Aq = anelastic_scattering_attenuation(raypath, velocity, quality, Mw)
-        Att = Ar * Aq
+        aq = anelastic_scattering_attenuation(raypath, velocity, quality, Mw)
+        att = ar * aq
     else:
-        Att = Ar
+        att = ar
 
-    return Att
+    return att
 
 
 def calculate_attenuation_grid(seed, velocity, quality=None, locations=None,
@@ -435,7 +435,6 @@ def synthetic_seismogram(Mw, duration=0.1, sampling_rate=10000, vp=5000.0,
     return Trace(data=data, header=stats)
 
 
-
 def detection_level_sta_lta_grid(attenuationGrid, VpGrid, VsGrid,
                                  noise_level=1e-3, acceleration=True,
                                  STALTA_threshold=3, SSD=0.1,
@@ -637,33 +636,33 @@ def triggered_sensor_sta_lta_grid(stloc, Rho, Vp, Vs, Qp, Qs, Mw=-1,
 # ---------------------------------------------------
 
 # defining the spectral function
-def spectral_function(f, log_Omega0, f0):
-    """Defines the far-field displacement spectrum
-    according to Brune, 1970.
+def spectral_function(f, omega0, fc, q):
+    """Defines the far-field Brune displacement spectrum
+    (Brune, 1970).
 
     This function is defined in base-10 log for analytical purposes,
     as singularities can cause the function to fail.
 
-    The common use is with the help of scipy.optimize.curve_fit,
-    to find the parameters log_Omega0 and f0 that fit a cloud of
-    points in the spectral domain:
-
-    poptP, pcovP = curve_fit(spectral_function, Freq[fi],
-        np.log10(PSpectrum[fi] + 1e-10), (1e6, 100))
-
     :param f: frequency at which to calculate the power spectrum
     :type f: float
-    :param log_Omega0: the base-10 log of the low-frequency level
-    :type log_Omega0: float
-    :param f0: the corner frequency
-    :type f0: float
+    :param log_omega0: the base-10 log of the low-frequency level
+    :type log_omega0: float
+    :param fc: the corner frequency
+    :type fc: float
+    :param q: quality factor
 
     :returns: the base-10 log of the power spectrum associated
     with the given frequency f
     :rtype: float
     """
     # if np.any((1.0+(f/float(f0))**2) <= 0):
-    return log_Omega0 - np.log10((1.0 + (f / float(f0)) ** 2))
+
+    # scattering attenuation
+    # it is assumed that the correction for the travel time has been done
+    # outside of this function.
+    scat_att = np.exp(-np.pi * f / q)
+
+    return omega0 * scat_att / (1.0 + (f / fc) ** 2)
 
 
 def MwFc(fn, m, b):
@@ -1045,7 +1044,8 @@ def measure_sensitivity(raypath, Mw_min=-3., Mw_max=2., Mw_spacing=0.1,
 
 def moment_magnitude(stream, evt, inventory, vp, vs, only_triaxial=True,
                      density=2700, min_dist=20, win_length=0.04,
-                     len_spectrum=2 ** 12, clipped_fraction=0.1):
+                     len_spectrum=2 ** 12, clipped_fraction=0.1,
+                     max_frequency=500):
     """
     WARNING
     Calculate the moment magnitude for an event.
@@ -1072,10 +1072,14 @@ def moment_magnitude(stream, evt, inventory, vp, vs, only_triaxial=True,
     :param len_spectrum: length of the spectrum
     :param clipped_fraction: allowed clipped fraction (fraction of the
     signal equal to the min or the max.
+    :param maximum_frequency: maximum frequency used in the calculation on
+    magnitude. After a certain frequency, the noise starts to dominate the
+    signal and the biases the calculation of the magnitude and corner
+    frequency.
     :rtype: microquake.core.event.Event
     """
 
-      # rigidity in Pa (shear-wave modulus)
+    # rigidity in Pa (shear-wave modulus)
 
     if only_triaxial:
         logger.info(
@@ -1083,6 +1087,7 @@ def moment_magnitude(stream, evt, inventory, vp, vs, only_triaxial=True,
 
     fcs = []
 
+    quality = {'station_code': [], 'phase': [], 'origin_id': [], 'quality': []}
     for origin in evt.origins:
         ev_loc = np.array([origin.x, origin.y, origin.z])
 
@@ -1097,9 +1102,11 @@ def moment_magnitude(stream, evt, inventory, vp, vs, only_triaxial=True,
         corner_frequencies = []
         stations = []
 
+        spectrum_norm_matrix = []
         for k, arr in enumerate(origin.arrivals):
             pick = arr.get_pick()
             sta_code = pick.get_sta()
+            travel_time = arr.get_pick().time - origin.time
             # ensuring backward compatibility
             if not pick:
                 pick = evt.picks[k]
@@ -1149,6 +1156,8 @@ def moment_magnitude(stream, evt, inventory, vp, vs, only_triaxial=True,
             # ideally the sensor signal should be deconvolved and a larger
             # portion of the spectrum should be used. It is possible to get
             # to frequency lower than the corner frequency of the sensor
+
+            high_bp_freq = 600
             pulse.filter('bandpass', freqmin=low_bp_freq, freqmax=high_bp_freq)
             pulse = pulse.taper(max_percentage=0.05, type='cosine')
 
@@ -1156,6 +1165,8 @@ def moment_magnitude(stream, evt, inventory, vp, vs, only_triaxial=True,
                 dp = pulse.copy().integrate().integrate()
             elif sensor_response.motion == 'VELOCITY':
                 dp = pulse.copy().integrate()
+
+            # dp = pulse.copy()
 
             # creating a signal containing only one for comparison
             tr_one = Trace(data=np.ones(len(pulse[0].data)))
@@ -1179,6 +1190,7 @@ def moment_magnitude(stream, evt, inventory, vp, vs, only_triaxial=True,
             for tr in dp:
                 dp_spectrum += np.abs(np.fft.fft(tr.data, n=len_spectrum))
             one_spectrum = np.fft.fft(st_one_taper[0].data, n=len_spectrum)
+
             dp_spectrum_scaled = dp_spectrum / (one_spectrum + water_level)
 
             if arr.distance is not None:
@@ -1198,64 +1210,73 @@ def moment_magnitude(stream, evt, inventory, vp, vs, only_triaxial=True,
                 v_src = vs_src
 
             sr = dp[0].stats.sampling_rate
-            # to be checked
-            # np.abs(fft) already divides by N
-            # only need to divide the spectrum by sr rather then len_spectrum
-            # to get the spectral density
-            spectrum_norm = dp_spectrum / radiation * hypo_dist * 4 * \
-                            np.pi * density * v_src ** 3 / sr
 
             f = np.fft.fftfreq(len_spectrum, 1 / sr)
+
+            anelastic = np.exp(travel_time)
+
+            spectrum_norm = dp_spectrum / radiation * hypo_dist * 4 * \
+                            np.pi * density * v_src ** 3 / sr * anelastic
+
             fi = np.nonzero((f >= low_bp_freq) & (f <= high_bp_freq))[0]
+            fr = np.nonzero((f < low_bp_freq) | (f > high_bp_freq))[0]
+            spectrum_norm[fr] = np.nan
+            spectrum_norm_matrix.append(np.abs(spectrum_norm))
 
-            if not np.any(fi):
-                continue
-            p_opt, p_cov = curve_fit(spectral_function, f[fi],
-                                     np.log10(spectrum_norm[fi] * 2 + 1e-10),
-                                     (1e6, 100))
+        if not spectrum_norm_matrix:
+            continue
+        spectrum_norm = np.nanmedian(spectrum_norm_matrix, axis=0)
+        fi = np.nonzero((np.isnan(spectrum_norm) == False) & (f > 0))[0]
 
-            scalar_moment = np.power(10, p_opt[0])
+        p_opt, p_cov = curve_fit(spectral_function, f[fi],
+                                 spectrum_norm[fi],
+                                 (10e6, 100, 100))
 
-            if len(st_trs) == 1:
-                scalar_moment = scalar_moment * np.sqrt(3)  # uniaxial sensor
+        fit_spectrum = spectral_function(f[fi], p_opt[0], p_opt[1], p_opt[2])
 
-            corner_freq = p_opt[1]
+        import matplotlib.pyplot as plt
+        plt.clf()
+        plt.loglog(f[fi], fit_spectrum)
+        plt.loglog(f[fi], spectrum_norm[fi])
+        plt.show()
 
-            moment_magnitudes.append(2 / 3.0 * np.log10(scalar_moment) - 6.07)
+        print(p_opt[2])
 
-            corner_frequencies.append(corner_freq)
+        scalar_moment = p_opt[0]
 
-        moment_magnitudes = np.array(moment_magnitudes)
-        corner_frequencies = np.array(corner_frequencies)
+        mw = 2 / 3.0 * np.log10(p_opt[0]) - 6.07
+        mu = 29.5e9
+        potency = p_opt[0] / mu
+        dmw = 2 / 3.0 * p_cov[0, 0] - 6.07
+        fc = p_opt[1]
 
         st_count = len(moment_magnitudes)
 
-        moment_magnitudes = moment_magnitudes[~np.isnan(moment_magnitudes)]
-        moment_magnitudes = moment_magnitudes[~np.isinf(moment_magnitudes)]
-
-        corner_frequencies = corner_frequencies[~np.isnan(moment_magnitudes)]
-        corner_frequencies = corner_frequencies[~np.isinf(moment_magnitudes)]
-
-        moment_magnitudes = -999 if not np.any(moment_magnitudes) else \
-            moment_magnitudes
-
-        fc = 0 if not np.any(corner_frequencies) else np.median(
-            corner_frequencies)
-
-        mw = np.median(moment_magnitudes)
-
-        mag = event.Magnitude(mag=np.median(moment_magnitudes),
+        mag = event.Magnitude(mag=mw,
                               station_count=st_count, magnitude_type='Mw',
                               evaluation_mode=origin.evaluation_mode,
                               evaluation_status=origin.evaluation_status,
                               origin_id=origin.resource_id)
 
         mag.corner_frequency_hz = fc
+        mag.seismic_moment = p_opt[0]
+        mag.potency_m3 = potency
+        mag.source_volume_m3 = potency
+
+        ssd = calc_static_stress_drop(mw, fc)
+        mag.static_stress_drop_mpa = ssd
 
         from obspy.core.event import QuantityError
-        mag.mag_errors = QuantityError(uncertainty=np.std(moment_magnitudes))
+        mag.mag_errors = QuantityError(uncertainty=dmw)
         evt.magnitudes.append(mag)
         if origin.resource_id == evt.preferred_origin().resource_id:
             evt.preferred_magnitude_id = mag.resource_id.id
 
     return evt
+
+def calculate_energy(stream, evt, inventory, vp, vs, only_triaxial=True,
+                         density=2700, min_dist=20, win_length=0.04,
+                         len_spectrum=2 ** 12, clipped_fraction=0.1,
+                         max_frequency=500):
+
+    # Calculate energy only for seismograms that have only a
