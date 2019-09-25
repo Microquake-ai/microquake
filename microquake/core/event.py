@@ -602,6 +602,7 @@ class Ray:
         else:
             self.__dict__[key] = value
 
+    @property
     def length(self):
         if len(self.nodes) < 2:
             return 0
@@ -613,8 +614,31 @@ class Ray:
 
         return length
 
+    @property
+    def baz(self):
+        # back_azimuth
+        baz = None
+        if len(self.nodes) > 2:
+            v = self.nodes[-2] - self.nodes[-1]
+            baz = np.arctan2(v[0], v[1])
+        return baz * 180 / np.pi
+
+    @property
+    def back_azimuth(self):
+        self.baz
+
+    @property
+    def incidence_angle(self):
+        ia = None
+        if len(self.nodes) > 2:
+            v = self.nodes[-2] - self.nodes[-1]
+            h = np.sqrt(v[0] ** 2 + v[1] ** 2)
+            ia = np.arctan2(h, v[2])
+        return ia * 180 / np.pi
+
+
     def __len__(self):
-        return self.length()
+        return self.length
 
     def __str__(self):
         txt = \
@@ -622,7 +646,7 @@ class Ray:
       station code: {self.station_code}
         arrival id: {self.arrival_id}
              phase: {self.phase}
-        length (m): {self.length()}
+        length (m): {self.length}
    number of nodes: {len(self.nodes)}
             """
         return txt
