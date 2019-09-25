@@ -156,9 +156,7 @@ def post_event_api(event_id, **kwargs):
                                       stream=event['fixed_length'],
                                       tolerance=None,
                                       send_to_bus=False)
-    try:
-        response.raise_for_status()
-    except requests.HTTPError:
+    if not response.ok:
         logger.info('request failed, resending to the queue')
         result = api_queue.submit_task(post_event_api, event_id=event_id)
         return result
