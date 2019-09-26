@@ -152,7 +152,6 @@ class Origin(obsevent.Origin):
     def __init__(self, obspy_obj=None, **kwargs):
         _init_handler(self, obspy_obj, **kwargs)
 
-
     def __setattr__(self, name, value):
 
         if name == 'rays':
