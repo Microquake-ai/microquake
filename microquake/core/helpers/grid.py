@@ -89,7 +89,7 @@ def create_arrivals_from_picks(picks, event_location, origin_time):
         phase = pick.phase_hint
 
         ray = get_ray(station_code, phase, event_location)
-        arrival.distance = ray.length()
+        arrival.distance = ray.length
 
         # TODO: MTH: Gotta think about how to store the ray points. Obspy
         #  will not handle

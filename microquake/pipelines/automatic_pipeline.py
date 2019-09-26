@@ -6,11 +6,12 @@ from time import time
 
 from loguru import logger
 from microquake.core.event import Event
-from microquake.clients.api_client import post_data_from_objects
+from microquake.clients.api_client import (post_data_from_objects,
+                                           get_event_by_id)
 from microquake.core.settings import settings
 from microquake.db.connectors import RedisQueue, record_processing_logs_pg
 from microquake.db.models.redis import get_event, set_event
-from microquake.processors import clean_data
+from microquake.processors import clean_data, simple_magnitude
 from microquake.pipelines.pipeline_meta_processors import (
     picking_meta_processor, location_meta_processor, magnitude_meta_processor)
 
@@ -60,6 +61,12 @@ def put_data_processor(catalog):
     base_url = api_base_url
     if base_url[-1] == '/':
         base_url = base_url[:-1]
+
+    # check if the event type and event status has changed on the API
+
+    re = get_event_by_id(api_base_url, event_id)
+    catalog[0].event_type = re.event_type
+    catalog[0].preferred_origin().evaluation_status = re.status
 
     url = f'{base_url}/events/{event_id}/files'
 
@@ -189,7 +196,10 @@ def automatic_pipeline_test(cat, stream):
 
     # put_data_processor(cat_located)
 
-    cat_magnitude, mag = magnitude_meta_processor(cat_located, fixed_length)
+    # cat_magnitude, mag = magnitude_meta_processor(cat_located, fixed_length)
+
+    cat_magnitude = simple_magnitude.Processor().process(cat=cat_located,
+                                                         stream=stream)
 
     # put_data_processor(cat_magnitude)
 

@@ -50,14 +50,14 @@ def measure_pick_amps(st_in, cat, phase_list=None,
 
     st = st_in.copy()
 
-    measure_velocity_pulse(st, cat, phase_list=phase_list, **kwargs)
+    cat = measure_velocity_pulse(st, cat, phase_list=phase_list, **kwargs)
 
     debug = False
 
     if 'debug' in kwargs:
         debug = kwargs['debug']
 
-    traces_info = measure_displacement_pulse(st, cat, phase_list=phase_list,
+    cat = measure_displacement_pulse(st, cat, phase_list=phase_list,
                                              debug=debug)
 
     # Combine individual trace measurements (peak_vel, dis_pulse_area, etc)
@@ -123,13 +123,13 @@ def measure_pick_amps(st_in, cat, phase_list=None,
                 else:
                     pass
 
-    return
+    return cat
 
 
 def measure_velocity_pulse(st,
                            cat,
                            phase_list=None,
-                           pulse_min_width=.02,
+                           pulse_min_width=.005,
                            pulse_min_snr_P=7,
                            pulse_min_snr_S=5,
                            debug=False,
@@ -271,9 +271,9 @@ def measure_velocity_pulse(st,
 
                     if pulse_width < pulse_min_width:
                         logger.debug("%s: tr:%s pha:%s t1:%s t2:%s "
-                                     "pulse_width=%f < .0014" %
+                                     "pulse_width=%f < %f" %
                                      (fname, tr.get_id(), phase, t1, t2,
-                                      pulse_width))
+                                      pulse_width, pulse_min_width))
                         polarity = 0
 
                     dd['polarity'] = polarity
@@ -300,7 +300,7 @@ def measure_velocity_pulse(st,
 
     # Process next event in cat
 
-    return traces_info
+    return cat
 
 
 def measure_displacement_pulse(st,
@@ -473,7 +473,7 @@ def measure_displacement_pulse(st,
 
     # Process next event in cat
 
-    return traces_info
+    return cat
 
 
 def _find_signal_zeros(tr, istart, max_pulse_duration=.1, nzeros_to_find=3,
@@ -700,8 +700,6 @@ def _get_pulse_width_and_area(tr, ipick, icross, max_pulse_duration=.08):
 
     epsilon = 1e-10
 
-    i = 0  # Just to shut pylint up
-
     for i in range(icross, iend):
         diff = np.abs(data[i] - data[ipick])
 
@@ -767,6 +765,7 @@ def set_pick_snrs(st, picks, pre_wl=.03, post_wl=.03):
 
 def calc_velocity_flux(st_in,
                        cat,
+                       inventory,
                        phase_list=None,
                        use_fixed_window=True,
                        pre_P=.01,
@@ -800,9 +799,8 @@ def calc_velocity_flux(st_in,
 
     fname = "calc_velocity_flux"
 
-
     if phase_list is None:
-        phase_list = ['P']
+        phase_list = ['P', 'S']
 
     # MTH: Try to avoid copying cat - it causes the events to lose their
     # link to preferred_origin!
@@ -900,16 +898,9 @@ def calc_velocity_flux(st_in,
         # The only reason to do this in the freq domain is if we
         #    want to apply attenuation correction
             else:
-                # logger.info("%s: Correcting for Attenuation [Q=%f]" % (
-                # fname, Q))
-                # travel_time: from pick_time - origin or from R/v where v={
-                # alpha,beta}
                 travel_time = pick.time - origin.time
 
                 fsum = 0.
-
-                # fmin = 0.
-                # fmax = 3000.
 
         # exp(pi * f * (R/v) * 1/Q) grows so fast with freq that it's out of
                 # control above f ~ 1e3 Hz
@@ -919,12 +910,16 @@ def calc_velocity_flux(st_in,
                 # attenuation-corrected) energy calc:
         #   To compare the t/f calcs using Parseval's:
         #   1. Set Q to something like 1e12 in the settings
-        #   2. Set fmin=0 so that the low freqs are included in the summation
-                fmin = 14.
-                fmax = 900.
+        #   2. Set fmin=0 so that the low freqs are included in the summationi
+                sensor_response = inventory.select(arr.get_sta())
+                poles = np.abs(sensor_response[0].response.get_paz().poles)
+                fmin = np.min(poles) / (2 * np.pi)
+                fmax = 500. # looking at the response in the frequency
+                # domain, beyond 500 Hz, the response is dominated by the
+                # brown environmental noise.
         # In addition, it's necessary to locate fmin/fmax for each arrival
-                # based on
-        #   the min/max freqs where the velocity spec exceeds the noise spec
+        # based on the min/max freqs where the velocity spec exceeds the
+                # noise spec.
         # Thus, we can't actually include all the radiated energy, just the
                 # energy above the noise level
         #   so these estimates will likely be low
@@ -940,19 +935,19 @@ def calc_velocity_flux(st_in,
 
                 for tr in tr3:
                     data = tr.data
-                    nfft = 2*npow2(data.size)
+                    nfft = 2 * npow2(data.size)
                     df = 1./(dt * float(nfft))    # df is same as for
-                    Y, freqs = unpack_rfft(rfft(data, n=nfft), df)
-                    Y *= dt
-                    Y[1:-1] *= np.sqrt(2.)
+                    y, freqs = unpack_rfft(rfft(data, n=nfft), df)
+                    y *= dt
+                    y[1:-1] *= np.sqrt(2.)
 
                     tstar = travel_time / Q
 
                     index = [(freqs >= fmin) & (freqs <= fmax)]
                     freqs = freqs[index]
-                    Y = Y[index]
-                    fsum += np.sum(np.abs(Y) * np.abs(Y) * np.exp(
-                        2.* np.pi * freqs * tstar)) * df
+                    y = y[index]
+                    fsum += np.sum(np.abs(y) * np.abs(y) * np.exp(
+                        2. * np.pi * freqs * tstar)) * df
 
                 print("arr sta:%s [%s] tsum=%g fsum=%g fmin=%f fmax=%f" %
                       (sta, arr.phase, tsum, fsum, fmin, fmax))
@@ -969,7 +964,7 @@ def calc_velocity_flux(st_in,
             arr.vel_flux = tsum
             arr.vel_flux_Q = fsum
 
-    return
+    return cat
 
 
 def plot_spec(freqs, spec, tstar, title=None):

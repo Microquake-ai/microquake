@@ -8,7 +8,9 @@ import warnings
 import numpy as np
 from loguru import logger
 from obspy.core.event import Comment, ResourceIdentifier, WaveformStreamID
-from obspy.core.event.magnitude import Magnitude, StationMagnitude, StationMagnitudeContribution
+from microquake.core.event import Magnitude
+from obspy.core.event.magnitude import (StationMagnitude,
+                                        StationMagnitudeContribution)
 
 from microquake.core.event import Pick
 from microquake.waveform.amp_measures import measure_pick_amps
@@ -252,8 +254,9 @@ def calc_magnitudes_from_lambda(cat,
 
 
 def calculate_energy_from_flux(cat,
-                               vp=5300.,
-                               vs=3500.,
+                               inventory,
+                               vp,
+                               vs,
                                rho=2700.,
                                use_sdr_rad=False,
                                use_water_level=False,
@@ -268,8 +271,6 @@ def calculate_energy_from_flux(cat,
 
         if use_sdr_rad and event.preferred_focal_mechanism() is not None:
             mech = event.preferred_focal_mechanism()
-            # print(mech)
-            # print(mech.__dict__)
             np1 = event.preferred_focal_mechanism().nodal_planes.nodal_plane_1
             sdr = (np1.strike, np1.dip, np1.rake)
             use_sdr = True
@@ -282,44 +283,50 @@ def calculate_energy_from_flux(cat,
 
         for arr in origin.arrivals:
             pk = Pick(arr.get_pick())
-            try:
-                sta = pk.waveform_id.station_code
-            except AttributeError:
-                logger.warning(
-                    f'Cannot get station for arrival "{arr.resource_id}"'
-                    f' for event "{event.resource_id}".')
+            # try:
+            sta = pk.get_sta()
+            sta_response = inventory.select(sta)
+            # except AttributeError:
+            #     logger.warning(
+            #         f'Cannot get station for arrival "{arr.resource_id}"'
+            #         f' for event "{event.resource_id}".')
 
-                continue
+                # continue
             phase = arr.phase
 
-            velocity = vp
-            rad_pat = 4/15  # rms P rad pattern (squared) over focal sphere
+            if phase.upper() == 'P':
+                velocity = vp.interpolate(sta_response.loc)
+                rad_pat = 4 / 15
 
-            if phase == 'S':
-                velocity = vs
-                rad_pat = 2/5
+            elif phase.upper() == 'S':
+                velocity = vs.interpolate(sta_response.loc)
+                rad_pat = 2 / 5
 
             # could check for arr.hypo_dist_in_m here but it's almost identical
             R = arr.distance
 
-        # MTH: Setting preferred flux = vel_flux_Q = attenuation tstar corrected flux
+            # MTH: Setting preferred flux = vel_flux_Q = attenuation tstar
+            # corrected flux
             flux = 0
 
             if arr.vel_flux_Q is not None:
                 flux = arr.vel_flux_Q
-                logger.info("%s: vel_flux_Q exists in [%s], using this for energy, arr for sta:%s" %
+                logger.info("%s: vel_flux_Q exists in [%s], using this for "
+                            "energy, arr for sta:%s" %
                             (fname, phase, sta))
             elif arr.vel_flux is not None:
                 flux = arr.vel_flux
-                logger.info("%s: vel_flux exists in [%s], using this for energy, arr for sta:%s" %
+                logger.info("%s: vel_flux exists in [%s], using this for "
+                            "energy, arr for sta:%s" %
                             (fname, phase, sta))
             else:
-                logger.info("%s: No vel_flux set for arr sta:%s pha:%s --> skip energy calc" %
+                logger.info("%s: No vel_flux set for arr sta:%s pha:%s --> "
+                            "skip energy calc" %
                             (fname, sta, phase))
 
                 continue
 
-            energy = (4.*np.pi*R**2) * rho * velocity * flux
+            energy = (4. * np.pi * R ** 2) * rho * velocity * flux
 
             scale = 1.
 
@@ -336,14 +343,9 @@ def calculate_energy_from_flux(cat,
                     if use_water_level and np.abs(rad) < rad_min:
                         rad = rad_min
 
-                    scale = rad_pat / rad**2
+                    scale = rad_pat / rad ** 2
 
             energy *= scale
-
-            #logger.debug("%s: phase=%s rad=%f" % (fname, P_or_S, rad))
-            # magnitude_comment += ' rad_pat calculated for (s,d,r)=\
-            # (%.1f,%.1f,%.1f) theta:%.1f az:%.1f pha:%s |rad|=%f' % \
-            #(strike, dip, rake, takeoff_angle, takeoff_azimuth, P_or_S, rad)
 
             arr.energy = energy
 
@@ -352,7 +354,23 @@ def calculate_energy_from_flux(cat,
             else:
                 S_energy.append(energy)
 
-        E = np.median(P_energy) + np.median(S_energy)
+        if not P_energy:
+            P_energy = [0]
+            logger.warning('No P energy measurements. The P-wave energy will be '
+                           'set to 0, the total energy will not include the '
+                           'P-wave energy. This will bias the total energy '
+                           'value')
+        if not S_energy:
+            S_energy = [0]
+            logger.warning(
+                'No S energy measurements. The S-wave energy will be set to '
+                '0, the total energy will not include the P-wave energy. '
+                'This will bias the total energy value')
+
+        energy_p = np.median(P_energy)
+        energy_s = np.median(S_energy)
+        E = energy_p + energy_s
+
         nvals = len(S_energy) + len(P_energy)
         comment = 'Energy [N-m] calculated from sum of median P + median S ' \
                   'energy'
@@ -376,15 +394,19 @@ def calculate_energy_from_flux(cat,
                                              Comment(text=comment_ep),
                                              Comment(text=comment_es)],
                                    )
+            energy_mag.energy_p_joule = energy_p
+            energy_mag.energy_s_joule = energy_s
+            energy_mag.energy_joule = E
 
             event.magnitudes.append(energy_mag)
 
         else:
-            logger.warning("%s: Calculated val of Energy E=[%s] nS=%d nP=%d is not fit to keep!" %
-                           (fname, E, nvals, len(P_energy)))
-            logger.warning("%s: Energy mag not written to quakeml" % fname)
+            logger.warning("%s: Calculated val of Energy E=[%s] nS=%d nP=%d "
+                           "is not fit to keep!"
+                           % (fname, E, nvals, len(P_energy)))
+            logger.warning("%s: Energy mag not written to Quakeml" % fname)
 
-    return
+    return cat
 
 
 if __name__ == '__main__':

@@ -636,7 +636,7 @@ def triggered_sensor_sta_lta_grid(stloc, Rho, Vp, Vs, Qp, Qs, Mw=-1,
 # ---------------------------------------------------
 
 # defining the spectral function
-def spectral_function(f, omega0, fc, q):
+def spectral_function(f, log_omega0, fc, q):
     """Defines the far-field Brune displacement spectrum
     (Brune, 1970).
 
@@ -662,7 +662,7 @@ def spectral_function(f, omega0, fc, q):
     # outside of this function.
     scat_att = np.exp(-np.pi * f / q)
 
-    return omega0 * scat_att / (1.0 + (f / fc) ** 2)
+    return log_omega0 + np.log10(scat_att) -np.log10((1.0 + (f / fc) ** 2))
 
 
 def MwFc(fn, m, b):
@@ -1042,17 +1042,17 @@ def measure_sensitivity(raypath, Mw_min=-3., Mw_max=2., Mw_spacing=0.1,
         return None
 
 
-def moment_magnitude(stream, evt, inventory, vp, vs, only_triaxial=True,
+def moment_magnitude(stream, cat, inventory, vp, vs, only_triaxial=True,
                      density=2700, min_dist=20, win_length=0.04,
                      len_spectrum=2 ** 12, clipped_fraction=0.1,
-                     max_frequency=500):
+                     max_frequency=600):
     """
     WARNING
     Calculate the moment magnitude for an event.
     :param stream: seismogram
     :type stream: microquake.Stream # does not exist yet
-    :param evt: event object
-    :type evt: microquake.core.event.Event
+    :param cat: catalog object
+    :type cat: microquake.core.event.Catalog
     :param inventory: network information (contains stations information)
     :type inventory: microquake.station.Site
     :param vp: P-wave velocity
@@ -1072,11 +1072,11 @@ def moment_magnitude(stream, evt, inventory, vp, vs, only_triaxial=True,
     :param len_spectrum: length of the spectrum
     :param clipped_fraction: allowed clipped fraction (fraction of the
     signal equal to the min or the max.
-    :param maximum_frequency: maximum frequency used in the calculation on
+    :param max_frequency: maximum frequency used in the calculation on
     magnitude. After a certain frequency, the noise starts to dominate the
     signal and the biases the calculation of the magnitude and corner
     frequency.
-    :rtype: microquake.core.event.Event
+    :rtype: microquake.core.event.Catalog
     """
 
     # rigidity in Pa (shear-wave modulus)
@@ -1088,7 +1088,7 @@ def moment_magnitude(stream, evt, inventory, vp, vs, only_triaxial=True,
     fcs = []
 
     quality = {'station_code': [], 'phase': [], 'origin_id': [], 'quality': []}
-    for origin in evt.origins:
+    for origin in cat[0].origins:
         ev_loc = np.array([origin.x, origin.y, origin.z])
 
         if not ((type(vp) == np.float) or (type(vp) == np.int)):
@@ -1109,7 +1109,7 @@ def moment_magnitude(stream, evt, inventory, vp, vs, only_triaxial=True,
             travel_time = arr.get_pick().time - origin.time
             # ensuring backward compatibility
             if not pick:
-                pick = evt.picks[k]
+                pick = cat[0].picks[k]
             at = pick.time
             phase = pick.phase_hint
 
@@ -1156,8 +1156,11 @@ def moment_magnitude(stream, evt, inventory, vp, vs, only_triaxial=True,
             # ideally the sensor signal should be deconvolved and a larger
             # portion of the spectrum should be used. It is possible to get
             # to frequency lower than the corner frequency of the sensor
+            # down the the noise floor. This would be a bit more
+            # complicated. The max frequency could also be found looking at
+            # the noise floor.
 
-            high_bp_freq = 600
+            high_bp_freq = max_frequency
             pulse.filter('bandpass', freqmin=low_bp_freq, freqmax=high_bp_freq)
             pulse = pulse.taper(max_percentage=0.05, type='cosine')
 
@@ -1229,25 +1232,12 @@ def moment_magnitude(stream, evt, inventory, vp, vs, only_triaxial=True,
         fi = np.nonzero((np.isnan(spectrum_norm) == False) & (f > 0))[0]
 
         p_opt, p_cov = curve_fit(spectral_function, f[fi],
-                                 spectrum_norm[fi],
+                                 np.log10(spectrum_norm[fi]),
                                  (10e6, 100, 100))
 
-        fit_spectrum = spectral_function(f[fi], p_opt[0], p_opt[1], p_opt[2])
-
-        import matplotlib.pyplot as plt
-        plt.clf()
-        plt.loglog(f[fi], fit_spectrum)
-        plt.loglog(f[fi], spectrum_norm[fi])
-        plt.show()
-
-        print(p_opt[2])
-
-        scalar_moment = p_opt[0]
-
-        mw = 2 / 3.0 * np.log10(p_opt[0]) - 6.07
+        mw = 2 / 3.0 * p_opt[0] - 6.02
         mu = 29.5e9
-        potency = p_opt[0] / mu
-        dmw = 2 / 3.0 * p_cov[0, 0] - 6.07
+        dmw = 2 / 3.0 * p_cov[0, 0] - 6.02
         fc = p_opt[1]
 
         st_count = len(moment_magnitudes)
@@ -1259,24 +1249,19 @@ def moment_magnitude(stream, evt, inventory, vp, vs, only_triaxial=True,
                               origin_id=origin.resource_id)
 
         mag.corner_frequency_hz = fc
-        mag.seismic_moment = p_opt[0]
-        mag.potency_m3 = potency
-        mag.source_volume_m3 = potency
-
-        ssd = calc_static_stress_drop(mw, fc)
-        mag.static_stress_drop_mpa = ssd
 
         from obspy.core.event import QuantityError
         mag.mag_errors = QuantityError(uncertainty=dmw)
-        evt.magnitudes.append(mag)
-        if origin.resource_id == evt.preferred_origin().resource_id:
-            evt.preferred_magnitude_id = mag.resource_id.id
+        cat[0].magnitudes.append(mag)
+        if origin.resource_id == cat[0].preferred_origin().resource_id:
+            cat[0].preferred_magnitude_id = mag.resource_id.id
 
-    return evt
+    return cat
+
 
 def calculate_energy(stream, evt, inventory, vp, vs, only_triaxial=True,
                          density=2700, min_dist=20, win_length=0.04,
                          len_spectrum=2 ** 12, clipped_fraction=0.1,
                          max_frequency=500):
-
+    pass
     # Calculate energy only for seismograms that have only a

@@ -30,6 +30,7 @@ from loguru import logger
 from base64 import b64encode, b64decode
 from io import BytesIO
 import pickle
+from microquake.waveform.mag_utils import calc_static_stress_drop
 
 debug = False
 
@@ -269,17 +270,67 @@ class Magnitude(obsevent.Magnitude):
 
         return out_cls
 
+    @property
+    def static_stress_drop_mpa(self):
+        ssd = None
+        if self.magnitude_type is "Mw":
+            if self.mag and self.corner_frequency_hz:
+                ssd = calc_static_stress_drop(self.mag,
+                                              self.corner_frequency_hz)
+        return ssd
+
+    @property
+    def apparent_stress(self):
+        app_stress = None
+        if self.magnitude_type is 'Mw':
+            if self.energy_joule and self.mag:
+                app_stress = 2 * self.energy_joule / self.potency_m3
+        return app_stress
+
+    @property
+    def seismic_moment(self):
+        seismic_moment = None
+        if self.magnitude_type is 'Mw':
+            seismic_moment = 10 ** (3 * (self.mag + 6.02) / 2)
+        return seismic_moment
+
+    @seismic_moment.setter
+    def seismic_moment(self, val):
+        self.mag = val
+        self.magnitude_type = 'Mw'
+
+    @property
+    def potency_m3(self):
+        potency = None
+        mu = 29.5e9
+        if self.magnitude_type is 'Mw':
+            if self.mag:
+                potency = self.seismic_moment / mu
+        return potency
+
     def __str__(self, **kwargs):
+
+        es_ep = None
+        if self.energy_p_joule and self.energy_s_joule:
+            es_ep = self.energy_s_joule / self.energy_p_joule
+
         string = """
+             resource_id: {}     
                Magnitude: {}
+          Magnitude type: {}
    Corner frequency (Hz): {}
+ Radiated Energy (joule): {}
+                   Es/Ep: {}
           Seismic moment: {}
        Source volume(m3): {}
 Static stress drop (MPa): {}
-    Apparent stress(MPa): {}
-        """.format(self.mag, self.corner_frequency_hz,
-                   self.seismic_moment, self.potency_m3,
-                   self.static_stress_drop_mpa, self.apparent_stress)
+     Apparent stress(Pa): {}
+         evaluation_mode: {}
+        """.format(self.resource_id.id, self.mag,
+                   self.magnitude_type, self.corner_frequency_hz,
+                   self.energy_joule, es_ep, self.seismic_moment, self.potency_m3,
+                   self.static_stress_drop_mpa, self.apparent_stress,
+                   self.evaluation_mode)
 
         return string
 

@@ -869,7 +869,7 @@ class NLL(object):
                                  max_iter=100)
                 et = time()
                 #print(et - st)
-                out_array[coord[0], coord[1], coord[2]] = ray.length()
+                out_array[coord[0], coord[1], coord[2]] = ray.length
 
             tmp = time_file.split('/')
             tmp[-1] = tmp[-1].replace('time', 'distance')
@@ -1034,7 +1034,7 @@ class NLL(object):
                     pk = arrival.pick_id.get_referred_object()
                     sta = pk.waveform_id.station_code
                     '''
-                    arrival.distance = ray.length()
+                    arrival.distance = ray.length
                 except Exception as exc:
                     logger.warning(
                         f'Failed to calculate ray for sensor {sensor_id}'
