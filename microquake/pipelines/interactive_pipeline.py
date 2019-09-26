@@ -11,8 +11,9 @@ from obspy.core.event import (CreationInfo, ResourceIdentifier,
 
 from microquake.core.event import Arrival, Origin, Pick, Magnitude
 from microquake.core.settings import settings
-from microquake.processors import (focal_mechanism, magnitude,
-                                   measure_amplitudes, measure_energy,
+from microquake.processors import (simple_magnitude, focal_mechanism,
+                                   magnitude, measure_amplitudes,
+                                   measure_energy,
                                    measure_smom, nlloc, magnitude_extractor,
                                    quick_magnitude)
 
@@ -109,48 +110,9 @@ def interactive_pipeline(
     cat_nlloc = nlloc_processor.process(cat=cat)['cat']
 
     # Removing the Origin object used to hold the picks
-    del cat_nlloc[0].origins[-2]
 
-    quick_magnitude_processor = quick_magnitude.Processor()
-    quick_magnitude_processor.process(stream=stream, cat=cat_nlloc)
-    cat_qm = quick_magnitude_processor.output_catalog(cat_nlloc)
+    cat_magnitude = simple_magnitude.Processor().process(cat=cat_nlloc,
+                                                         stream=stream)
 
-    # bytes_out = BytesIO()
-    # cat_nlloc.write(bytes_out, format='QUAKEML')
-
-    m_amp_processor = measure_amplitudes.Processor()
-    cat_amplitude = m_amp_processor.process(cat=cat_qm,
-                                            stream=stream)
-
-    smom_processor = measure_smom.Processor()
-    cat_smom = smom_processor.process(cat=cat_amplitude,
-                                      stream=stream)
-
-    fmec_processor = focal_mechanism.Processor()
-    cat_fmec = fmec_processor.process(cat=cat_smom,
-                                      stream=stream)
-
-    energy_processor = measure_energy.Processor()
-    cat_energy = energy_processor.process(cat=cat_fmec,
-                                          stream=stream)
-
-    magnitude_processor = magnitude.Processor()
-    cat_magnitude = magnitude_processor.process(cat=cat_energy,
-                                                stream=stream)
-
-    magnitude_f_processor = magnitude.Processor(module_type='frequency')
-    cat_magnitude_f = magnitude_f_processor.process(cat=cat_magnitude,
-                                                    stream=stream)
-
-    mag = magnitude_extractor.Processor().process(cat=cat_magnitude_f,
-                                                  stream=stream)
-
-    cat_out = cat_magnitude_f.copy()
-    preferred_origin_id = cat_magnitude_f[0].preferred_origin().resource_id
-    new_mag = Magnitude.from_dict(mag, origin_id=preferred_origin_id)
-
-    cat_out[0].magnitudes.append(new_mag)
-    cat_out[0].preferred_magnitude_id = new_mag.resource_id
-
-    return cat_out, mag
+    return cat_magnitude
 
