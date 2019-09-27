@@ -128,10 +128,8 @@ def automatic_pipeline(event_id, **kwargs):
                        f'automatic processing!')
         return cat_located
 
-    set_event(event_id, catalogue=cat_located)
-    api_queue.submit_task(put_data, event_id=event_id)
-
-    cat_magnitude, mag = magnitude_meta_processor(cat_located, fixed_length)
+    cat_magnitude = simple_magnitude.Processor().process(cat=cat_located,
+                                                         stream=stream)
 
     set_event(event_id, catalogue=cat_magnitude)
     api_queue.submit_task(put_data, event_id=event_id)
