@@ -110,9 +110,12 @@ def interactive_pipeline(
     cat_nlloc = nlloc_processor.process(cat=cat)['cat']
 
     # Removing the Origin object used to hold the picks
-
-    cat_magnitude = simple_magnitude.Processor().process(cat=cat_nlloc,
-                                                         stream=stream)
+    try:
+        cat_magnitude = simple_magnitude.Processor().process(cat=cat_nlloc,
+                                                             stream=stream)
+    except ValueError as ve:
+        logger.error(f'Calculation of the magnitude failed. \n{ve}')
+        cat_magnitude = cat_nlloc
 
     return cat_magnitude
 
