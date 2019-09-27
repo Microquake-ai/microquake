@@ -193,7 +193,8 @@ class Origin(obsevent.Origin):
     def append_ray(self, item):
         if self.rays is None:
             self.rays = [item]
-        self.rays = self.rays + [item]
+        else:
+            self.rays = self.rays + [item]
 
     @property
     def loc(self):
