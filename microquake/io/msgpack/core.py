@@ -1,7 +1,7 @@
 from io import BytesIO
 
 import msgpack
-from obspy.core.event import Catalog
+from microquake.core.event import Catalog
 
 from microquake.core import Stream, read, read_events
 from microquake.core.event import Event

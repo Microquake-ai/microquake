@@ -59,20 +59,19 @@ class Processor(ProcessingUnit):
         st_new = rotate_to_P_SV_SH(st, cat)
         st = st_new
 
-        # 3. Measure polarities, displacement areas, etc for each pick from instrument deconvolved traces
-        trP = [tr for tr in st if tr.stats.channel == 'P' or tr.stats.channel.upper() == 'Z']
+        # 3. Measure polarities, displacement areas, etc for each pick from
+        # instrument deconvolved traces
+        trP = [tr for tr in st if tr.stats.channel == 'P' or
+               tr.stats.channel.upper() == 'Z']
 
-        measure_pick_amps(Stream(traces=trP),
-                          # measure_pick_amps(st_rot,
-                          cat,
+        measure_pick_amps(Stream(traces=trP), cat,
                           phase_list=phase_list,
                           pulse_min_width=pulse_min_width,
                           pulse_min_snr_P=pulse_min_snr_P,
                           pulse_min_snr_S=pulse_min_snr_S,
                           debug=False)
 
-        self.result = {'cat': cat}
-        return self.result
+        return cat.copy()
 
     def legacy_pipeline_handler(
         self,

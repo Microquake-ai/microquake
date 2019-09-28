@@ -41,7 +41,7 @@ class Processor(ProcessingUnit):
         """
         logger.info("pipeline: magnitude")
 
-        cat = kwargs["cat"]
+        cat = kwargs["cat"].copy()
 
         density = self.params.density
         min_dist = self.params.min_dist
@@ -55,7 +55,8 @@ class Processor(ProcessingUnit):
             phase_list = [phase_list]
 
         if use_sdr_rad and cat.preferred_focal_mechanism() is None:
-            logger.warning("use_sdr_rad=True but preferred focal mech = None --> Setting use_sdr_rad=False")
+            logger.warning("use_sdr_rad=True but preferred focal mech = None"
+                           "--> Setting use_sdr_rad=False")
             use_sdr_rad = False
 
         for i, event in enumerate(cat):
@@ -103,7 +104,7 @@ class Processor(ProcessingUnit):
 
             if self.module_type == "frequency":
                 Mw = np.nanmean(Mws)
-                comment = "frequency"
+                comment = "frequency-domain"
             else:
                 Mw = np.mean(Mws)
                 comment = "time-domain"
@@ -121,8 +122,7 @@ class Processor(ProcessingUnit):
             set_new_event_mag(event, station_mags, Mw, comment,
                               make_preferred=make_preferred)
 
-        self.result = {'cat': cat}
-        return self.result
+        return cat.copy()
 
     def legacy_pipeline_handler(
         self,

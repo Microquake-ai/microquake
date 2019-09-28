@@ -26,7 +26,9 @@ from time import time as timer
 import numpy as np
 import requests
 from obspy import UTCDateTime
-from obspy.core.event import Catalog, ConfidenceEllipsoid, OriginUncertainty, WaveformStreamID
+from microquake.core.event import Catalog
+from obspy.core.event import (ConfidenceEllipsoid, OriginUncertainty,
+                              WaveformStreamID)
 from obspy.core.trace import Stats
 
 from loguru import logger

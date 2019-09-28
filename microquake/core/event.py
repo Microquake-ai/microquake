@@ -24,8 +24,66 @@ import warnings
 import numpy as np
 import obspy.core.event as obsevent
 from obspy.core.event import WaveformStreamID
+from obspy.core.util import AttribDict
+from copy import deepcopy
+from loguru import logger
+from base64 import b64encode, b64decode
+from io import BytesIO
+import pickle
+from microquake.waveform.mag_utils import calc_static_stress_drop
 
 debug = False
+
+
+class Catalog(obsevent.Catalog):
+
+    extra_keys = []
+
+    __doc__ = obsevent.Catalog.__doc__.replace('obspy', 'microquake')
+
+    def __init__(self, obspy_obj=None, **kwargs):
+        if obspy_obj and len(kwargs) > 0:
+            raise AttributeError("Initialize from either \
+                                  obspy_obj or kwargs, not both")
+
+        if obspy_obj:
+
+            for key in obspy_obj.__dict__.keys():
+                if key == 'events':
+                    events = []
+                    for event in obspy_obj:
+                        events.append(Event(obspy_obj=event))
+                    self.events = events
+                else:
+                    self.__dict__[key] = obspy_obj.__dict__[key]
+
+        else:
+            super(type(self), self).__init__(
+                **kwargs)
+
+    def __setattr__(self, name, value):
+        super(type(self), self).__setattr__(name, value)
+
+    def write(self, fileobj, format='quakeml', **kwargs):
+        for event in self.events:
+            for ori in event.origins:
+                for ar in ori.arrivals:
+                    if 'extra' in ar.keys():
+                        del ar.extra
+
+        result = obsevent.Catalog.write(self, fileobj, format=format, **kwargs)
+
+        for event in self.events:
+            for ori in event.origins:
+                ars = []
+                for ar in ori.arrivals:
+                    ars.append(Arrival(obspy_obj=ar))
+                ori.arrivals = ars
+
+        return result
+
+    def copy(self):
+        return deepcopy(self)
 
 
 class Event(obsevent.Event):
@@ -47,6 +105,11 @@ class Event(obsevent.Event):
         _init_handler(self, obspy_obj, **kwargs)
 
     def __setattr__(self, name, value):
+        if name == 'rays':
+            logger.warning('rays need to be set using the "add_ray" or '
+                           '"set_rays" method')
+            return
+
         _set_attr_handler(self, name, value)
 
     def __str__(self):
@@ -59,7 +122,8 @@ class Event(obsevent.Event):
 
         if self.origins:
             og = self.preferred_origin() or self.origins[0]
-            out += '%s | %s, %s, %s | %s' % (og.time, og.x, og.y, og.z, og.evaluation_mode)
+            out += '%s | %s, %s, %s | %s' % (og.time, og.x, og.y, og.z,
+                                             og.evaluation_mode)
 
         if self.magnitudes:
             magnitude = self.preferred_magnitude() or self.magnitudes[0]
@@ -70,17 +134,67 @@ class Event(obsevent.Event):
 
         self.picks += picks
 
+    def write(self, fileobj, **kwargs):
+        for ori in self.origins:
+            arrivals = []
+            for ar in ori.arrivals:
+                if 'extra' in ar.keys():
+                    del ar.extra
+
+        return obsevent.Event.write(self, fileobj, **kwargs)
+
 
 class Origin(obsevent.Origin):
     __doc__ = obsevent.Origin.__doc__.replace('obspy', 'microquake')
     extra_keys = ['x', 'y', 'z', 'x_error', 'y_error', 'z_error', 'scatter',
-                  'interloc_vmax', 'interloc_time']
+                  'interloc_vmax', 'interloc_time', '__encoded_rays__']
 
     def __init__(self, obspy_obj=None, **kwargs):
         _init_handler(self, obspy_obj, **kwargs)
 
     def __setattr__(self, name, value):
-        _set_attr_handler(self, name, value)
+
+        if name == 'rays':
+            self.__encoded_rays__ = self.__encode_rays__(self, value)
+        else:
+            _set_attr_handler(self, name, value)
+
+    def __getattr__(self, item):
+        if item == 'rays':
+            try:
+                return self.__decode_rays__(self)
+            except pickle.UnpicklingError:
+                self.__encoded_rays__ = eval(self.__encoded_rays__)
+                return self.__decode_rays__(self)
+
+        else:
+            return self.__dict__[item]
+
+    @staticmethod
+    def __encode_rays__(self, rays):
+        return b64encode(pickle.dumps(rays))
+
+    @staticmethod
+    def __decode_rays__(self):
+        if self.__encoded_rays__ is None:
+            return
+
+        return pickle.loads(b64decode(self.__encoded_rays__))
+
+    def get_arrival_id(self, phase, station_code):
+        arrival_id = None
+        for arrival in self.arrivals:
+            if (arrival.phase == phase) and (arrival.get_sta() ==
+                                             station_code):
+                arrival_id = arrival.resource_id
+
+        return arrival_id
+
+    def append_ray(self, item):
+        if self.rays is None:
+            self.rays = [item]
+        else:
+            self.rays = self.rays + [item]
 
     @property
     def loc(self):
@@ -130,13 +244,95 @@ class Origin(obsevent.Origin):
 
 class Magnitude(obsevent.Magnitude):
     __doc__ = obsevent.Magnitude.__doc__.replace('obspy', 'microquake')
-    extra_keys = ['corner_frequency', 'error']
+
+    extra_keys = ['energy_joule', 'energy_p_joule', 'energy_p_std',
+                  'energy_s_joule', 'energy_s_std', 'corner_frequency_hz',
+                  'corner_frequency_p_hz', 'corner_frequency_s_hz',
+                  'time_domain_moment_magnitude',
+                  'frequency_domain_moment_magnitude',
+                  'moment_magnitude', 'moment_magnitude_uncertainty',
+                  'seismic_moment', 'potency_m3', 'source_volume_m3',
+                  'apparent_stress', 'static_stress_drop_mpa',
+                  'quick_magnitude', 'error']
 
     def __init__(self, obspy_obj=None, **kwargs):
         _init_handler(self, obspy_obj, **kwargs)
 
     def __setattr__(self, name, value):
         _set_attr_handler(self, name, value)
+
+    @classmethod
+    def from_dict(cls, input_dict, origin_id=None, obspy_obj=None, **kwargs):
+        out_cls = cls(obspy_obj=obspy_obj, **input_dict,
+                      origin_id=origin_id, **kwargs)
+        out_cls.mag = input_dict['moment_magnitude']
+        out_cls.magnitude_type = 'Mw'
+
+        return out_cls
+
+    @property
+    def static_stress_drop_mpa(self):
+        ssd = None
+        if self.magnitude_type is "Mw":
+            if self.mag and self.corner_frequency_hz:
+                ssd = calc_static_stress_drop(self.mag,
+                                              self.corner_frequency_hz)
+        return ssd
+
+    @property
+    def apparent_stress(self):
+        app_stress = None
+        if self.magnitude_type is 'Mw':
+            if self.energy_joule and self.mag:
+                app_stress = 2 * self.energy_joule / self.potency_m3
+        return app_stress
+
+    @property
+    def seismic_moment(self):
+        seismic_moment = None
+        if self.magnitude_type is 'Mw':
+            seismic_moment = 10 ** (3 * (self.mag + 6.02) / 2)
+        return seismic_moment
+
+    @seismic_moment.setter
+    def seismic_moment(self, val):
+        self.mag = val
+        self.magnitude_type = 'Mw'
+
+    @property
+    def potency_m3(self):
+        potency = None
+        mu = 29.5e9
+        if self.magnitude_type is 'Mw':
+            if self.mag:
+                potency = self.seismic_moment / mu
+        return potency
+
+    def __str__(self, **kwargs):
+
+        es_ep = None
+        if self.energy_p_joule and self.energy_s_joule:
+            es_ep = self.energy_s_joule / self.energy_p_joule
+
+        string = """
+             resource_id: {}     
+               Magnitude: {}
+          Magnitude type: {}
+   Corner frequency (Hz): {}
+ Radiated Energy (joule): {}
+                   Es/Ep: {}
+          Seismic moment: {}
+       Source volume(m3): {}
+Static stress drop (MPa): {}
+     Apparent stress(Pa): {}
+         evaluation_mode: {}
+        """.format(self.resource_id.id, self.mag,
+                   self.magnitude_type, self.corner_frequency_hz,
+                   self.energy_joule, es_ep, self.seismic_moment, self.potency_m3,
+                   self.static_stress_drop_mpa, self.apparent_stress,
+                   self.evaluation_mode)
+
+        return string
 
 
 class Pick(obsevent.Pick):
@@ -148,7 +344,10 @@ class Pick(obsevent.Pick):
         # MTH  - this seems to have been left out ??
         if obspy_obj:
             wid = self.waveform_id
-            self.trace_id = "%s.%s.%s.%s" % (wid.network_code, wid.station_code, wid.location_code, wid.channel_code)
+            self.trace_id = "%s.%s.%s.%s" % (wid.network_code,
+                                             wid.station_code,
+                                             wid.location_code,
+                                             wid.channel_code)
 
     def __setattr__(self, name, value):
         _set_attr_handler(self, name, value)
@@ -176,19 +375,12 @@ class Pick(obsevent.Pick):
 class Arrival(obsevent.Arrival):
     __doc__ = obsevent.Arrival.__doc__.replace('obspy', 'microquake')
 
-    # extra_keys = ['ray', 'backazimuth', 'inc_angle']
     extra_keys = ['ray', 'backazimuth', 'inc_angle', 'polarity',
                   'peak_vel', 'tpeak_vel', 't1', 't2', 'pulse_snr',
                   'peak_dis', 'tpeak_dis', 'max_dis', 'tmax_dis',
-                  'dis_pulse_width', 'dis_pulse_area',
-                  'smom', 'fit', 'tstar',
-                  'hypo_dist_in_m',
-                  'vel_flux', 'vel_flux_Q', 'energy',
-                  'fmin', 'fmax',
-                  'traces',
-                  ]
-
-    # extra_keys = ['ray', 'backazimuth', 'inc_angle', 'velocity_pulse', 'displacement_pulse']
+                  'dis_pulse_width', 'dis_pulse_area', 'smom', 'fit',
+                  'tstar', 'hypo_dist_in_m', 'vel_flux', 'vel_flux_Q',
+                  'energy', 'fmin', 'fmax', 'traces']
 
     def __init__(self, obspy_obj=None, **kwargs):
         _init_handler(self, obspy_obj, **kwargs)
@@ -199,6 +391,11 @@ class Arrival(obsevent.Arrival):
     def get_pick(self):
         if self.pick_id is not None:
             return self.pick_id.get_referred_object()
+
+    def get_sta(self):
+        if self.pick_id is not None:
+            pick = self.pick_id.get_referred_object()
+            return pick.get_sta()
 
 
 def get_arrival_from_pick(arrivals, pick):
@@ -227,9 +424,16 @@ def get_arrival_from_pick(arrivals, pick):
 
 def read_events(*args, **kwargs):
 
+    # converting the obspy object into microquake objects
     cat = obsevent.read_events(*args, **kwargs)
-    cat.events = [Event(ev) for ev in cat.events]
-    return cat
+    mq_catalog = Catalog(obspy_obj=cat)
+
+    if mq_catalog[0].preferred_origin():
+        if mq_catalog[0].preferred_origin().__encoded_rays__:
+            mq_catalog[0].preferred_origin().__encoded_rays__ = eval(
+                mq_catalog[0].preferred_origin().__encoded_rays__)
+
+    return mq_catalog
 
 
 def _init_handler(self, obspy_obj, **kwargs):
@@ -254,7 +458,8 @@ def _init_handler(self, obspy_obj, **kwargs):
     else:
         extra_kwargs = pop_keys_matching(kwargs, self.extra_keys)
         super(type(self), self).__init__(**kwargs)  # init obspy_origin args
-        [self.__setattr__(k, v) for k, v in extra_kwargs.items()]  # init extra_args
+        [self.__setattr__(k, v) for k, v in extra_kwargs.items()]  # init
+        # extra_args
 
 
 def _init_from_obspy_object(mquake_obj, obspy_obj):
@@ -387,6 +592,8 @@ def parse_string_val(val, arr_flag='npy64_'):
     """
     if val is None:  # hack for deepcopy ignoring isfloat try-except
         val = None
+    elif type(val) == AttribDict:
+        val = val
     elif isfloat(val):
         val = float(val)
     elif str(val) == 'None':
@@ -396,11 +603,57 @@ def parse_string_val(val, arr_flag='npy64_'):
     return val
 
 
+class RayCollection:
+    def __init__(self, rays=[]):
+        self.__encoded_rays__ = self.__encode_rays__(self, rays)
+        self.origin_id = None
+
+    def __setattr__(self, key, value):
+        if key == 'rays':
+            self.__encoded_rays__ = self.__encode_rays__(self, value)
+        else:
+            self.__dict__[key] = value
+
+    def __getattr__(self, item):
+        if item == 'rays':
+            return self.__decode_rays__(self)
+        else:
+            return self.__dict__[item]
+
+    @staticmethod
+    def __encode_rays__(self, rays):
+        return b64encode(pickle.dumps(rays))
+
+    @staticmethod
+    def __decode_rays__(self):
+        return pickle.loads(b64decode(self.__encoded_rays__))
+
+    def append(self, item):
+        self.rays = self.rays + [item]
+
+
 class Ray:
 
     def __init__(self, nodes=[]):
         self.nodes = np.array(nodes)
+        self.station_code = None
+        self.arrival_id = None
+        self.phase = None
+        self.azimuth = None
+        self.takeoff_angle = None
+        self.travel_time = None
+        self.resource_id = obsevent.ResourceIdentifier()
 
+    def __setattr__(self, key, value):
+        if key == 'phase':
+            if value is None:
+                self.__dict__[key] = value
+            else:
+                self.__dict__[key] = value.upper()
+        else:
+            self.__dict__[key] = value
+
+    @property
     def length(self):
         if len(self.nodes) < 2:
             return 0
@@ -412,8 +665,45 @@ class Ray:
 
         return length
 
+    @property
+    def baz(self):
+        # back_azimuth
+        baz = None
+        if len(self.nodes) > 2:
+            v = self.nodes[-2] - self.nodes[-1]
+            baz = np.arctan2(v[0], v[1])
+        return baz
+
+    @property
+    def back_azimuth(self):
+        self.baz
+
+    @property
+    def incidence_angle(self):
+        ia = None
+        if len(self.nodes) > 2:
+            v = self.nodes[-2] - self.nodes[-1]
+            h = np.sqrt(v[0] ** 2 + v[1] ** 2)
+            ia = np.arctan2(h, v[2])
+        return ia
+
+
     def __len__(self):
-        return self.length()
+        return self.length
+
+    def __str__(self):
+        txt = \
+            f"""
+      station code: {self.station_code}
+        arrival id: {self.arrival_id}
+             phase: {self.phase}
+        length (m): {self.length}
+   number of nodes: {len(self.nodes)}
+            """
+        return txt
+
+    def __repr__(self):
+        return self.__str__()
 
 
 def break_down(event):

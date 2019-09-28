@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
     mag_utils - a collection of routines to assist in the moment magnitude calculation
 """
 
+
 def parsevals(data, dt, nfft):
     """
     Proper scaling to satisfy Parsevals:

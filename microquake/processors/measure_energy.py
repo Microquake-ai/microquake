@@ -1,6 +1,7 @@
 from loguru import logger
 from microquake.waveform.amp_measures import calc_velocity_flux
 from microquake.waveform.mag import calculate_energy_from_flux
+from microquake.core.helpers.velocity import get_velocities
 
 from microquake.core.settings import settings
 from microquake.processors.processing_unit import ProcessingUnit
@@ -17,7 +18,7 @@ class Processor(ProcessingUnit):
     ):
         logger.info("pipeline: measure energy")
 
-        cat = kwargs["cat"]
+        cat = kwargs["cat"].copy()
         stream = kwargs["stream"]
 
         correct_attenuation = self.params.correct_attenuation
@@ -25,7 +26,8 @@ class Processor(ProcessingUnit):
         use_sdr_rad = self.params.use_sdr_rad
 
         if use_sdr_rad and cat.preferred_focal_mechanism() is None:
-            logger.warning("use_sdr_rad=True but preferred focal mech = None --> Setting use_sdr_rad=False")
+            logger.warning("use_sdr_rad=True but preferred focal mechanism = "
+                           "None --> Setting use_sdr_rad=False")
             use_sdr_rad = False
 
         phase_list = self.params.phase_list
@@ -45,16 +47,18 @@ class Processor(ProcessingUnit):
 
         calc_velocity_flux(cleaned_stream,
                            cat,
+                           self.settings.inventory,
                            phase_list=phase_list,
                            correct_attenuation=correct_attenuation,
                            Q=Q,
                            debug=False)
 
-        calculate_energy_from_flux(cat,
+        vp, vs = get_velocities()
+
+        calculate_energy_from_flux(cat, self.settings.inventory, vp, vs,
                                    use_sdr_rad=use_sdr_rad)
 
-        self.result = {'cat': cat}
-        return self.result
+        return cat.copy()
 
     def legacy_pipeline_handler(
         self,

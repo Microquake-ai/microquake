@@ -5,9 +5,10 @@ from loguru import logger
 from numpy.linalg import norm
 from obspy.core import UTCDateTime
 from obspy.core.event import WaveformStreamID
+from obspy.realtime.signal import kurtosis
 from scipy.interpolate import interp1d
 
-from microquake.core import Trace
+from microquake.core.stream import Trace
 from microquake.core.data.grid import read_grid
 from microquake.core.event import Arrival, Pick
 from microquake.core.helpers.velocity import get_current_velocity_model_id
@@ -15,24 +16,25 @@ from microquake.core.settings import settings
 from microquake.core.simul.eik import ray_tracer
 
 
-def get_grid(station_code, phase, type='time'):
+def get_grid(station_code, phase, grid_type='time'):
     """
     get a travel time grid for a given station and a given phase
     :param station_code: station code
     :param phase: Phase ('P' or 'S')
-    :param type: type of grid ('time', 'take_off', 'azimuth')
+    :param grid_type: type of grid ('time', 'take_off', 'azimuth')
     :return:
     """
     nll_dir = settings.nll_base
     f_tt = os.path.join(nll_dir, 'time', 'OT.%s.%s.%s.buf'
-                        % (phase.upper(), station_code, type))
+                        % (phase.upper(), station_code, grid_type))
+
     tt_grid = read_grid(f_tt, format='NLLOC')
 
     return tt_grid
 
 
 def get_grid_point(station_code, phase, location,
-                   grid_coordinates=False, type='time'):
+                   grid_coordinates=False, grid_type='time'):
     """
     get value on a grid at a given point inside the grid
     :param station_code: Station code
@@ -40,11 +42,11 @@ def get_grid_point(station_code, phase, location,
     :param location: point where the value is interpolated
     :param grid_coordinates: whether the location is expressed in grid
     coordinates or in model coordinates (default True)
-    :param type: type of grid ('time', 'take_off', 'azimuth')
+    :param grid_type: type of grid ('time', 'take_off', 'azimuth')
     :return:
     """
 
-    tt = get_grid(station_code, phase, type=type)
+    tt = get_grid(station_code, phase, grid_type=grid_type)
 
     return tt.interpolate(location, grid_coordinate=grid_coordinates)[0]
 
@@ -59,7 +61,7 @@ def get_ray(station_code, phase, location, grid_coordinate=False):
     coordinates or model coordinates (default False)
     :return:
     """
-    travel_time = get_grid(station_code, phase, type='time')
+    travel_time = get_grid(station_code, phase, grid_type='time')
 
     return ray_tracer(travel_time, location,
                       grid_coordinates=grid_coordinate)
@@ -87,10 +89,12 @@ def create_arrivals_from_picks(picks, event_location, origin_time):
         phase = pick.phase_hint
 
         ray = get_ray(station_code, phase, event_location)
-        arrival.distance = ray.length()
+        arrival.distance = ray.length
 
-        # TODO: MTH: Gotta think about how to store the ray points. Obspy will not handle
-        #       a list in the extra dict, so you won't be able to do something like event.copy() later
+        # TODO: MTH: Gotta think about how to store the ray points. Obspy
+        #  will not handle
+        #       a list in the extra dict, so you won't be able to do
+        #       something like event.copy() later
         # arrival.ray = list(ray.nodes)
         # for node in ray.nodes:
         # print(node)
@@ -111,19 +115,18 @@ def create_arrivals_from_picks(picks, event_location, origin_time):
         # print("create_arrivals: sta:%3s pha:%s pick.time:%s
 
         arrival.takeoff_angle = get_grid_point(station_code, phase,
-                                               event_location, type='take_off')
+                                               event_location,
+                                               grid_type='take_off')
         arrival.azimuth = get_grid_point(station_code, phase,
-                                         event_location, type='azimuth')
-        # print("create arrival: type(arrival)=%s type(takeoff_angle)=%s type(azimuth)=%s" % \
-        # (type(arrival), type(arrival.takeoff_angle), type(arrival.azimuth)))
+                                         event_location, grid_type='azimuth')
 
-        # MTH: arrival azimuth/takeoff should be in degrees - I'm pretty sure the grids
-        #  store them in radians (?)
-        arrival.azimuth *= 180./np.pi
+        # MTH: arrival azimuth/takeoff should be in degrees - I'm pretty
+        # sure the grids store them in radians (?)
+        arrival.azimuth *= 180. / np.pi
 
         if arrival.azimuth < 0:
             arrival.azimuth += 360.
-        arrival.takeoff_angle *= 180./np.pi
+        arrival.takeoff_angle *= 180. / np.pi
 
         arrival.pick_id = pick.resource_id.id
         arrival.earth_model_id = get_current_velocity_model_id(phase)
@@ -174,10 +177,10 @@ def estimate_origin_time(stream, event_location):
             data /= np.std(data)
             # data /= np.max(np.abs(data))
             sr = trace.stats.sampling_rate
-            startsamp = int((trace.stats.starttime - min_starttime) *
-                            trace.stats.sampling_rate)
-            endsamp = startsamp + trace.stats.npts
-            t = np.arange(startsamp, endsamp) / sr
+            start_samp = int((trace.stats.starttime - min_starttime) *
+                             trace.stats.sampling_rate)
+            end_samp = start_samp + trace.stats.npts
+            t = np.arange(start_samp, end_samp) / sr
             try:
                 f = interp1d(t, data, bounds_error=False, fill_value=0)
             except:
@@ -207,8 +210,8 @@ def estimate_origin_time(stream, event_location):
     # k = kurtosis(stacked_tr, win=30e-3)
     # diff_k = np.diff(k)
 
-    # o_i = np.argmax(np.abs(diff_k[i_max - w_len_samp: i_max + w_len_samp])) + \
-    #       i_max - w_len_samp
+    # o_i = np.argmax(np.abs(diff_k[i_max - w_len_samp: i_max + w_len_samp])) \
+    #       + i_max - w_len_samp
 
     origin_time = min_starttime + o_i / max_sampling_rate
     # Tracer()()
@@ -240,15 +243,15 @@ def fix_arr_takeoff_and_azimuth(cat, vp_grid, vs_grid):
         for arr in origin.arrivals:
             picks.append(arr.pick_id.get_referred_object())
 
-# MTH: create_arrivals_from_picks will create an entirely new set of arrivals (new resource_ids)
-#      it will set arr.distance (looks exactly same as nlloc's arr.distance)
-#      it will set arr.time_residual *** DIFFERS *** from arr.time_residual nlloc calcs/reads from last.hypo
-#      it will fix the missing azim/theta that nlloc set to -1
-#      it will drop nlloc arr.time_weight field
+        # MTH: create_arrivals_from_picks will create an entirely new set of arrivals (new resource_ids)
+        #      it will set arr.distance (looks exactly same as nlloc's arr.distance)
+        #      it will set arr.time_residual *** DIFFERS *** from arr.time_residual nlloc calcs/reads from last.hypo
+        #      it will fix the missing azim/theta that nlloc set to -1
+        #      it will drop nlloc arr.time_weight field
 
         arrivals = create_arrivals_from_picks(picks, ev_loc, origin.time)
 
-# Now set the receiver angles (backazimuth and incidence angle)
+        # Now set the receiver angles (backazimuth and incidence angle)
 
         for arr in arrivals:
             pk = arr.pick_id.get_referred_object()
@@ -257,14 +260,14 @@ def fix_arr_takeoff_and_azimuth(cat, vp_grid, vs_grid):
 
             st_loc = settings.inventory.get_station(sta).loc
 
-            xoff = ev_loc[0]-st_loc[0]
-            yoff = ev_loc[1]-st_loc[1]
-            zoff = np.abs(ev_loc[2]-st_loc[2])
-            H = np.sqrt(xoff*xoff + yoff*yoff)
+            xoff = ev_loc[0] - st_loc[0]
+            yoff = ev_loc[1] - st_loc[1]
+            zoff = np.abs(ev_loc[2] - st_loc[2])
+            H = np.sqrt(xoff * xoff + yoff * yoff)
             alpha = np.arctan2(zoff, H)
-            beta = np.pi/2. - alpha
-            takeoff_straight = alpha * 180./np.pi + 90.
-            inc_straight = beta * 180./np.pi
+            beta = np.pi / 2. - alpha
+            takeoff_straight = alpha * 180. / np.pi + 90.
+            inc_straight = beta * 180. / np.pi
 
             if pha == 'P':
                 v = vp
@@ -273,14 +276,14 @@ def fix_arr_takeoff_and_azimuth(cat, vp_grid, vs_grid):
                 v = vs
                 v_grid = vs_grid
 
-            p = np.sin(arr.takeoff_angle*np.pi/180.) / v
+            p = np.sin(arr.takeoff_angle * np.pi / 180.) / v
 
             v_sta = v_grid.interpolate(st_loc)[0]
 
-            inc_p = np.arcsin(p*v_sta) * 180./np.pi
+            inc_p = np.arcsin(p * v_sta) * 180. / np.pi
 
             # I have the incidence angle now, need backazimuth so rotate to P,SV,SH
-            back_azimuth = np.arctan2(xoff, yoff) * 180./np.pi
+            back_azimuth = np.arctan2(xoff, yoff) * 180. / np.pi
 
             if back_azimuth < 0:
                 back_azimuth += 360.
@@ -321,8 +324,8 @@ def synthetic_arrival_times(event_location, origin_time):
 
             dist = norm(st_loc - event_location)
 
-            if (phase == 'S') and (dist < 100):
-                continue
+            # if (phase == 'S') and (dist < 100):
+            #     continue
 
             try:
                 at = origin_time + get_grid_point(station.code, phase,

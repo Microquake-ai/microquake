@@ -53,25 +53,20 @@ class Processor(ProcessingUnit):
 
                 logger.info("Call measure_pick_smom for phase=[%s]" % phase)
 
-                try:
-                    smom_dict, fc = measure_pick_smom(stream, settings.inventory, event,
-                                                      synthetic_picks,
-                                                      P_or_S=phase,
-                                                      fmin=self.fmin, fmax=self.fmax,
-                                                      use_fixed_fmin_fmax=self.use_fixed_fmin_fmax,
-                                                      plot_fit=plot_fit,
-                                                      debug_level=1)
-                except Exception as e:
-                    logger.warning("Error in measure_pick_smom. Continuing to next phase in phase_list: \n %s", e)
+                smom_dict, fc = measure_pick_smom(stream, settings.inventory,
+                                                  event, synthetic_picks,
+                                                  P_or_S=phase,
+                                                  fmin=self.fmin,
+                                                  fmax=self.fmax,
+                                                  use_fixed_fmin_fmax=self.use_fixed_fmin_fmax,
+                                                  plot_fit=plot_fit)
 
-                    continue
+                comment = Comment(text="corner_frequency_%s=%.2f measured "
+                                       "for %s arrivals" %
+                                       (phase, fc, phase))
+                cat[0].preferred_origin().comments.append(comment)
 
-                comment = Comment(text="corner_frequency_%s=%.2f measured for %s arrivals" %
-                                  (phase, fc, phase))
-                origin.comments.append(comment)
-
-        self.result = {'cat': cat}
-        return self.result
+        return cat
 
     def legacy_pipeline_handler(
         self,
