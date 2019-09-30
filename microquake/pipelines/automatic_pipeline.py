@@ -37,7 +37,7 @@ def put_data(event_id, **kwargs):
     response = put_data_processor(event['catalogue'])
     logger.info(response.status_code)
 
-    if response:
+    if not response.ok:
 
         logger.info('request failed, resending to the queue')
 
