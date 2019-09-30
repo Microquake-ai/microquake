@@ -312,12 +312,13 @@ def put_event_from_objects(api_base_url, event_id, event=None,
     return result
 
 
-def get_events_catalog(api_base_url, start_time, end_time, status='accepted'):
+def get_events_catalog(api_base_url, start_time, end_time, status='accepted', event_type=''):
     """
     return a list of events
     :param api_base_url:
     :param start_time:
     :param end_time:
+    :param event_type:  example seismic_event,blast,drilling noise,open pit blast,quarry blast... etc
     :param status: Event status, accepted, rejected, accepted,rejected
     :return:
     """
@@ -327,7 +328,7 @@ def get_events_catalog(api_base_url, start_time, end_time, status='accepted'):
     # timezone to UTC before the request is built.
 
     querystring = {"start_time": start_time, "end_time": end_time, "status":
-                   status}
+                   status, "type": event_type}
 
     response = requests.request("GET", url, params=querystring).json()
 
