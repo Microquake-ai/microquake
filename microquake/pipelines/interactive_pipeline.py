@@ -114,5 +114,8 @@ def interactive_pipeline(
     cat_magnitude = simple_magnitude.Processor().process(cat=cat_nlloc,
                                                          stream=stream)
 
+    cat_magnitude[0].preferred_origin().evaluation_mode = 'manual'
+    cat_magnitude[0].preferred_origin().evaluation_status = 'final'
+
     return cat_magnitude
 

@@ -105,11 +105,6 @@ class Event(obsevent.Event):
         _init_handler(self, obspy_obj, **kwargs)
 
     def __setattr__(self, name, value):
-        if name == 'rays':
-            logger.warning('rays need to be set using the "add_ray" or '
-                           '"set_rays" method')
-            return
-
         _set_attr_handler(self, name, value)
 
     def __str__(self):
