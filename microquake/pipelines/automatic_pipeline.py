@@ -12,8 +12,8 @@ from microquake.core.settings import settings
 from microquake.db.connectors import RedisQueue, record_processing_logs_pg
 from microquake.db.models.redis import get_event, set_event
 from microquake.processors import clean_data, simple_magnitude
-from microquake.pipelines.pipeline_meta_processors import (
-    picking_meta_processor, location_meta_processor, magnitude_meta_processor)
+from microquake.pipelines.pipeline_meta_processors import (ray_tracer,
+    picking_meta_processor, location_meta_processor)
 
 __processing_step__ = 'automatic processing'
 __processing_step_id__ = 3
@@ -184,15 +184,20 @@ def automatic_pipeline_test(cat, stream):
 
     cat_located = location_meta_processor(cat_picked)
 
+
     max_uncertainty = settings.get('location').max_uncertainty
     if cat_located[0].preferred_origin().uncertainty > max_uncertainty:
         return cat
+
+    rt_processor = ray_tracer.Processor()
+    rays = rt_processor.process(cat=cat)
+    cat_rays = rt_processor.output_catalog(cat_located)
 
     # put_data_processor(cat_located)
 
     # cat_magnitude, mag = magnitude_meta_processor(cat_located, fixed_length)
 
-    cat_magnitude = simple_magnitude.Processor().process(cat=cat_located,
+    cat_magnitude = simple_magnitude.Processor().process(cat=cat_rays,
                                                          stream=stream)
 
     # put_data_processor(cat_magnitude)
