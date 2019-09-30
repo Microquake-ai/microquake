@@ -11,11 +11,7 @@ from obspy.core.event import (CreationInfo, ResourceIdentifier,
 
 from microquake.core.event import Arrival, Origin, Pick, Magnitude
 from microquake.core.settings import settings
-from microquake.processors import (simple_magnitude, focal_mechanism,
-                                   magnitude, measure_amplitudes,
-                                   measure_energy,
-                                   measure_smom, nlloc, magnitude_extractor,
-                                   quick_magnitude)
+from microquake.processors import (simple_magnitude, nlloc, ray_tracer)
 
 
 def prepare_catalog(ui_picks, catalog):
@@ -109,13 +105,17 @@ def interactive_pipeline(
     nlloc_processor = nlloc.Processor()
     cat_nlloc = nlloc_processor.process(cat=cat)['cat']
 
+    rt_processor = ray_tracer.Processor()
+    rays = rt_processor.process(cat=cat)
+    cat_rays = rt_processor.output_catalog(cat_nlloc)
+
     # Removing the Origin object used to hold the picks
     try:
-        cat_magnitude = simple_magnitude.Processor().process(cat=cat_nlloc,
+        cat_magnitude = simple_magnitude.Processor().process(cat=cat_rays,
                                                              stream=stream)
     except ValueError as ve:
         logger.error(f'Calculation of the magnitude failed. \n{ve}')
-        cat_magnitude = cat_nlloc
+        cat_magnitude = cat_nlloc.copy()
 
     cat_magnitude[0].preferred_origin().evaluation_mode = 'manual'
     cat_magnitude[0].preferred_origin().evaluation_status = 'final'
