@@ -12,8 +12,8 @@ from microquake.core.settings import settings
 from microquake.db.connectors import RedisQueue, record_processing_logs_pg
 from microquake.db.models.redis import get_event, set_event
 from microquake.processors import clean_data, simple_magnitude
-from microquake.pipelines.pipeline_meta_processors import (
-    picking_meta_processor, location_meta_processor, magnitude_meta_processor)
+from microquake.pipelines.pipeline_meta_processors import (ray_tracer,
+    picking_meta_processor, location_meta_processor)
 
 __processing_step__ = 'automatic processing'
 __processing_step_id__ = 3
@@ -37,7 +37,7 @@ def put_data(event_id, **kwargs):
     response = put_data_processor(event['catalogue'])
     logger.info(response.status_code)
 
-    if response.status_code != requests.codes.ok:
+    if 200 <= response.status_code < 400:
 
         logger.info('request failed, resending to the queue')
 
@@ -161,7 +161,7 @@ def post_event_api(event_id, **kwargs):
                                       stream=event['fixed_length'],
                                       tolerance=None,
                                       send_to_bus=False)
-    if not response.ok:
+    if 200 <= response < 400:
         logger.info('request failed, resending to the queue')
         result = api_queue.submit_task(post_event_api, event_id=event_id)
         return result
@@ -188,14 +188,8 @@ def automatic_pipeline_test(cat, stream):
     if cat_located[0].preferred_origin().uncertainty > max_uncertainty:
         return cat
 
-    # put_data_processor(cat_located)
-
-    # cat_magnitude, mag = magnitude_meta_processor(cat_located, fixed_length)
-
     cat_magnitude = simple_magnitude.Processor().process(cat=cat_located,
                                                          stream=stream)
-
-    # put_data_processor(cat_magnitude)
 
     end_processing_time = time()
     processing_time = end_processing_time - start_processing_time
