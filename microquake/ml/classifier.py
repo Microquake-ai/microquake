@@ -31,8 +31,8 @@ class SeismicModel:
         '''
         self.base_directory = Path(settings.common_dir)/'../data/weights'
         # Model was trained at these dimensions
-        self.D = (128, 128, 1)
-        self.microquake_class_names = ['anthropogenic event', 'explosion', 'earthquake', 'quarry blast']
+        self.D = (64, 64, 1)
+        self.microquake_class_names = ['anthropogenic event', 'earthquake', 'explosion', 'quarry blast']
         self.num_classes = len(self.microquake_class_names)
         self.model_file = self.base_directory/f"{model_name}"
         self.create_model()
@@ -42,14 +42,13 @@ class SeismicModel:
     # it is designed for audio frequencies which is suitable
     # to seismic events
     ################################################
-    def librosa_spectrogram(self, tr, height=128, width=128):
+    def librosa_spectrogram(self, tr, height=64, width=64):
         '''
             Using Librosa mel-spectrogram to obtain the spectrogram
             :param tr: stream trace
-            :param height: image hieght
-            :param width: image width
             :return: numpy array of spectrogram with height and width dimension
         '''
+
         data = self.get_norm_trace(tr).data
         signal = data*255
         hl = int(signal.shape[0]//(width*1.1))  # this will cut away 5% from start and end
