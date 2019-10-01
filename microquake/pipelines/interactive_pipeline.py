@@ -54,7 +54,6 @@ def prepare_catalog(ui_picks, catalog):
             new_arrival.phase = arrival['phase']
             new_arrival.pick_id = new_pick.resource_id
             new_origin.arrivals.append(new_arrival)
-            new_origin.arrivals.append(new_arrival)
 
         else:
             for pk_cat in cat[0].picks:
@@ -94,6 +93,8 @@ def interactive_pipeline(
     picks = json.loads(picks_jsonb)
 
     cat = prepare_catalog(picks, cat)
+
+    from ipdb import set_trace; set_trace()
 
     # find traces with nans, which will choke `detrend()` calls:
     trs_with_nan = [tr for tr in stream.traces if np.isnan(tr.data.max())]
