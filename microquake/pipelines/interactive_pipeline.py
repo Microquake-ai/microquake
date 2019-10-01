@@ -94,8 +94,6 @@ def interactive_pipeline(
 
     cat = prepare_catalog(picks, cat)
 
-    from ipdb import set_trace; set_trace()
-
     # find traces with nans, which will choke `detrend()` calls:
     trs_with_nan = [tr for tr in stream.traces if np.isnan(tr.data.max())]
     for tr in trs_with_nan:
