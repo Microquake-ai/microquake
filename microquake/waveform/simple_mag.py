@@ -1045,7 +1045,7 @@ def measure_sensitivity(raypath, Mw_min=-3., Mw_max=2., Mw_spacing=0.1,
 def moment_magnitude(stream, cat, inventory, vp, vs, only_triaxial=True,
                      density=2700, min_dist=20, win_length=0.04,
                      len_spectrum=2 ** 12, clipped_fraction=0.1,
-                     max_frequency=600):
+                     max_frequency=600, preferred_origin_only=True):
     """
     WARNING
     Calculate the moment magnitude for an event.
@@ -1076,6 +1076,8 @@ def moment_magnitude(stream, cat, inventory, vp, vs, only_triaxial=True,
     magnitude. After a certain frequency, the noise starts to dominate the
     signal and the biases the calculation of the magnitude and corner
     frequency.
+    :param preferred_origin_only: calculates the magnitude for the
+    preferred_origin only
     :rtype: microquake.core.event.Catalog
     """
 
@@ -1088,7 +1090,14 @@ def moment_magnitude(stream, cat, inventory, vp, vs, only_triaxial=True,
     fcs = []
 
     quality = {'station_code': [], 'phase': [], 'origin_id': [], 'quality': []}
-    for origin in cat[0].origins:
+
+    if preferred_origin_only:
+        origins = [cat[0].preferred_origin()]
+
+    else:
+        origins = cat[0].origins
+
+    for origin in origins:
         ev_loc = np.array([origin.x, origin.y, origin.z])
 
         if not ((type(vp) == np.float) or (type(vp) == np.int)):
@@ -1231,6 +1240,10 @@ def moment_magnitude(stream, cat, inventory, vp, vs, only_triaxial=True,
         spectrum_norm = np.nanmedian(spectrum_norm_matrix, axis=0)
         fi = np.nonzero((np.isnan(spectrum_norm) == False) & (f > 0))[0]
 
+        # import matplotlib.pyplot as plt
+        # plt.loglog(f[fi], spectrum_norm[fi])
+        # from ipdb import set_trace; set_trace()
+
         p_opt, p_cov = curve_fit(spectral_function, f[fi],
                                  np.log10(spectrum_norm[fi]),
                                  (10e6, 100, 100))
@@ -1258,10 +1271,3 @@ def moment_magnitude(stream, cat, inventory, vp, vs, only_triaxial=True,
 
     return cat
 
-
-def calculate_energy(stream, evt, inventory, vp, vs, only_triaxial=True,
-                         density=2700, min_dist=20, win_length=0.04,
-                         len_spectrum=2 ** 12, clipped_fraction=0.1,
-                         max_frequency=500):
-    pass
-    # Calculate energy only for seismograms that have only a

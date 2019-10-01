@@ -37,7 +37,7 @@ def put_data(event_id, **kwargs):
     response = put_data_processor(event['catalogue'])
     logger.info(response.status_code)
 
-    if response.status_code != requests.codes.ok:
+    if 200 <= response.status_code < 400:
 
         logger.info('request failed, resending to the queue')
 
@@ -189,18 +189,8 @@ def automatic_pipeline_test(cat, stream):
     if cat_located[0].preferred_origin().uncertainty > max_uncertainty:
         return cat
 
-    rt_processor = ray_tracer.Processor()
-    rays = rt_processor.process(cat=cat)
-    cat_rays = rt_processor.output_catalog(cat_located)
-
-    # put_data_processor(cat_located)
-
-    # cat_magnitude, mag = magnitude_meta_processor(cat_located, fixed_length)
-
     cat_magnitude = simple_magnitude.Processor().process(cat=cat_rays,
                                                          stream=stream)
-
-    # put_data_processor(cat_magnitude)
 
     end_processing_time = time()
     processing_time = end_processing_time - start_processing_time
