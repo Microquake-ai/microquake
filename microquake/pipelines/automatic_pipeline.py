@@ -184,12 +184,11 @@ def automatic_pipeline_test(cat, stream):
 
     cat_located = location_meta_processor(cat_picked)
 
-
     max_uncertainty = settings.get('location').max_uncertainty
     if cat_located[0].preferred_origin().uncertainty > max_uncertainty:
         return cat
 
-    cat_magnitude = simple_magnitude.Processor().process(cat=cat_rays,
+    cat_magnitude = simple_magnitude.Processor().process(cat=cat_located,
                                                          stream=stream)
 
     end_processing_time = time()
