@@ -33,9 +33,9 @@ class SeismicModel:
         '''
         self.base_directory = Path(settings.common_dir)/'../data/weights'
         # Model was trained at these dimensions
-        self.D = (64, 64, 1)
-        self.microquake_class_names = ['anthropogenic event', 'earthquake',
-                                       'explosion', 'quarry blast']
+        self.D = (128, 128, 1)
+        self.microquake_class_names = ['anthropogenic event', 'explosion',
+                                       'earthquake', 'quarry blast']
         self.num_classes = len(self.microquake_class_names)
         self.model_file = self.base_directory/f"{model_name}"
         self.create_model()
@@ -45,13 +45,14 @@ class SeismicModel:
     # it is designed for audio frequencies which is suitable
     # to seismic events
     ################################################
-    def librosa_spectrogram(self, tr, height=64, width=64):
+    def librosa_spectrogram(self, tr, height=128, width=128):
         '''
             Using Librosa mel-spectrogram to obtain the spectrogram
             :param tr: stream trace
+            :param height: image hieght
+            :param width: image width
             :return: numpy array of spectrogram with height and width dimension
         '''
-
         data = self.get_norm_trace(tr).data
         signal = data*255
         hl = int(signal.shape[0]//(width*1.1))  # this will cut away 5% from
@@ -81,6 +82,9 @@ class SeismicModel:
         c = c.detrend(type='demean')
 
         nan_in_context = np.any(np.isnan(c[0].data))
+
+        logger.info('is there any nan in the context trace {}'.format(
+            nan_in_context))
 
         if nan_in_context:
             logger.warning('NaN found in context trace. The NaN will be set '
@@ -226,7 +230,7 @@ class SeismicModel:
         :param tr: Obspy stream object (2 s) that is good for discriminating
         between events
         :param context_trace: context trace object (20s) good for
-        descriminating blast and earth quake
+        discriminating blast and earth quake
         :param height: the z-value of event.
         :return: dictionary of  event classes probability
         """
