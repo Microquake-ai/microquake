@@ -82,9 +82,6 @@ class SeismicModel:
 
         nan_in_context = np.any(np.isnan(c[0].data))
 
-        logger.info('is there any nan in the context trace {}'.format(
-            nan_in_context))
-
         if nan_in_context:
             logger.warning('NaN found in context trace. The NaN will be set '
                            'to 0.\nThis may cause instability')
