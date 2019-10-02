@@ -5,7 +5,8 @@ import numpy as np
 
 import librosa as lr
 from keras import applications
-from keras.layers import Add, BatchNormalization, Conv2D, Dense, Embedding, Flatten, Input, MaxPooling2D, concatenate
+from keras.layers import (Add, BatchNormalization, Conv2D, Dense, Embedding,
+                          Flatten, Input, MaxPooling2D, concatenate)
 from keras.models import Model
 from loguru import logger
 from microquake.core.settings import settings
@@ -14,7 +15,8 @@ from microquake.core.settings import settings
 class SeismicModel:
     '''
     Class to classify mseed stream into one of the classes
-        anthropogenic event, controlled explosion, earthquake, explosion, quarry blast
+        anthropogenic event, controlled explosion, earthquake, explosion,
+        quarry blast
     '''
     REF_HEIGHT = 900.00
     REF_MAGNITUDE = -1.2
@@ -32,7 +34,8 @@ class SeismicModel:
         self.base_directory = Path(settings.common_dir)/'../data/weights'
         # Model was trained at these dimensions
         self.D = (64, 64, 1)
-        self.microquake_class_names = ['anthropogenic event', 'earthquake', 'explosion', 'quarry blast']
+        self.microquake_class_names = ['anthropogenic event', 'earthquake',
+                                       'explosion', 'quarry blast']
         self.num_classes = len(self.microquake_class_names)
         self.model_file = self.base_directory/f"{model_name}"
         self.create_model()
@@ -51,7 +54,8 @@ class SeismicModel:
 
         data = self.get_norm_trace(tr).data
         signal = data*255
-        hl = int(signal.shape[0]//(width*1.1))  # this will cut away 5% from start and end
+        hl = int(signal.shape[0]//(width*1.1))  # this will cut away 5% from
+        # start and end
         spec = lr.feature.melspectrogram(signal, n_mels=height,
                                          hop_length=int(hl))
         img = lr.amplitude_to_db(spec)
@@ -72,7 +76,8 @@ class SeismicModel:
 
         # c = tr[0]
         c = tr.composite()
-        c[0].data = c[0].data / np.abs(c[0].data).max()  # we only interested in c[0]
+        c[0].data = c[0].data / np.abs(c[0].data).max()  # we only
+        # interested in c[0]
         c = c.detrend(type='demean')
 
         nan_in_context = np.any(np.isnan(c[0].data))
@@ -96,7 +101,8 @@ class SeismicModel:
         :param tr: mseed stream
         :param nfft: The number of data points used in each block for the FFT
         :param noverlap: The number of points of overlap between blocks
-        :param output_dir: directory to save spectrogram.png such as SPEC_BLAST_UG
+        :param output_dir: directory to save spectrogram.png such as
+        SPEC_BLAST_UG
         :return: RBG image array
         """
         rate = SeismicModel.get_norm_trace(tr).stats.sampling_rate
@@ -142,12 +148,14 @@ class SeismicModel:
     @staticmethod
     def resnet50_layers(i):
         '''
-            wrapper around the resnet 50 model, it starts by converting the one channel input to 3 channgels and then
+            wrapper around the resnet 50 model, it starts by converting the
+            one channel input to 3 channgels and then
             load resnet50 model
             :param i: input layer in this case the context trace
             :retun the flattend layer after the resent50 block
         '''
-        x = Conv2D(filters=3, kernel_size=2, padding='same', activation='relu')(i)
+        x = Conv2D(filters=3, kernel_size=2, padding='same',
+                   activation='relu')(i)
 
         x = applications.ResNet50(weights=None, include_top=False)(x)
         x = Flatten()(x)
@@ -163,20 +171,26 @@ class SeismicModel:
         '''
         kern_size = (3, 3)
         dim = 64
-        x = Conv2D(filters=16, kernel_size=2, padding='same', activation='relu')(i)
+        x = Conv2D(filters=16, kernel_size=2, padding='same',
+                   activation='relu')(i)
         x = MaxPooling2D(pool_size=2)(x)
-        x = Conv2D(filters=32, kernel_size=2, padding='same', activation='relu')(x)
+        x = Conv2D(filters=32, kernel_size=2, padding='same',
+                   activation='relu')(x)
         x = MaxPooling2D(pool_size=2)(x)
-        x = Conv2D(filters=64, kernel_size=2, padding='same', activation='relu')(x)
+        x = Conv2D(filters=64, kernel_size=2, padding='same',
+                   activation='relu')(x)
         x = MaxPooling2D(pool_size=2)(x)
 
         X_shortcut = BatchNormalization()(x)
 
         for _ in range(4):
-            y = Conv2D(filters=dim, kernel_size=kern_size, activation='relu', padding='same')(X_shortcut)
+            y = Conv2D(filters=dim, kernel_size=kern_size,
+                       activation='relu', padding='same')(X_shortcut)
             y = BatchNormalization()(y)
-            # y = Conv2D(filters = dim, kernel_size = kern_size, activation='relu', padding='same')(y)
-            y = Conv2D(filters=dim, kernel_size=kern_size, activation='relu', padding='same')(y)
+            # y = Conv2D(filters = dim, kernel_size = kern_size,
+            # activation='relu', padding='same')(y)
+            y = Conv2D(filters=dim, kernel_size=kern_size,
+                       activation='relu', padding='same')(y)
             X_shortcut = Add()([y, X_shortcut])
         x = Flatten()(x)
         x = Dense(500, activation='relu')(x)
@@ -212,8 +226,10 @@ class SeismicModel:
 
     def predict(self, tr, context_trace, height, magnitude):
         """
-        :param tr: Obspy stream object (2 s) that is good for descriminating between events
-        :param context_trace: context trace object (20s) good for descriminating blast and earth quake
+        :param tr: Obspy stream object (2 s) that is good for discriminating
+        between events
+        :param context_trace: context trace object (20s) good for
+        descriminating blast and earth quake
         :param height: the z-value of event.
         :return: dictionary of  event classes probability
         """
@@ -221,7 +237,8 @@ class SeismicModel:
         contxt_img = self.normalize_gray(spectrogram)
         spectrogram = self.librosa_spectrogram(tr)
         normgram = self.normalize_gray(spectrogram)
-        img = normgram[None, ..., None]  # Needed to in the form of batch with one channel.
+        img = normgram[None, ..., None]  # Needed to in the form of batch
+        # with one channel.
         contxt = contxt_img[None, ..., None]
         h = []
         m = []
