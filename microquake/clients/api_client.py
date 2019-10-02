@@ -312,7 +312,8 @@ def put_event_from_objects(api_base_url, event_id, event=None,
     return result
 
 
-def get_events_catalog(api_base_url, start_time, end_time, status='accepted', event_type=''):
+def get_events_catalog(api_base_url, start_time, end_time,
+                       status='accepted', event_type=''):
     """
     return a list of events
     :param api_base_url:
