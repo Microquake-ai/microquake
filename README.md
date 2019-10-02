@@ -1,6 +1,6 @@
 # README #
 
-Microquake is an open source package to be licensed under the [GNU general Public License, version 3 (GPLv3)](http://www.gnu.org/licenses/gpl-3.0.html). Microquake is an extension of Obspy for the processing of microseismic data
+Microquake is an open source package licensed under the [GNU general Public License, version 3 (GPLv3)](http://www.gnu.org/licenses/gpl-3.0.html). Microquake is an extension of Obspy for the processing of microseismic data
 
 ### Development
 
