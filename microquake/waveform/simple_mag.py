@@ -1240,13 +1240,10 @@ def moment_magnitude(stream, cat, inventory, vp, vs, only_triaxial=True,
         spectrum_norm = np.nanmedian(spectrum_norm_matrix, axis=0)
         fi = np.nonzero((np.isnan(spectrum_norm) == False) & (f > 0))[0]
 
-        # import matplotlib.pyplot as plt
-        # plt.loglog(f[fi], spectrum_norm[fi])
-        # from ipdb import set_trace; set_trace()
-
         p_opt, p_cov = curve_fit(spectral_function, f[fi],
                                  np.log10(spectrum_norm[fi]),
-                                 (10e6, 100, 100))
+                                 (10, 100, 100), bounds=((1, 0, 10),
+                                                         (10, 1000, 2000)))
 
         mw = 2 / 3.0 * p_opt[0] - 6.02
         mu = 29.5e9

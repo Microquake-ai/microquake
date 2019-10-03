@@ -50,8 +50,8 @@ def test_put_event(api_url, api_event, picks):
     waveform = read(BytesIO(api_event['waveform_bytes']), format='mseed')
 
     api_url = "http://localhost:8000/api/v1/"
-    api_client.post_data_from_objects(api_url, event_id=None, event=catalog, stream=waveform,
-                                      tolerance=None,
+    api_client.post_data_from_objects(api_url, event_id=None, cat=catalog,
+                                      stream=waveform, tolerance=None,
                                       send_to_bus=False)
     event_id = "smi:local/2019/06/27/07/46_32_689969117.e"
     api_client.put_event_from_objects(api_url, event_id=event_id, event=catalog, waveform=waveform)

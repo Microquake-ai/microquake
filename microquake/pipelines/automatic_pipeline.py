@@ -134,10 +134,9 @@ def post_event_api(event_id, **kwargs):
 
     event = get_event(event_id)
     response = post_data_from_objects(api_base_url, event_id=None,
-                                      event=event['catalogue'],
+                                      cat=event['catalogue'],
                                       stream=event['fixed_length'],
-                                      tolerance=None,
-                                      send_to_bus=False)
+                                      tolerance=None, send_to_bus=False)
     if 200 <= response.status_code < 400:
         logger.info('request failed, resending to the queue')
         result = api_queue.submit_task(post_event_api, event_id=event_id)

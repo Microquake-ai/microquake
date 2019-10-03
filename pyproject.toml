@@ -55,6 +55,7 @@ pandas = "^0.24.2"
 pylint = "^2.3"
 rope = "^0.14.0"
 vtk = "^8.1.2"
+h5py = "^2.10.0"
 
 [tool.poetry.scripts]
 MQ-simulation = "microquake.core.scripts.simulation:main"

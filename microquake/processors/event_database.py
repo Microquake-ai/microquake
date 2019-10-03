@@ -25,14 +25,11 @@ class Processor(ProcessingUnit):
         logger.info('posting data to the API')
 
         logger.info('posting seismic data')
-        result = post_data_from_objects(self.api_base_url,
-                                        event_id=None,
-                                        event=cat,
-                                        stream=stream,
-                                        context_stream=context,
-                                        variable_length_stream=variable_length,
-                                        tolerance=None,
-                                        send_to_bus=False)
+        result = post_data_from_objects(self.api_base_url, event_id=None,
+                                        cat=cat, stream=stream,
+                                        context=context,
+                                        variable_length=variable_length,
+                                        tolerance=None, send_to_bus=False)
 
         if 199 < result.status_code < 300:
             logger.info('successfully posting data to the API')

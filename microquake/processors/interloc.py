@@ -142,8 +142,8 @@ class Processor(ProcessingUnit):
         logger.info("Done locating event with Interloc in %0.3f seconds" % (
                 t7 - t6))
 
-        ot_epoch = tools.datetime_to_epoch_sec(
-            (t0 + iot / sample_rate_decimated).datetime)
+        t0_epoch = t0.timestamp
+        ot_epoch = t0_epoch + iot / sample_rate_decimated
 
         method = "%s" % ("INTERLOC",)
 
@@ -171,7 +171,8 @@ class Processor(ProcessingUnit):
         vmax = self.response['vmax']
         normed_vmax = self.response['normed_vmax']
         method = self.response['method']
-        event_time = UTCDateTime(datetime.fromtimestamp(self.response['event_time']))
+        event_time = UTCDateTime(datetime.utcfromtimestamp(self.response[
+                                                            'event_time']))
 
         catalog[0].origins.append(
             Origin(x=x, y=y, z=z, time=event_time,
