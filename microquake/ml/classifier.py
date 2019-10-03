@@ -235,7 +235,7 @@ class SeismicModel:
         :return: dictionary of  event classes probability
         """
         spectrogram = self.librosa_spectrogram(context_trace, height=self.D[0], width=self.D[1])
-        contxt_img = self.normalize_gray(spectrogram, height=self.D[0], width=self.D[1])
+        contxt_img = self.normalize_gray(spectrogram)
         spectrogram = self.librosa_spectrogram(tr)
         normgram = self.normalize_gray(spectrogram)
         img = normgram[None, ..., None]  # Needed to in the form of batch
