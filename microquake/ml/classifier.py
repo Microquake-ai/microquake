@@ -236,7 +236,7 @@ class SeismicModel:
         """
         spectrogram = self.librosa_spectrogram(context_trace, height=self.D[0], width=self.D[1])
         contxt_img = self.normalize_gray(spectrogram)
-        spectrogram = self.librosa_spectrogram(tr)
+        spectrogram = self.librosa_spectrogram(tr, height=self.D[0], width=self.D[1])
         normgram = self.normalize_gray(spectrogram)
         img = normgram[None, ..., None]  # Needed to in the form of batch
         # with one channel.
