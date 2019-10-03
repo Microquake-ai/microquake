@@ -33,7 +33,7 @@ class SeismicModel:
         '''
         self.base_directory = Path(settings.common_dir)/'../data/weights'
         # Model was trained at these dimensions
-        self.D = (128, 128, 1)
+        self.D = (64, 64, 1)
         self.microquake_class_names = ['anthropogenic event', 'explosion',
                                        'earthquake', 'quarry blast']
         self.num_classes = len(self.microquake_class_names)
@@ -234,8 +234,8 @@ class SeismicModel:
         :param height: the z-value of event.
         :return: dictionary of  event classes probability
         """
-        spectrogram = self.librosa_spectrogram(context_trace)
-        contxt_img = self.normalize_gray(spectrogram)
+        spectrogram = self.librosa_spectrogram(context_trace, height=self.D[0], width=self.D[1])
+        contxt_img = self.normalize_gray(spectrogram, height=self.D[0], width=self.D[1])
         spectrogram = self.librosa_spectrogram(tr)
         normgram = self.normalize_gray(spectrogram)
         img = normgram[None, ..., None]  # Needed to in the form of batch
