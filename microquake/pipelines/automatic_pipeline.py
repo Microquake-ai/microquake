@@ -106,9 +106,9 @@ def automatic_pipeline(event_id, **kwargs):
     else:
         cat = event['catalogue']
 
-    automatic_pipeline_processor(cat, stream)
+    cat_automatic = automatic_pipeline_processor(cat, stream)
 
-    set_event(event_id, catalogue=cat_magnitude)
+    set_event(event_id, catalogue=cat_automatic)
     api_queue.submit_task(put_data, event_id=event_id)
 
     end_processing_time = time()
