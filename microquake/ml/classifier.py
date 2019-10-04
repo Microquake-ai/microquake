@@ -35,7 +35,8 @@ class SeismicModel:
         # Model was trained at these dimensions
         self.D = (64, 64, 1)
         self.microquake_class_names = ['anthropogenic event', 
-                                       'earthquake', 'explosion', 'quarry blast']
+                                       'earthquake', 'explosion',
+                                       'quarry blast']
         self.num_classes = len(self.microquake_class_names)
         self.model_file = self.base_directory/f"{model_name}"
         self.create_model()
@@ -82,9 +83,6 @@ class SeismicModel:
         c = c.detrend(type='demean')
 
         nan_in_context = np.any(np.isnan(c[0].data))
-
-        logger.info('is there any nan in the context trace {}'.format(
-            nan_in_context))
 
         if nan_in_context:
             logger.warning('NaN found in context trace. The NaN will be set '
@@ -234,9 +232,11 @@ class SeismicModel:
         :param height: the z-value of event.
         :return: dictionary of  event classes probability
         """
-        spectrogram = self.librosa_spectrogram(context_trace, height=self.D[0], width=self.D[1])
+        spectrogram = self.librosa_spectrogram(context_trace, height=self.D[
+            0], width=self.D[1])
         contxt_img = self.normalize_gray(spectrogram)
-        spectrogram = self.librosa_spectrogram(tr, height=self.D[0], width=self.D[1])
+        spectrogram = self.librosa_spectrogram(tr, height=self.D[0],
+                                               width=self.D[1])
         normgram = self.normalize_gray(spectrogram)
         img = normgram[None, ..., None]  # Needed to in the form of batch
         # with one channel.
