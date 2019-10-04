@@ -12,6 +12,7 @@ from obspy.core.util.attribdict import AttribDict
 from loguru import logger
 from microquake.core import read
 from microquake.core.event import Ray, read_events
+from uuid import uuid4
 
 
 class RequestRay(AttribDict):
@@ -42,12 +43,20 @@ class RequestEvent:
         return read_events(event_file.content, format='QUAKEML')
 
     def get_waveforms(self):
+        if self.waveform_file is None:
+            logger.warning(f'No waveform object associated with event '
+                           f'{self.event_resource_id}')
+            return None
         waveform_file = requests.request('GET', self.waveform_file)
         byte_stream = BytesIO(waveform_file.content)
 
         return read(byte_stream, format='MSEED')
 
     def get_context_waveforms(self):
+        if self.waveform_context_file is None:
+            logger.warning(f'No context trace associated with event '
+                           f'{self.event_resource_id}')
+            return None
         waveform_context_file = requests.request('GET',
                                                  self.waveform_context_file)
         byte_stream = BytesIO(waveform_context_file.content)
@@ -55,9 +64,15 @@ class RequestEvent:
         return read(byte_stream)
 
     def get_variable_length_waveforms(self):
+        if self.variable_size_waveform_file is None:
+            logger.warning(f'No variable length waveform associated with '
+                           f'event {self.event_resource_id}')
+            return None
+
         variable_length_waveform_file = requests.request('GET',
                                                          self.variable_size_waveform_file)
-        byte_stream = BytesIO(variable_length_waveform_file)
+
+        byte_stream = BytesIO(variable_length_waveform_file.content)
 
         return read(byte_stream)
 
@@ -127,29 +142,27 @@ def post_data_from_files(api_base_url, event_id=None, event_file=None,
         variable_length_stream = read(variable_length_stream_file,
                                       format='MSEED')
 
-    return post_data_from_objects(api_base_url, event_id=event_id,
-                                  event=event, stream=stream,
-                                  context_stream=context_stream,
-                                  variable_length_stream=variable_length_stream,
+    return post_data_from_objects(api_base_url, event_id=event_id, cat=event,
+                                  stream=stream, context=context_stream,
+                                  variable_length=variable_length_stream,
                                   tolerance=tolerance)
 
 
-def post_data_from_objects(api_base_url, event_id=None, event=None,
-                           stream=None, context_stream=None,
-                           variable_length_stream=None, tolerance=0.5,
+def post_data_from_objects(api_base_url, event_id=None, cat=None, stream=None,
+                           context=None, variable_length=None, tolerance=0.5,
                            send_to_bus=False):
     """
     Build request directly from objects
     :param api_base_url: base url of the API
     :param event_id: event_id (not required if an event is provided)
-    :param event: microquake.core.event.Event or a
+    :param cat: microquake.core.event.Event or a
     microquake.core.event.Catalog containing a single event. If the catalog
     contains more than one event, only the first event, <catalog[0]> will be
     considered. Use catalog with caution.
     :param stream: event seismogram (microquake.core.Stream.stream)
-    :param context_stream: context seismogram trace (
+    :param context: context seismogram trace (
     microquake.core.Stream.stream)
-    :param variable_length_stream: variable length seismogram trace (
+    :param variable_length: variable length seismogram trace (
     microquake.core.Stream.stream)
     :param tolerance: Minimum time between an event already in the database
     and this event for this event to be inserted into the database. This is to
@@ -162,15 +175,15 @@ def post_data_from_objects(api_base_url, event_id=None, event=None,
 
     api_url = api_base_url + "events"
 
-    if type(event) is Catalog:
-        event = event[0]
+    if type(cat) is Catalog:
+        cat = cat[0]
         logger.warning('a <microquake.core.event.Catalog> object was '
                        'provided, only the first element of the catalog will '
                        'be used, this may lead to an unwanted behavior')
 
-    if event is not None:
-        event_time = event.preferred_origin().time
-        event_resource_id = str(event.resource_id)
+    if cat is not None:
+        event_time = cat.preferred_origin().time
+        event_resource_id = str(cat.resource_id)
     else:
         if event_id is None:
             logger.warning('A valid event_id must be provided when no '
@@ -215,10 +228,22 @@ def post_data_from_objects(api_base_url, event_id=None, event=None,
 
             return
 
-    if event is not None:
+    files = prepare_data(cat=cat, stream=stream, context=context,
+                         variable_length=variable_length)
+
+    return post_event_data(api_url, event_resource_id, files,
+                           send_to_bus=send_to_bus)
+
+
+def prepare_data(cat=None, stream=None, context=None, variable_length=None):
+
+    files = {}
+    base_event_file_name = str(uuid4())
+
+    if cat is not None:
         logger.info('preparing event data')
         event_bytes = BytesIO()
-        event.write(event_bytes, format='QUAKEML')
+        cat.write(event_bytes, format='QUAKEML')
         event_file_name = base_event_file_name + '.xml'
         event_bytes.name = event_file_name
         event_bytes.seek(0)
@@ -235,28 +260,27 @@ def post_data_from_objects(api_base_url, event_id=None, event=None,
         files['waveform'] = mseed_bytes
         logger.info('done preparing waveform data')
 
-    if context_stream is not None:
+    if context is not None:
         logger.info('preparing context waveform data')
         mseed_context_bytes = BytesIO()
-        context_stream.write(mseed_context_bytes, format='MSEED')
+        context.write(mseed_context_bytes, format='MSEED')
         mseed_context_file_name = base_event_file_name + '.context_mseed'
         mseed_context_bytes.name = mseed_context_file_name
         mseed_context_bytes.seek(0)
         files['context'] = mseed_context_bytes
         logger.info('done preparing context waveform data')
 
-    if variable_length_stream is not None:
+    if variable_length is not None:
         logger.info('preparing variable length waveform data')
         mseed_variable_bytes = BytesIO()
-        variable_length_stream.write(mseed_variable_bytes, format='MSEED')
+        variable_length.write(mseed_variable_bytes, format='MSEED')
         mseed_variable_file_name = base_event_file_name + '.variable_mseed'
         mseed_variable_bytes.name = mseed_variable_file_name
         mseed_variable_bytes.seek(0)
         files['variable_size_waveform'] = mseed_variable_bytes
         logger.info('done preparing variable length waveform data')
 
-    return post_event_data(api_url, event_resource_id, files,
-                           send_to_bus=send_to_bus)
+    return files
 
 
 def post_event_data(api_base_url, event_resource_id, request_files,
@@ -274,50 +298,45 @@ def post_event_data(api_base_url, event_resource_id, request_files,
     return result
 
 
-def put_event_from_objects(api_base_url, event_id, event=None,
-                           waveform=None, context=None,
-                           variable_size_waveform=None):
-    # removing id from URL as no longer used
-    # url = api_base_url + "%s" % event_resource_id
+def put_data_from_objects(api_base_url, cat=None, stream=None, context=None,
+             variable_length=None):
 
-    # event_id = encode(event_id)
-    url = api_base_url + 'events/%s' % event_id
-    logger.info('puting data on %s' % url)
+    event_id = cat[0].resource_id.id
 
-    files = {}
+    base_url = api_base_url
+    if base_url[-1] == '/':
+        base_url = base_url[:-1]
 
-    if event is not None:
-        event_bytes = BytesIO()
-        event.write(event_bytes, format='quakeml')
-        files['event_file'] = event_bytes.getvalue()
+    # check if the event type and event status has changed on the API
 
-    if waveform is not None:
-        mseed_bytes = BytesIO()
-        waveform.write(mseed_bytes, format='mseed')
-        files['waveform_file'] = mseed_bytes.getvalue()
+    re = get_event_by_id(api_base_url, event_id)
+    try:
+        cat[0].event_type = re.event_type
+        cat[0].preferred_origin().evaluation_status = re.status
+    except AttributeError as e:
+        logger.error(e)
 
-    if context is not None:
-        context_bytes = BytesIO()
-        context.write(context_bytes, format='mseed')
-        files['waveform_context_file'] = context_bytes.getvalue()
+    url = f'{base_url}/events/{event_id}/files'
 
-    if variable_size_waveform is not None:
-        vsw_bytes = BytesIO()
-        variable_size_waveform(vsw_bytes, format='mseed')
-        files['variable_size_waveform_file'] = vsw_bytes.getvalue()
+    files = prepare_data(cat=cat, stream=stream, context=context,
+                         variable_length=variable_length)
 
-    result = requests.put(url, files=files)
-    logger.info(result)
+    logger.info(f'attempting to PUT catalog for event {event_id}')
 
-    return result
+    response = requests.put(url, files=files)
+
+    logger.info(f'API responded with {response.status_code} code')
+    return response
 
 
-def get_events_catalog(api_base_url, start_time, end_time, status='accepted'):
+def get_events_catalog(api_base_url, start_time, end_time,
+                       status='accepted', event_type=''):
     """
     return a list of events
     :param api_base_url:
     :param start_time:
     :param end_time:
+    :param event_type:  example seismic_event,blast,drilling noise,open pit blast,quarry blast... etc
     :param status: Event status, accepted, rejected, accepted,rejected
     :return:
     """
@@ -327,7 +346,7 @@ def get_events_catalog(api_base_url, start_time, end_time, status='accepted'):
     # timezone to UTC before the request is built.
 
     querystring = {"start_time": start_time, "end_time": end_time, "status":
-                   status}
+                   status, "type": event_type}
 
     response = requests.request("GET", url, params=querystring).json()
 

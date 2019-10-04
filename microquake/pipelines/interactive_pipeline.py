@@ -9,13 +9,12 @@ from obspy import UTCDateTime
 from obspy.core.event import (CreationInfo, ResourceIdentifier,
                               WaveformStreamID)
 
+from microquake.pipelines.pipeline_meta_processors import \
+    location_meta_processor
+
 from microquake.core.event import Arrival, Origin, Pick, Magnitude
 from microquake.core.settings import settings
-from microquake.processors import (simple_magnitude, focal_mechanism,
-                                   magnitude, measure_amplitudes,
-                                   measure_energy,
-                                   measure_smom, nlloc, magnitude_extractor,
-                                   quick_magnitude)
+from microquake.processors import (simple_magnitude, nlloc, ray_tracer)
 
 
 def prepare_catalog(ui_picks, catalog):
@@ -54,7 +53,6 @@ def prepare_catalog(ui_picks, catalog):
             new_arrival = Arrival()
             new_arrival.phase = arrival['phase']
             new_arrival.pick_id = new_pick.resource_id
-            new_origin.arrivals.append(new_arrival)
             new_origin.arrivals.append(new_arrival)
 
         else:
@@ -106,16 +104,26 @@ def interactive_pipeline(
     for tr in stream:
         tr.stats.network = settings.SITE_CODE
 
-    nlloc_processor = nlloc.Processor()
-    cat_nlloc = nlloc_processor.process(cat=cat)['cat']
+    cat_located = location_meta_processor(cat)
+
+    # nlloc_processor = nlloc.Processor()
+    # cat_nlloc = nlloc_processor.process(cat=cat)['cat']
+    #
+    # rt_processor = ray_tracer.Processor()
+    # rt_processor.process(cat=cat_nlloc)
+    # cat_rays = rt_processor.output_catalog(cat_nlloc)
 
     # Removing the Origin object used to hold the picks
-    try:
-        cat_magnitude = simple_magnitude.Processor().process(cat=cat_nlloc,
+    # try:
+    cat_magnitude = simple_magnitude.Processor().process(cat=cat_located,
                                                              stream=stream)
-    except ValueError as ve:
-        logger.error(f'Calculation of the magnitude failed. \n{ve}')
-        cat_magnitude = cat_nlloc
+    # except ValueError as ve:
+    #     logger.error(f'Calculation of the magnitude failed. \n{ve}')
+    #     cat_magnitude = cat_located.copy()
+
+
+    cat_magnitude[0].preferred_origin().evaluation_mode = 'manual'
+    cat_magnitude[0].preferred_origin().evaluation_status = 'final'
 
     return cat_magnitude
 

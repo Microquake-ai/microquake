@@ -12,8 +12,8 @@ from microquake.core.settings import settings
 from microquake.db.connectors import RedisQueue, record_processing_logs_pg
 from microquake.db.models.redis import get_event, set_event
 from microquake.processors import clean_data, simple_magnitude
-from microquake.pipelines.pipeline_meta_processors import (
-    picking_meta_processor, location_meta_processor, magnitude_meta_processor)
+from microquake.pipelines.pipeline_meta_processors import (ray_tracer,
+    picking_meta_processor, location_meta_processor)
 
 __processing_step__ = 'automatic processing'
 __processing_step_id__ = 3
@@ -37,7 +37,7 @@ def put_data(event_id, **kwargs):
     response = put_data_processor(event['catalogue'])
     logger.info(response.status_code)
 
-    if response.status_code != requests.codes.ok:
+    if 200 <= response.status_code < 400:
 
         logger.info('request failed, resending to the queue')
 
@@ -65,8 +65,11 @@ def put_data_processor(catalog):
     # check if the event type and event status has changed on the API
 
     re = get_event_by_id(api_base_url, event_id)
-    catalog[0].event_type = re.event_type
-    catalog[0].preferred_origin().evaluation_status = re.status
+    try:
+        catalog[0].event_type = re.event_type
+        catalog[0].preferred_origin().evaluation_status = re.status
+    except AttributeError as e:
+        logger.error(e)
 
     url = f'{base_url}/events/{event_id}/files'
 
@@ -103,35 +106,9 @@ def automatic_pipeline(event_id, **kwargs):
     else:
         cat = event['catalogue']
 
-    logger.info('removing traces for sensors in the black list, or are '
-                'filled with zero, or contain NaN')
-    clean_data_processor = clean_data.Processor()
-    fixed_length = clean_data_processor.process(waveform=stream)
+    cat_automatic = automatic_pipeline_processor(cat, stream)
 
-    cat_picked = picking_meta_processor(cat, fixed_length)
-
-    min_number_pick = settings.get('picker').min_num_picks
-    n_picks = len(cat_picked[0].preferred_origin().arrivals)
-    if n_picks < min_number_pick:
-        logger.warning(f'number of picks ({n_picks}) is lower than the '
-                       f'minimum number of picks ({min_number_pick}). '
-                       f'Aborting automatic processing!')
-        return cat_picked
-
-    cat_located = location_meta_processor(cat_picked)
-
-    max_uncertainty = settings.get('location').max_uncertainty
-    uncertainty = cat_located[0].preferred_origin().uncertainty
-    if uncertainty > max_uncertainty:
-        logger.warning(f'uncertainty ({uncertainty} m) is above the '
-                       f'threshold of {max_uncertainty} m. Aborting '
-                       f'automatic processing!')
-        return cat_located
-
-    cat_magnitude = simple_magnitude.Processor().process(cat=cat_located,
-                                                         stream=stream)
-
-    set_event(event_id, catalogue=cat_magnitude)
+    set_event(event_id, catalogue=cat_automatic)
     api_queue.submit_task(put_data, event_id=event_id)
 
     end_processing_time = time()
@@ -157,14 +134,52 @@ def post_event_api(event_id, **kwargs):
 
     event = get_event(event_id)
     response = post_data_from_objects(api_base_url, event_id=None,
-                                      event=event['catalogue'],
+                                      cat=event['catalogue'],
                                       stream=event['fixed_length'],
-                                      tolerance=None,
-                                      send_to_bus=False)
-    if not response.ok:
+                                      tolerance=None, send_to_bus=False)
+    if 200 <= response.status_code < 400:
         logger.info('request failed, resending to the queue')
         result = api_queue.submit_task(post_event_api, event_id=event_id)
         return result
+
+
+def automatic_pipeline_processor(cat, stream):
+    logger.info('removing traces for sensors in the black list, or are '
+                'filled with zero, or contain NaN')
+    clean_data_processor = clean_data.Processor()
+    fixed_length = clean_data_processor.process(waveform=stream)
+
+    cat_picked = picking_meta_processor(cat, fixed_length)
+    rtp = ray_tracer.Processor()
+
+    min_number_pick = settings.get('picker').min_num_picks
+    n_picks = len(cat_picked[0].preferred_origin().arrivals)
+    if n_picks < min_number_pick:
+        logger.warning(f'number of picks ({n_picks}) is lower than the '
+                       f'minimum number of picks ({min_number_pick}). '
+                       f'Aborting automatic processing!')
+        if cat[0].preferred_origin().rays:
+            return cat
+        cat_ray = rtp.process(cat=cat)
+        return cat_ray
+
+    cat_located = location_meta_processor(cat_picked)
+
+    max_uncertainty = settings.get('location').max_uncertainty
+    uncertainty = cat_located[0].preferred_origin().uncertainty
+    if uncertainty > max_uncertainty:
+        logger.warning(f'uncertainty ({uncertainty} m) is above the '
+                       f'threshold of {max_uncertainty} m. Aborting '
+                       f'automatic processing!')
+        if cat[0].preferred_origin().rays:
+            return cat
+        cat_ray = rtp.process(cat=cat)
+        return cat_ray
+
+    cat_magnitude = simple_magnitude.Processor().process(cat=cat_located,
+                                                         stream=stream)
+
+    return cat_magnitude
 
 
 def automatic_pipeline_test(cat, stream):
@@ -188,14 +203,8 @@ def automatic_pipeline_test(cat, stream):
     if cat_located[0].preferred_origin().uncertainty > max_uncertainty:
         return cat
 
-    # put_data_processor(cat_located)
-
-    # cat_magnitude, mag = magnitude_meta_processor(cat_located, fixed_length)
-
     cat_magnitude = simple_magnitude.Processor().process(cat=cat_located,
                                                          stream=stream)
-
-    # put_data_processor(cat_magnitude)
 
     end_processing_time = time()
     processing_time = end_processing_time - start_processing_time

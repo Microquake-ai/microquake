@@ -247,7 +247,7 @@ def EpochNano2UTCDateTime(timestamp, timezone):
     return UTCDateTime(time_utc)
 
 
-def get_catalogue(base_url, start_datetime, end_datetime, site,
+def get_catalogue(base_url, start_datetime, end_datetime, inventory,
                   timezone, blast=True, event=True, accepted=True, manual=True,
                   get_arrivals=False):
     """
@@ -260,8 +260,8 @@ def get_catalogue(base_url, start_datetime, end_datetime, site,
     :type start_datetime: datetime.datetime
     :param end_datetime: request end time (if not localized, UTC assumed)
     :type end_datetime: datetime.datetype
-    :param site: a site object containing system information
-    :type site: microquake.core.data.station.Site
+    :param inventory: a site object containing system information
+    :type inventory: microquake.core.data.inventory
     :params timezone: time zone
     :param blast: if True return blasts (default True)
     :type blast: bool
@@ -411,7 +411,8 @@ def get_catalogue(base_url, start_datetime, end_datetime, site,
             event.event_type = "earthquake"
 
         if get_arrivals:
-            (picks, arrivals) = get_picks(base_url, event_name, site, timezone)
+            (picks, arrivals) = get_picks(base_url, event_name, inventory,
+                                          timezone)
 
             event.picks = picks
             event.preferred_origin().arrivals = arrivals
@@ -499,7 +500,7 @@ def get_seismogram(base_url, sgram_name, network_code, site_code, timezone):
     return Stream(traces=traces)
 
 
-def get_picks(base_url, event_name, site, timezone):
+def get_picks(base_url, event_name, inventory, timezone):
     """
     Read information for one event using the REST API provided by the IMS
     synapse server and return a Catalog object.
@@ -508,8 +509,9 @@ def get_picks(base_url, event_name, site, timezone):
     http://10.95.74.35:8002/ims-database-server/databases/mgl
     :param event_name: event name
     :type event_name: string
-    :param site: site object containing information on the network and sensors
-    :type site: microquake.core.data.Station
+    :param inventory: inventory object containing information on the network
+    and sensors
+    :type inventory: microquake.core.data.inventory
     :return: (list of picks, origin_time)
     :rtype: microquake.event.Catalog
     """
@@ -568,7 +570,9 @@ def get_picks(base_url, event_name, site, timezone):
                 arrival.phase = 'P'
 
                 try:
-                    station = site.select(station=station_code).stations()[0]
+                    station = inventory.select(station_code).stations(
+
+                    )[0]
                 except:
                     logger.warning("Station %s not found!\n The station object needs to be updated" % station_code)
 
@@ -576,7 +580,8 @@ def get_picks(base_url, event_name, site, timezone):
 
                 arrival.distance = np.linalg.norm(station.loc - origin.loc)
                 arrival.takeoff_angle = np.arccos((station.z - origin.z)
-                                                  / arrival.distance) * 180 / np.pi
+                                                  / arrival.distance) * 180 \
+                                        / np.pi
                 dx = station.x - origin.x
                 dy = station.y - origin.y
                 arrival.azimuth = np.arctan2(dx, dy) * 180 / np.pi
@@ -595,7 +600,7 @@ def get_picks(base_url, event_name, site, timezone):
                 arrival.pick_id = pick.resource_id.id
                 arrival.phase = 'S'
                 try:
-                    station = site.select(station=station_code).stations()[0]
+                    station = inventory.select(station_code).stations()[0]
                 except:
                     logger.warning("Station %s not found!\n The station object needs to be updated" % station_code)
 

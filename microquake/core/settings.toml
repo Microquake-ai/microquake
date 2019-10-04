@@ -40,7 +40,6 @@ grids.velocities.format = 'NLLOC'
 
 grids.travel_time_h5.fname = 'travel_time_tables.h5f'
 
-
 sensors.source     = 'local'
 sensors.units      = 'meter'
 sensors.format     = 'csv'
@@ -61,10 +60,10 @@ data_connector.likelihood_threshold = 0.50
 data_connector.reconciliation_delay_minutes = 60
 data_connector.reconciliation_interval_hours = 72
 data_connector.maximum_event_elevation = 900
-data_connector.request_range_hours = 48
+data_connector.request_range_hours = 72
 data_connector.closing_window_time_seconds = 30 # time after which we
 # consider the continuous data window closed after the event occurred
-data_connector.context_trace_forbiden_sensor = ['7', '9']
+data_connector.context_trace_forbiden_sensor = ['7', '9']  # Accelerometers
 
 interloc.nthreads = 4
 interloc.samplerate_decimated = 3000.0
@@ -153,14 +152,14 @@ picker.low_frequencies.s_wave.search_window.end = 20e-3           # end of the s
 picker.low_frequencies.s_wave.search_window.resolution = 0.0005   # time resolution of search window (s)
 
 picker.second_pass.snr_threshold = 9
-picker.second_pass.residual_tolerance = 10e-3
-picker.second_pass.p_wave.search_window.start = -20e-3
-picker.second_pass.p_wave.search_window.end = 20e-3
+picker.second_pass.residual_tolerance = 15e-3
+picker.second_pass.p_wave.search_window.start = -30e-3
+picker.second_pass.p_wave.search_window.end = 30e-3
 picker.second_pass.p_wave.search_window.resolution = 0.0005
-picker.second_pass.s_wave.search_window.start = -20e-3
-picker.second_pass.s_wave.search_window.end = 20e-3
+picker.second_pass.s_wave.search_window.start = -30e-3
+picker.second_pass.s_wave.search_window.end = 30e-3
 picker.second_pass.s_wave.search_window.resolution = 0.0005
-picker.second_pass.waveform_filter.frequency_min = 60
+picker.second_pass.waveform_filter.frequency_min = 100
 picker.second_pass.waveform_filter.frequency_max = 1000
 picker.second_pass.p_wave.snr_window.noise = 0.005
 picker.second_pass.p_wave.snr_window.signal = 0.01

@@ -7,6 +7,17 @@ from io import BytesIO
 class Borehole:
     def __init__(self, depth=None, x=None, y=None, z=None, collar=None,
                  toe=None, magnetic_declination=0):
+        """
+
+        :param depth: depth vector
+        :param x: x coordinate
+        :param y: y coordinate
+        :param z: z coordinate
+        :param collar: collar location vector (x, y, z)
+        :param toe: toe location vector (x, y, z)
+        :param magnetic_declination: magnetic declination in degree from
+        true north
+        """
         self.depth = depth
         self.x = x
         self.y = y
@@ -90,6 +101,28 @@ class Borehole:
         z_i = np.interp(depth, self.depth, self.z)
 
         return x_i, y_i, z_i
+
+    def orientation(self, depth, collar_to_toe=True):
+        """
+        returns the unit vector representing the orientation of a sensor
+        aligned along the borehole axis.
+        :param depth: depth or distance along the borhole
+        :param collar_to_toe: True if pointing towards the collar.
+        False if pointing towards the toe.
+        :return: a unit vector representing the orientation
+        """
+
+        l1 = self.interpolate(depth + 1)  # towards toe
+        l2 = self.interpolate(depth - 1)  # towards collar
+
+        if collar_to_toe:
+            orientation = l1 - l2
+        else:
+            orientation = l2 - l1
+
+        orientation /= np.linalg.norm(orientation)
+
+        return orientation
 
     def to_vtk_poly_data(self):
         """

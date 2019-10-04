@@ -32,7 +32,6 @@ class Processor(ProcessingUnit):
         for station in inventory.stations():
             st_loc = station.loc
             station_code = station.code
-            logger.info(f'calculating rays for station {station_code}')
             for phase in ['P', 'S']:
                 try:
                     ray = get_ray(station_code, phase, ev_loc)
