@@ -120,7 +120,7 @@ def automatic_pipeline(event_id, **kwargs):
 
     logger.info(f'automatic processing completed in {processing_time} seconds')
 
-    return cat_magnitude
+    return cat_automatic
 
 
 def post_event_api(event_id, **kwargs):
