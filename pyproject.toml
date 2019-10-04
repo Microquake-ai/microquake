@@ -48,9 +48,6 @@ instResp = "^0.1.1"
 numba = "^0.45.1"
 vtk = "^8.1.2"
 h5py = "^2.10.0"
-librosa = "^0.7.0"
-keras = "^2.3.0"
-tensorflow = "^1.14.0"
 
 [tool.poetry.dev-dependencies]
 ipython = "^7.5"
