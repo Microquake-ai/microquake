@@ -142,7 +142,7 @@ def post_event_api(event_id, **kwargs):
                                       tolerance=None, send_to_bus=False)
     if response:
         logger.info('request successful')
-        return result
+        return response
 
     logger.info('request failed, resending to the queue')
     result = api_queue.submit_task(post_event_api, event_id=event_id)
