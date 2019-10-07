@@ -195,7 +195,7 @@ class Origin(obsevent.Origin):
     def rms_residual(self):
         if len(self.arrivals) == 0:
             return None
-        residuals = [arrival.residual ** 2 for arrival in self.arrivals]
+        residuals = [arrival.time_residual ** 2 for arrival in self.arrivals]
         return np.sqrt(np.mean(residuals))
 
     @property
