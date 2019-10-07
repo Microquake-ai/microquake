@@ -7,6 +7,7 @@ from microquake.processors import (focal_mechanism, magnitude,
                                    measure_amplitudes, measure_energy,
                                    measure_smom, nlloc, picker,
                                    magnitude_extractor, ray_tracer)
+from microquake.core.settings import settings
 
 
 def picker_election(location, event_time_utc, cat, stream):
@@ -79,7 +80,7 @@ def picking_meta_processor(cat, fixed_length):
     # cat_pe, picker_type = picker_election(loc, event_time_utc, cat,
     #                                      fixed_length)
 
-    picker_processor = picker.Processor(module_type='high_frequency')
+    picker_processor = picker.Processor()
     picker_processor.process(stream=fixed_length, cat=cat)
 
     # nlloc_processor = nlloc.Processor()
@@ -105,6 +106,14 @@ def location_meta_processor(cat):
 
     nlloc_processor = nlloc.Processor()
     nlloc_processor.initializer()
+    cat_nlloc_1 = nlloc_processor.process(cat=cat)['cat']
+
+    # removing the picks (arrivals) for which the residual is to large
+
+    for i, arrival in enumerate(cat_nlloc_1[0].preferred_origin().arrivals):
+        if arrival.time_residual < settings.get('nlloc').residual_tolerance:
+            del cat_nlloc_1[0].preferred_origin().arrivals[i]
+
     cat_nlloc = nlloc_processor.process(cat=cat)['cat']
 
     end_processing_time = time()

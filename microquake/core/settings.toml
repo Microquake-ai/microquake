@@ -16,7 +16,7 @@ nlloc.residual_tolerance = 10e-3
 nlloc.locsearch = 'OCT 5 5 5 1e-6 5000 500 0 1'
 nlloc.locmeth = 'EDT_OT_WT 9999.0 4 -1 -1 -1 0'
 nlloc.locgau = ''
-nlloc.picking_error = 0.005
+nlloc.picking_error = 2.5e-3
 
 time_zone.type = 'UTC_offset'                # either 'UTC_offset or 'time_zone'
 time_zone.time_zone_code = 'ULN'             # time zone code. If type=time_zone, time_zone_code must be a valid pytz timezone
@@ -87,85 +87,25 @@ compute_velchange.coda_start_velocity = 3000.0
 compute_velchange.coda_end_sec = 0.8
 compute_velchange.whiten_corner_freqs = [90.0, 100.0, 300.0, 320.0]
 
-# parameter of the PPV vs Manitude relationship
+# parameter of the PPV vs Magnitude relationship
 quick_magnitude.a = 1.2
 quick_magnitude.c = 1.1
 
 picker.snr_threshold = 6
-picker.residual_tolerance = 100e-3
-picker.p_s_tolerance = 5e-3  # P and S must be at least separated by p_s_tolerance
 picker.min_num_picks = 20
+picker.residual_tolerance = 30e-3
 picker.waveform_filter.frequency_min = 100
 picker.waveform_filter.frequency_max = 1000
-
 picker.p_wave.snr_window.noise = 0.005
 picker.p_wave.snr_window.signal = 0.01
 picker.s_wave.snr_window.noise = 0.005
 picker.s_wave.snr_window.signal = 0.01
-
 picker.p_wave.search_window.start = -100e-3        # start of search window relative to predicted arrival time (s)
-picker.p_wave.search_window.end = 20e-3           # end of the search window relative to predicted arrival time (s)
+picker.p_wave.search_window.end = 10e-3           # end of the search window relative to predicted arrival time (s)
 picker.p_wave.search_window.resolution = 0.0005   # time resolution of search window (s)
-
 picker.s_wave.search_window.start = -100e-3        # start of search window relative to predicted arrival time (s)
 picker.s_wave.search_window.end = 20e-3           # end of the search window relative to predicted arrival time (s)
 picker.s_wave.search_window.resolution = 0.0005   # time resolution of search window (s)
-
-picker.high_frequency.snr_threshold = 6
-picker.high_frequencies.residual_tolerance = 5e-3
-picker.high_frequencies.waveform_filter.frequency_min = 100
-picker.high_frequencies.waveform_filter.frequency_max = 1000
-picker.high_frequencies.p_wave.snr_window.noise = 0.005
-picker.high_frequencies.p_wave.snr_window.signal = 0.01
-picker.high_frequencies.s_wave.snr_window.noise = 0.005
-picker.high_frequencies.s_wave.snr_window.signal = 0.01
-picker.high_frequencies.p_wave.search_window.start = -100e-3        # start of search window relative to predicted arrival time (s)
-picker.high_frequencies.p_wave.search_window.end = 1e-3           # end of the search window relative to predicted arrival time (s)
-picker.high_frequencies.p_wave.search_window.resolution = 0.0005   # time resolution of search window (s)
-picker.high_frequencies.s_wave.search_window.start = -100e-3        # start of search window relative to predicted arrival time (s)
-picker.high_frequencies.s_wave.search_window.end = 20e-3           # end of the search window relative to predicted arrival time (s)
-picker.high_frequencies.s_wave.search_window.resolution = 0.0005   # time resolution of search window (s)
-
-picker.medium_frequencies.waveform_filter.frequency_min = 50
-picker.medium_frequencies.waveform_filter.frequency_max = 500
-picker.medium_frequencies.p_wave.snr_window.noise = 0.005
-picker.medium_frequencies.p_wave.snr_window.signal = 0.01
-picker.medium_frequencies.s_wave.snr_window.noise = 0.005
-picker.medium_frequencies.s_wave.snr_window.signal = 0.01
-picker.medium_frequencies.p_wave.search_window.start = -100e-3        # start of search window relative to predicted arrival time (s)
-picker.medium_frequencies.p_wave.search_window.end = 100e-3           # end of the search window relative to predicted arrival time (s)
-picker.medium_frequencies.p_wave.search_window.resolution = 0.0005   # time resolution of search window (s)
-picker.medium_frequencies.s_wave.search_window.start = -100e-3        # start of search window relative to predicted arrival time (s)
-picker.medium_frequencies.s_wave.search_window.end = 20e-3           # end of the search window relative to predicted arrival time (s)
-picker.medium_frequencies.s_wave.search_window.resolution = 0.0005   # time resolution of search window (s)
-
-picker.low_frequencies.waveform_filter.frequency_min = 20
-picker.low_frequencies.waveform_filter.frequency_max = 200
-picker.low_frequencies.p_wave.snr_window.noise = 0.01
-picker.low_frequencies.p_wave.snr_window.signal = 0.02
-picker.low_frequencies.s_wave.snr_window.noise = 0.01
-picker.low_frequencies.s_wave.snr_window.signal = 0.02
-picker.low_frequencies.p_wave.search_window.start = -100e-3        # start of search window relative to predicted arrival time (s)
-picker.low_frequencies.p_wave.search_window.end = 100e-3           # end of the search window relative to predicted arrival time (s)
-picker.low_frequencies.p_wave.search_window.resolution = 0.0005   # time resolution of search window (s)
-picker.low_frequencies.s_wave.search_window.start = -100e-3        # start of search window relative to predicted arrival time (s)
-picker.low_frequencies.s_wave.search_window.end = 20e-3           # end of the search window relative to predicted arrival time (s)
-picker.low_frequencies.s_wave.search_window.resolution = 0.0005   # time resolution of search window (s)
-
-picker.second_pass.residual_tolerance = 15e-3
-picker.second_pass.snr_threshold = 9
-picker.second_pass.p_wave.search_window.start = -30e-3
-picker.second_pass.p_wave.search_window.end = 30e-3
-picker.second_pass.p_wave.search_window.resolution = 0.0005
-picker.second_pass.s_wave.search_window.start = -30e-3
-picker.second_pass.s_wave.search_window.end = 30e-3
-picker.second_pass.s_wave.search_window.resolution = 0.0005
-picker.second_pass.waveform_filter.frequency_min = 100
-picker.second_pass.waveform_filter.frequency_max = 1000
-picker.second_pass.p_wave.snr_window.noise = 0.005
-picker.second_pass.p_wave.snr_window.signal = 0.01
-picker.second_pass.s_wave.snr_window.noise = 0.005
-picker.second_pass.s_wave.snr_window.signal = 0.01
 
 location.max_uncertainty = 75
 
@@ -229,7 +169,6 @@ services.channel.interloc = 'spp.services.interloc'
 services.channel.picker = 'spp.services.picker'
 services.channel.nlloc = 'spp.services.nlloc'
 services.channel.magnitude = 'spp.services.magnitude'
-
 
 # this describes the kafka channel to which the message should be routed
 processing_flow.extract_waveforms.message_queue = 'spp.processing_flow.extract_waveforms'
