@@ -41,6 +41,8 @@ class Processor(ProcessingUnit):
         else:
             magnitude = cat[0].preferred_magnitude().mag
 
+
+
         response = self.seismic_model.predict(tr, context_trace,
                                               elevation, magnitude)
         return response
