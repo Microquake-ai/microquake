@@ -192,6 +192,13 @@ class Origin(obsevent.Origin):
             self.rays = self.rays + [item]
 
     @property
+    def rms_residual(self):
+        if len(self.arrivals) == 0:
+            return None
+        residuals = [arrival.residual ** 2 for arrival in self.arrivals]
+        return np.sqrt(np.mean(residuals))
+
+    @property
     def loc(self):
         return np.array([self.x, self.y, self.z])
 

@@ -79,25 +79,23 @@ def picking_meta_processor(cat, fixed_length):
     # cat_pe, picker_type = picker_election(loc, event_time_utc, cat,
     #                                      fixed_length)
 
-    picker_p_processor = picker.Processor(module_type='high_frequency')
-    picker_p_processor.process(stream=fixed_length, cat=cat, phase_filter='P')
+    picker_processor = picker.Processor(module_type='high_frequency')
+    picker_processor.process(stream=fixed_length, cat=cat)
 
-    cat_picker_p = picker_p_processor.output_catalog(cat.copy())
+    # nlloc_processor = nlloc.Processor()
+    # nlloc_processor.initializer()
+    # cat_nlloc = nlloc_processor.process(cat=cat_picker_p)['cat']
 
-    nlloc_processor = nlloc.Processor()
-    nlloc_processor.initializer()
-    cat_nlloc = nlloc_processor.process(cat=cat_picker_p)['cat']
-
-    picker_ps_processor = picker.Processor(module_type='second_pass')
-    picker_ps_processor.process(stream=fixed_length, cat=cat_nlloc)
-
+    #
+    # picker_ps_processor = picker.Processor(module_type='second_pass')
+    # picker_ps_processor.process(stream=fixed_length, cat=cat_nlloc)
+    #
     end_processing_time = time()
-
     processing_time = end_processing_time - start_processing_time
 
     logger.info(f'done picking in {processing_time} seconds')
 
-    return picker_ps_processor.output_catalog(cat)
+    return picker_processor.output_catalog(cat)
 
 
 def location_meta_processor(cat):
@@ -133,6 +131,8 @@ def magnitude_meta_processor(cat, fixed_length):
     m_amp_processor = measure_amplitudes.Processor()
     cat_amplitude = m_amp_processor.process(cat=cat,
                                             stream=fixed_length)
+
+
 
     smom_processor = measure_smom.Processor()
     cat_smom = smom_processor.process(cat=cat_amplitude,

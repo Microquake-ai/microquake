@@ -162,6 +162,9 @@ class Processor(ProcessingUnit):
                 ):
                     residuals.append(pk.time - snr_pk.time)
 
+        residuals = np.array(residuals)
+        residuals -= np.mean(residuals)
+
         indices = np.nonzero(np.abs(residuals) < self.residual_tolerance)[0]
         snr_picks_filtered = [snr_picks_filtered[i] for i in indices]
 
