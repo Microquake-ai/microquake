@@ -37,17 +37,20 @@ def put_data(event_id, **kwargs):
     response = put_data_processor(event['catalogue'])
     logger.info(response.status_code)
 
-    if 200 <= response.status_code < 400:
+    if response:
+        logger.info('request successful')
+        return response
 
-        logger.info('request failed, resending to the queue')
 
-        result = api_queue.submit_task(put_data, event_id=event_key)
+    logger.info('request failed, resending to the queue')
 
-        processing_end_time = time()
-        processing_time = processing_end_time - processing_start_time
-        record_processing_logs_pg(event['catalogue'], 'success',
-                                  processing_step, processing_step_id,
-                                  processing_time)
+    result = api_queue.submit_task(put_data, event_id=event_key)
+
+    processing_end_time = time()
+    processing_time = processing_end_time - processing_start_time
+    record_processing_logs_pg(event['catalogue'], 'success',
+                              processing_step, processing_step_id,
+                              processing_time)
 
     return response
 
@@ -106,9 +109,9 @@ def automatic_pipeline(event_id, **kwargs):
     else:
         cat = event['catalogue']
 
-    automatic_pipeline_processor(cat, stream)
+    cat_automatic = automatic_pipeline_processor(cat, stream)
 
-    set_event(event_id, catalogue=cat_magnitude)
+    set_event(event_id, catalogue=cat_automatic)
     api_queue.submit_task(put_data, event_id=event_id)
 
     end_processing_time = time()
@@ -120,7 +123,7 @@ def automatic_pipeline(event_id, **kwargs):
 
     logger.info(f'automatic processing completed in {processing_time} seconds')
 
-    return cat_magnitude
+    return cat_automatic
 
 
 def post_event_api(event_id, **kwargs):
@@ -137,10 +140,13 @@ def post_event_api(event_id, **kwargs):
                                       cat=event['catalogue'],
                                       stream=event['fixed_length'],
                                       tolerance=None, send_to_bus=False)
-    if 200 <= response.status_code < 400:
-        logger.info('request failed, resending to the queue')
-        result = api_queue.submit_task(post_event_api, event_id=event_id)
-        return result
+    if response:
+        logger.info('request successful')
+        return response
+
+    logger.info('request failed, resending to the queue')
+    result = api_queue.submit_task(post_event_api, event_id=event_id)
+    return result
 
 
 def automatic_pipeline_processor(cat, stream):
@@ -160,7 +166,8 @@ def automatic_pipeline_processor(cat, stream):
                        f'Aborting automatic processing!')
         if cat[0].preferred_origin().rays:
             return cat
-        cat_ray = rtp.process(cat=cat)
+        rtp.process(cat=cat)
+        cat_ray = rtp.output_catalog(cat)
         return cat_ray
 
     cat_located = location_meta_processor(cat_picked)
@@ -173,7 +180,8 @@ def automatic_pipeline_processor(cat, stream):
                        f'automatic processing!')
         if cat[0].preferred_origin().rays:
             return cat
-        cat_ray = rtp.process(cat=cat)
+        rtp.process(cat=cat)
+        cat_ray = rtp.output_catalog(cat)
         return cat_ray
 
     cat_magnitude = simple_magnitude.Processor().process(cat=cat_located,
