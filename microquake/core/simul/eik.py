@@ -95,7 +95,10 @@ def ray_tracer(travel_time, start, grid_coordinates=False, max_iter=1000):
     # processing time.
     nodes = [start]
 
+    iter_number = 0
     while dist > spacing / 2:
+        if iter_number > max_iter:
+            break
 
         if dist < spacing * 4:
             gamma = spacing / 4
@@ -106,6 +109,8 @@ def ray_tracer(travel_time, start, grid_coordinates=False, max_iter=1000):
         cloc = cloc - gamma * gvect / np.linalg.norm(gvect)
         nodes.append(cloc)
         dist = np.linalg.norm(cloc - end)
+
+        iter_number += 1
 
     nodes.append(end)
 

@@ -166,7 +166,8 @@ def automatic_pipeline_processor(cat, stream):
                        f'Aborting automatic processing!')
         if cat[0].preferred_origin().rays:
             return cat
-        cat_ray = rtp.process(cat=cat)
+        rtp.process(cat=cat)
+        cat_ray = rtp.output_catalog(cat)
         return cat_ray
 
     cat_located = location_meta_processor(cat_picked)
@@ -179,7 +180,8 @@ def automatic_pipeline_processor(cat, stream):
                        f'automatic processing!')
         if cat[0].preferred_origin().rays:
             return cat
-        cat_ray = rtp.process(cat=cat)
+        rtp.process(cat=cat)
+        cat_ray = rtp.output_catalog(cat)
         return cat_ray
 
     cat_magnitude = simple_magnitude.Processor().process(cat=cat_located,

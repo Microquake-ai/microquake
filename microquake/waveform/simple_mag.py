@@ -1243,7 +1243,7 @@ def moment_magnitude(stream, cat, inventory, vp, vs, only_triaxial=True,
         p_opt, p_cov = curve_fit(spectral_function, f[fi],
                                  np.log10(spectrum_norm[fi]),
                                  (10, 100, 100), bounds=((1, 0, 10),
-                                                         (10, 1000, 2000)))
+                                                         (100, 1000, 5000)))
 
         mw = 2 / 3.0 * p_opt[0] - 6.02
         mu = 29.5e9

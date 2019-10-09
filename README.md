@@ -24,6 +24,7 @@ git add pyproject.toml
 gc -m "bump version"
 git tag newversion
 git push --tags
+git push
 ```
 
 ### Automatic tagging and releasing
@@ -31,7 +32,7 @@ git push --tags
 By adding the following command to your git config you can bump and release a new version with one command
 
 ```
-git config --global alias.bump "\!version=\$(poetry version | awk '{print \$NF}' ) && git add pyproject.toml && git commit -m \"Bumping version to \$version\" && git tag \$version && git push --tags"
+git config --global alias.bump "\!version=\$(poetry version | awk '{print \$NF}' ) && git add pyproject.toml && git commit -m \"Bumping version to \$version\" && git push && git tag \$version && git push --tags"
 ```
 
 After running the above command you may release a new version with:

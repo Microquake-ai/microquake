@@ -11,6 +11,8 @@ from keras.models import Model
 from loguru import logger
 from microquake.core.settings import settings
 
+_version_ = 1.0
+
 
 class SeismicModel:
     '''
