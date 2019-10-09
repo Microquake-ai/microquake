@@ -23,8 +23,6 @@ api_base_url = settings.get('api_base_url')
 
 def put_data(event_id, **kwargs):
 
-    import requests
-
     api_message_queue = settings.API_MESSAGE_QUEUE
     api_queue = RedisQueue(api_message_queue)
 
@@ -33,19 +31,49 @@ def put_data(event_id, **kwargs):
     processing_start_time = time()
     event_key = event_id
     event = get_event(event_key)
+    catalog = event['catalogue']
 
-    response = put_data_processor(event['catalogue'])
+    if event is None:
+        logger.error(f'data for {event_key} not found in Redis, exiting')
+        return
+
+    event_id = catalog[0].resource_id.id
+
+    base_url = api_base_url
+    if base_url[-1] == '/':
+        base_url = base_url[:-1]
+
+    # check if the event type and event status has changed on the API
+
+    try:
+        re = get_event_by_id(base_url, event_id)
+    except ConnectionError:
+        logger.error(f'not able to get information for event with event id '
+                     f'{event_id}')
+
+    try:
+        catalog[0].event_type = re.event_type
+        catalog[0].preferred_origin().evaluation_status = re.status
+    except AttributeError as e:
+        logger.error(e)
+
+    try:
+        response = put_data_processor(event['catalogue'])
+    except ConnectionError as e:
+        logger.error(e)
+        logger.warning('request failed, resending to the queue')
+        set_event(event_id, **event)
+        result = api_queue.submit_task(put_data, event_id=event_key)
+
     logger.info(response.status_code)
 
-    if response:
-        logger.info('request successful')
-        return response
+    if not response:
+        logger.warning('request failed, resending to the queue')
+        set_event(event_id, **event)
+        result = api_queue.submit_task(put_data, event_id=event_key)
 
-
-    logger.info('request failed, resending to the queue')
-
-    result = api_queue.submit_task(put_data, event_id=event_key)
-
+    logger.info('request successful')
+    return response
     processing_end_time = time()
     processing_time = processing_end_time - processing_start_time
     record_processing_logs_pg(event['catalogue'], 'success',
@@ -140,13 +168,14 @@ def post_event_api(event_id, **kwargs):
                                       cat=event['catalogue'],
                                       stream=event['fixed_length'],
                                       tolerance=None, send_to_bus=False)
-    if response:
-        logger.info('request successful')
-        return response
+    if not response:
+        logger.warning('request failed, resending to the queue')
+        set_event(event_id, **event)
+        result = api_queue.submit_task(post_event_api, event_id=event_id)
+        return result
 
-    logger.info('request failed, resending to the queue')
-    result = api_queue.submit_task(post_event_api, event_id=event_id)
-    return result
+    logger.info('request successful')
+    return response
 
 
 def automatic_pipeline_processor(cat, stream):
