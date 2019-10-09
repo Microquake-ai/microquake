@@ -31,10 +31,9 @@ def put_data(event_id, **kwargs):
     processing_start_time = time()
     event_key = event_id
     event = get_event(event_key)
-    catalog = event['catalogue']
 
     if event is None:
-        logger.error(f'data for {event_key} not found in Redis, exiting')
+        logger.error(f'data for {event_key} not found in Redis... exiting')
         return
 
     event_id = catalog[0].resource_id.id
@@ -95,12 +94,21 @@ def put_data_processor(catalog):
 
     # check if the event type and event status has changed on the API
 
-    re = get_event_by_id(api_base_url, event_id)
     try:
+        re = get_event_by_id(base_url, event_id)
+    except requests.exceptions.ConnectionError as e:
+        logger.error(f'connection error when requesting event from '
+                     f'{base_url} for event {event_id}')
+        raise ConnectionError
+
+    if re is not None:
         catalog[0].event_type = re.event_type
         catalog[0].preferred_origin().evaluation_status = re.status
-    except AttributeError as e:
-        logger.error(e)
+    else:
+        logger.error(f'The result of the GET request for event id '
+                     f'{event_id} is None. Will not be able to preserve the '
+                     f'event type and evaluation status')
+
 
     url = f'{base_url}/events/{event_id}/files'
 
