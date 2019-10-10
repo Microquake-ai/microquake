@@ -10,7 +10,8 @@ from sqlalchemy.orm import sessionmaker
 from loguru import logger
 from microquake.core.settings import settings
 from microquake.core.stream import Stream, Trace
-from microquake.db.models.alchemy import Recording, metadata, processing_logs
+from microquake.db.models.alchemy import (ContinuousData, metadata,
+                                          processing_logs)
 from redis import ConnectionPool, Redis
 from rq import Queue
 from walrus import Walrus
@@ -71,6 +72,17 @@ def connect_postgres():
     metadata.create_all(engine)
 
     return connection
+
+
+def connect_timescale():
+
+    db_name = settings.TIMESCALEDB_NAME
+    timescale_url = settings.TIMESCALEDB_URL + db_name
+
+    engine = db.create_engine(timescale_url)
+    session = sessionmaker(bind=engine)()
+
+    return session
 
 
 def create_postgres_session():

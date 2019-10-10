@@ -3,6 +3,8 @@ metadata = db.MetaData()
 from sqlalchemy.ext.declarative import declarative_base
 Base = declarative_base()
 from sqlalchemy import Column, Integer, String
+from sqlalchemy.dialects.postgresql import (TIMESTAMP, INTEGER,
+                                            DOUBLE_PRECISION, ARRAY)
 
 processing_logs = db.Table('processing_logs', metadata,
                            db.Column('id', db.Integer, primary_key=True),
@@ -38,19 +40,21 @@ ground_velocity = db.Table('ground_velocity', metadata,
                            db.Column('sensor_id', db.Integer),
                            db.Column('ground_velocity_mm_s', db.Float))
 
+Base = declarative_base()
 
-class Recording(Base):
+class ContinuousData(Base):
+
     __tablename__ = 'recordings'
 
-    time = Column(db.DateTime(timezone=True), primary_key=True)
-    end_time = Column(db.DateTime(timezone=True))
-    sensor_id = Column(db.Integer)
-    sensor_type_id = Column(db.Integer)
-    sample_count = Column(db.Integer)
-    sample_rate = Column(db.Float)
-    x = Column(db.Float)
-    y = Column(db.Float)
-    z = Column(db.Float)
+    time = Column(TIMESTAMP(timezone=True), primary_key=True)
+    end_time = Column(TIMESTAMP(timezone=True))
+    sensor_id = Column(INTEGER())
+    sensor_type_id = Column(INTEGER())
+    sample_count = Column(INTEGER())
+    sample_rate = Column(DOUBLE_PRECISION)
+    x = Column(ARRAY(DOUBLE_PRECISION))
+    y = Column(ARRAY(DOUBLE_PRECISION))
+    z = Column(ARRAY(DOUBLE_PRECISION))
 
 # class data_quality(Base):
 #     __tablename__ = 'data_quality'
