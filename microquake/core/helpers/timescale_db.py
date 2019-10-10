@@ -49,7 +49,7 @@ def get_continuous_data(start_time, end_time, sensor_id=None):
             tr_x.stats.starttime = UTCDateTime(cd.time)
             tr_x.stats.sampling_rate = cd.sample_rate
             tr_x.stats.channel = 'X'
-            tr_x.stats.station = cd.sensor_id
+            tr_x.stats.station = str(cd.sensor_id)
             tr_x.stats.network = network_code
             traces.append(tr_x)
         if not np.all(cd.y == 0):
@@ -57,7 +57,7 @@ def get_continuous_data(start_time, end_time, sensor_id=None):
             tr_y.stats.starttime = UTCDateTime(cd.time)
             tr_y.stats.sampling_rate = cd.sample_rate
             tr_y.stats.channel = 'Y'
-            tr_y.stats.station = cd.sensor_id
+            tr_y.stats.station = str(cd.sensor_id)
             tr_y.stats.network = network_code
             traces.append(tr_y)
         if not np.all(cd.z == 0):
@@ -65,7 +65,7 @@ def get_continuous_data(start_time, end_time, sensor_id=None):
             tr_z.stats.starttime = UTCDateTime(cd.time)
             tr_z.stats.sampling_rate = cd.sample_rate
             tr_z.stats.channel = 'Z'
-            tr_z.stats.station = cd.sensor_id
+            tr_z.stats.station = str(cd.sensor_id)
             tr_z.stats.network = network_code
             traces.append(tr_z)
 
