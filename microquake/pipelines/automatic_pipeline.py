@@ -31,6 +31,7 @@ def put_data(event_id, **kwargs):
     processing_start_time = time()
     event_key = event_id
     event = get_event(event_key)
+    catalog = event['catalogue']
 
     if event is None:
         logger.error(f'data for {event_key} not found in Redis... exiting')
