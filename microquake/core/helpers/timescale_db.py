@@ -5,9 +5,16 @@ from obspy.core import UTCDateTime
 from loguru import logger
 from microquake.db.models.alchemy import ContinuousData
 from microquake.db.connectors import connect_timescale
+from datetime import datetime
 
 
 def get_continuous_data(start_time, end_time, sensor_id=None):
+
+    if type(start_time) is datetime:
+        start_time = UTCDateTime(start_time)
+
+    if type(end_time) is datetime:
+        end_time = UTCDateTime(end_time)
 
     session = connect_timescale()
     inventory = settings.inventory
