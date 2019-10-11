@@ -81,17 +81,24 @@ def get_continuous_data(start_time, end_time, sensor_id=None):
                        f'The current delay is {delay}')
         return None
 
-    for i, tr in enumerate(st.merge(fill_value=np.nan)):
+    trs = []
+    st = st.merge(fill_value=np.nan)
+    for i, tr in enumerate(st):
         if np.all(tr.data == 0):
-            del st[i]
-        elif np.any(tr.data is np.nan):
-            del st[i]
+            continue
+        elif np.any(np.isnan(tr.data)):
+            continue
+
+        trs.append(trs)
+
+    st.traces = trs
+
+    session.close()
 
     if len(st) == 0:
         logger.warning('all traces were removed!')
         return None
 
-    session.close()
     return st.detrend('demean')
 
 
