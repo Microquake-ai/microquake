@@ -6,6 +6,8 @@ from loguru import logger
 from microquake.db.models.alchemy import ContinuousData
 from microquake.db.connectors import connect_timescale
 from datetime import datetime
+from sqlalchemy import desc
+from pytz import utc
 
 
 def get_continuous_data(start_time, end_time, sensor_id=None):
@@ -91,3 +93,27 @@ def get_continuous_data(start_time, end_time, sensor_id=None):
 
     session.close()
     return st.detrend('demean')
+
+
+def get_db_lag(percentile=75):
+
+    session = connect_timescale()
+
+    inventory = settings.inventory
+    t = ContinuousData.time
+    sensor_id = ContinuousData.sensor_id
+
+    times = []
+    for sensor in inventory.stations():
+
+        records = session.query(t, sensor_id).filter(
+            sensor_id == sensor.code).order_by(desc(t)).limit(1)
+
+        for record in records:
+            times.append(record.time.timestamp())
+
+    time = datetime.utcfromtimestamp(np.percentile(times, percentile))
+
+    return time.replace(tzinfo=utc)
+
+
