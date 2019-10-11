@@ -44,33 +44,50 @@ def get_continuous_data(start_time, end_time, sensor_id=None):
 
     traces = []
     for cd in cds:
-        if not np.all(cd.x == 0):
-            tr_x = Trace(data=np.array(cd.x))
-            tr_x.stats.starttime = UTCDateTime(cd.time)
-            tr_x.stats.sampling_rate = cd.sample_rate
-            tr_x.stats.channel = 'X'
-            tr_x.stats.station = str(cd.sensor_id)
-            tr_x.stats.network = network_code
-            traces.append(tr_x)
-        if not np.all(cd.y == 0):
-            tr_y = Trace(data=np.array(cd.y))
-            tr_y.stats.starttime = UTCDateTime(cd.time)
-            tr_y.stats.sampling_rate = cd.sample_rate
-            tr_y.stats.channel = 'Y'
-            tr_y.stats.station = str(cd.sensor_id)
-            tr_y.stats.network = network_code
-            traces.append(tr_y)
-        if not np.all(cd.z == 0):
-            tr_z = Trace(data=np.array(cd.z))
-            tr_z.stats.starttime = UTCDateTime(cd.time)
-            tr_z.stats.sampling_rate = cd.sample_rate
-            tr_z.stats.channel = 'Z'
-            tr_z.stats.station = str(cd.sensor_id)
-            tr_z.stats.network = network_code
-            traces.append(tr_z)
+        x = np.array(cd.x)
+        y = np.array(cd.y)
+        z = np.array(cd.z)
+        tr_x = Trace(data=x)
+        tr_x.stats.starttime = UTCDateTime(cd.time)
+        tr_x.stats.sampling_rate = cd.sample_rate
+        tr_x.stats.channel = 'X'
+        tr_x.stats.station = str(cd.sensor_id)
+        tr_x.stats.network = network_code
+        traces.append(tr_x)
+        tr_y = Trace(data=y)
+        tr_y.stats.starttime = UTCDateTime(cd.time)
+        tr_y.stats.sampling_rate = cd.sample_rate
+        tr_y.stats.channel = 'Y'
+        tr_y.stats.station = str(cd.sensor_id)
+        tr_y.stats.network = network_code
+        traces.append(tr_y)
+        tr_z = Trace(data=z)
+        tr_z.stats.starttime = UTCDateTime(cd.time)
+        tr_z.stats.sampling_rate = cd.sample_rate
+        tr_z.stats.channel = 'Z'
+        tr_z.stats.station = str(cd.sensor_id)
+        tr_z.stats.network = network_code
+        traces.append(tr_z)
 
     st = Stream(traces=traces).trim(starttime=start_time,
                                     endtime=end_time)
 
+    time_now = UTCDateTime.now()
+    delay = time_now - end_time
+    if st is None:
+        logger.warning(f'request result is empty, the database is lagging! '
+                       f'The current delay is {delay}')
+        return None
+
+    for i, tr in enumerate(st.merge(fill_value=np.nan)):
+        if np.all(tr.data == 0):
+            del st[i]
+        elif np.any(tr.data is np.nan):
+            del st[i]
+
+    if len(st) == 0:
+        logger.warning('all traces were removed!')
+        return None
+
     session.close()
-    return st
+    return st.detrend('demean')

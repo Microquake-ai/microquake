@@ -59,18 +59,26 @@ class Processor(ProcessingUnit):
         # remove channels which do not have matching ttable entries
         # This should be handled upstream
 
+        ct = 0
         for trace in stream:
+            station = trace.stats.station
+            component = trace.stats.channel
             if trace.stats.station not in self.htt.stations:
-                logger.info('removing trace for station %s' %
-                            trace.stats.station)
+                logger.warning(f'Sensor {station} not in the H5 travel time '
+                               f'file sensor list... removing trace for '
+                               f'{station} and component {component}')
                 stream.remove(trace)
             elif np.max(trace.data) == 0:
-                logger.info('removing trace for station %s' %
-                            trace.stats.station)
+                # from ipdb import set_trace; set_trace()
+                logger.warning(f'trace for component {component} of sensor'
+                               f' {station} contains only zero... removing '
+                               f'trace')
                 stream.remove(trace)
             elif trace.stats.station in self.settings.sensors.black_list:
-                logger.info('removing trace for station %s' %
-                            trace.stats.station)
+                logger.warning(f'sensor {station} is in the black list... '
+                               f'removing trace for sensor {station} and '
+                               f'component {component}')
+
                 stream.remove(trace)
 
         data, sample_rate, t0 = stream.as_array(fixed_wlen_sec)

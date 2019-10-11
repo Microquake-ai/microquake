@@ -145,10 +145,16 @@ class Processor(ProcessingUnit):
 
         snr_picks_filtered = [
             snr_pick
-
             for (snr_pick, snr) in zip(snr_picks, snrs)
-
             if snr > self.snr_threshold
+        ]
+
+        # no picks for sensors in black list
+        black_list = self.settings.get('sensors').black_list
+        snr_picks_filtered = [
+            snr_pick
+            for snr_pick in snr_picks_filtered
+            if snr_pick.waveform_id.station_code not in black_list
         ]
 
         t0 = time()
