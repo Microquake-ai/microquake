@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import vtk
+from dxfwrite import DXFEngine as dxf
 from io import BytesIO
 
 
@@ -153,19 +154,37 @@ class Borehole:
         poly_data.SetLines(lines)
         return poly_data
 
-    def write_to_vtp(self, vtp_file_name):
+    def write_to_vtp(self, vtp_file_path):
         """
         write the borehole trace to a VTP file
-        :param vtp_file_name:
+        :param vtp_file_path:
         :return:
         """
 
         vtk_poly_data = self.to_vtk_poly_data()
         writer = vtk.vtkXMLPolyDataWriter()
-        writer.SetFileName(vtk_file_name)
+        writer.SetFileName(vtp_file_path)
         writer.SetInputData(vtk_poly_data)
 
         return writer.Write()
+
+    def write_to_dxf(self, dxf_file_path):
+
+        drawing = dxf.drawing(dxf_file_path)
+
+        for k in range(0, len(self.x) - 1):
+            x0 = self.x[k]
+            y0 = self.y[k]
+            z0 = self.z[k]
+
+            x1 = self.x[k+1]
+            y1 = self.y[k+1]
+            z1 = self.z[k+1]
+
+            drawing.add(dxf.line((x0, y0, z0), (x1, y1, z1), color=7))
+
+        drawing.save()
+        return
 
 
 def read_gyro_file(gyro_file, header=7):
