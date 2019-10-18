@@ -4,10 +4,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 import librosa as lr
-from keras import applications
-from keras.layers import (Add, BatchNormalization, Conv2D, Dense, Embedding,
+from tensorflow.keras import applications
+from tensorflow.keras.layers import (Add, BatchNormalization, Conv2D, Dense, Embedding,
                           Flatten, Input, MaxPooling2D, concatenate)
-from keras.models import Model
+from tensorflow.keras.models import Model
 from loguru import logger
 from microquake.core.settings import settings
 
@@ -35,7 +35,7 @@ class SeismicModel:
         '''
         self.base_directory = Path(settings.common_dir)/'../data/weights'
         # Model was trained at these dimensions
-        self.D = (64, 64, 1)
+        self.D = (192, 192, 1)
         self.microquake_class_names = ['anthropogenic event', 
                                        'earthquake', 'explosion',
                                        'quarry blast']
@@ -223,7 +223,7 @@ class SeismicModel:
         x = Dense(32, activation='relu')(x)
         x = Dense(self.num_classes, activation='sigmoid')(x)
         self.model = Model([i1, i2, i3, i4], x)
-        self.model.load_weights(self.model_file)
+        self.model.load_weights(f"{self.model_file.resolve()}")
 
     def predict(self, tr, context_trace, height, magnitude):
         """
@@ -234,8 +234,8 @@ class SeismicModel:
         :param height: the z-value of event.
         :return: dictionary of  event classes probability
         """
-        spectrogram = self.librosa_spectrogram(context_trace, height=self.D[
-            0], width=self.D[1])
+        spectrogram = self.librosa_spectrogram(context_trace, height=self.D[0], 
+            width=self.D[1])
         contxt_img = self.normalize_gray(spectrogram)
         spectrogram = self.librosa_spectrogram(tr, height=self.D[0],
                                                width=self.D[1])
