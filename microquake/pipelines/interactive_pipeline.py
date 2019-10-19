@@ -12,9 +12,9 @@ from obspy.core.event import (CreationInfo, ResourceIdentifier,
 from microquake.pipelines.pipeline_meta_processors import \
     location_meta_processor
 
-from microquake.core.event import Arrival, Origin, Pick, Magnitude
+from microquake.core.event import Arrival, Origin, Pick
 from microquake.core.settings import settings
-from microquake.processors import (simple_magnitude, nlloc, ray_tracer)
+from microquake.processors import simple_magnitude
 
 
 def prepare_catalog(ui_picks, catalog):
@@ -120,7 +120,6 @@ def interactive_pipeline(
     # except ValueError as ve:
     #     logger.error(f'Calculation of the magnitude failed. \n{ve}')
     #     cat_magnitude = cat_located.copy()
-
 
     cat_magnitude[0].preferred_origin().evaluation_mode = 'manual'
     cat_magnitude[0].preferred_origin().evaluation_status = 'final'
