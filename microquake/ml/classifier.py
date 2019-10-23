@@ -264,6 +264,6 @@ class SeismicModel:
 
         for p, n in zip(a.reshape(-1), self.microquake_class_names):
             classes[n] = p
-        classes['other event'] = 1-np.max(a.reshape(-1))
+        classes['noise/unknown'] = 1-np.max(a.reshape(-1))
 
         return classes
