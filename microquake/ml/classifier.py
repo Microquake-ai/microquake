@@ -29,15 +29,18 @@ class SeismicModel:
     def __exit__(self, exc_type, exc_val, exc_tb):
         pass
 
-    def __init__(self, model_name='multiclass-model.hdf5'):
+    def __init__(self, model_name='multiclass-model.hdf5', ):
         '''
             :param model_name: Name of the model weight file name.
         '''
         self.base_directory = Path(settings.common_dir)/'../data/weights'
         # Model was trained at these dimensions
         self.D = (128, 128, 1)
-        self.microquake_class_names = ['blast', 'crusher noise', 'electrical noise', 'mechanical noise', 'open pit blast', 
-                'ore pass noise', 'seismic event', 'surface event', 'test pulse']
+        self.microquake_class_names = ['blast', 'crusher noise',
+                                       'electrical noise/lightning',
+                                       'mechanical noise', 'open pit blast',
+                                       'ore pass noise', 'seismic event',
+                                       'surface event', 'test pulse']
         self.num_classes = len(self.microquake_class_names)
         self.model_file = self.base_directory/f"{model_name}"
         self.create_model()
@@ -56,9 +59,9 @@ class SeismicModel:
             :return: numpy array of spectrogram with height and width dimension
         '''
         data = self.get_norm_trace(tr).data
-        signal = data*255
-        hl = int(signal.shape[0]//(width*1.1))  # this will cut away 5% from
-        # start and end
+        signal = data * 255
+        hl = int(signal.shape[0] // (width * 1.1))  # this will cut away 5%
+        # from start and end
         spec = lr.feature.melspectrogram(signal, n_mels=height,
                                          hop_length=int(hl))
         img = lr.amplitude_to_db(spec)
@@ -264,6 +267,6 @@ class SeismicModel:
 
         for p, n in zip(a.reshape(-1), self.microquake_class_names):
             classes[n] = p
-        classes['other event'] = 1-np.max(a.reshape(-1))
+        classes['noise/unknown'] = 1-np.max(a.reshape(-1))
 
         return classes
