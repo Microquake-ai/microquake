@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "microquake"
-version = "0.1.149"
+version = "0.1.167"
 description = "Python library that is an extension/expansion/adaptation of ObsPy to microseismic data"
 authors = ["Your Name <you@example.com>"]
 license = "GPL-3.0"
@@ -48,6 +48,7 @@ instResp = "^0.1.1"
 numba = "^0.45.1"
 vtk = "^8.1.2"
 h5py = "^2.10.0"
+dxfwrite = "^1.2.1"
 
 [tool.poetry.dev-dependencies]
 ipython = "^7.5"

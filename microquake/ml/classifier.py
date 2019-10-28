@@ -4,10 +4,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 import librosa as lr
-from keras import applications
-from keras.layers import (Add, BatchNormalization, Conv2D, Dense, Embedding,
+from tensorflow.keras import applications
+from tensorflow.keras.layers import (Add, BatchNormalization, Conv2D, Dense, Embedding,
                           Flatten, Input, MaxPooling2D, concatenate)
-from keras.models import Model
+from tensorflow.keras.models import Model
 from loguru import logger
 from microquake.core.settings import settings
 
@@ -29,16 +29,18 @@ class SeismicModel:
     def __exit__(self, exc_type, exc_val, exc_tb):
         pass
 
-    def __init__(self, model_name='multiclass-model.hdf5'):
+    def __init__(self, model_name='multiclass-model.hdf5', ):
         '''
             :param model_name: Name of the model weight file name.
         '''
         self.base_directory = Path(settings.common_dir)/'../data/weights'
         # Model was trained at these dimensions
-        self.D = (64, 64, 1)
-        self.microquake_class_names = ['anthropogenic event', 
-                                       'earthquake', 'explosion',
-                                       'quarry blast']
+        self.D = (128, 128, 1)
+        self.microquake_class_names = ['blast', 'crusher noise',
+                                       'electrical noise/lightning',
+                                       'mechanical noise', 'open pit blast',
+                                       'ore pass noise', 'seismic event',
+                                       'surface event', 'test pulse']
         self.num_classes = len(self.microquake_class_names)
         self.model_file = self.base_directory/f"{model_name}"
         self.create_model()
@@ -57,9 +59,9 @@ class SeismicModel:
             :return: numpy array of spectrogram with height and width dimension
         '''
         data = self.get_norm_trace(tr).data
-        signal = data*255
-        hl = int(signal.shape[0]//(width*1.1))  # this will cut away 5% from
-        # start and end
+        signal = data * 255
+        hl = int(signal.shape[0] // (width * 1.1))  # this will cut away 5%
+        # from start and end
         spec = lr.feature.melspectrogram(signal, n_mels=height,
                                          hop_length=int(hl))
         img = lr.amplitude_to_db(spec)
@@ -223,7 +225,7 @@ class SeismicModel:
         x = Dense(32, activation='relu')(x)
         x = Dense(self.num_classes, activation='sigmoid')(x)
         self.model = Model([i1, i2, i3, i4], x)
-        self.model.load_weights(self.model_file)
+        self.model.load_weights(f"{self.model_file.resolve()}")
 
     def predict(self, tr, context_trace, height, magnitude):
         """
@@ -234,8 +236,8 @@ class SeismicModel:
         :param height: the z-value of event.
         :return: dictionary of  event classes probability
         """
-        spectrogram = self.librosa_spectrogram(context_trace, height=self.D[
-            0], width=self.D[1])
+        spectrogram = self.librosa_spectrogram(context_trace, height=self.D[0], 
+            width=self.D[1])
         contxt_img = self.normalize_gray(spectrogram)
         spectrogram = self.librosa_spectrogram(tr, height=self.D[0],
                                                width=self.D[1])
@@ -265,6 +267,6 @@ class SeismicModel:
 
         for p, n in zip(a.reshape(-1), self.microquake_class_names):
             classes[n] = p
-        classes['other event'] = 1-np.max(a.reshape(-1))
+        classes['noise/unknown'] = 1-np.max(a.reshape(-1))
 
         return classes
