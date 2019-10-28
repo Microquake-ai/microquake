@@ -36,8 +36,9 @@ class SeismicModel:
         self.base_directory = Path(settings.common_dir)/'../data/weights'
         # Model was trained at these dimensions
         self.D = (128, 128, 1)
-        self.microquake_class_names = ['blast', 'crusher noise', 'electrical noise', 'mechanical noise', 'open pit blast', 
-                'ore pass noise', 'seismic event', 'surface event', 'test pulse']
+        self.microquake_class_names = ['blast', 'crusher noise', 'drilling noise', 'electrical noise/lightning', 'mechanical noise', 
+                'open pit blast', 'orepass noise', 'seismic event', 'surface event', 'test pulse']
+
         self.num_classes = len(self.microquake_class_names)
         self.model_file = self.base_directory/f"{model_name}"
         self.create_model()
