@@ -1,6 +1,8 @@
 from microquake.ml.classifier import SeismicModel
 from microquake.processors.processing_unit import ProcessingUnit
 from loguru import logger
+import requests
+import json
 
 
 class Processor(ProcessingUnit):

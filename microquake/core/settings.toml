@@ -5,6 +5,7 @@ site = 'Oyu Tolgoi'
 site_code = 'OT'
 network = 'Hugo North Ungerground Network'
 network_code = 'OT'
+redis_rq_url = ''
 
 # nlloc
 nlloc.nll_base = 'NLL'
@@ -64,6 +65,12 @@ data_connector.request_range_hours = 72
 data_connector.closing_window_time_seconds = 200 # time after which we
 # consider the continuous data window closed after the event occurred
 data_connector.context_trace_forbiden_sensor = ['7', '9']  # Accelerometers
+
+event_classifier.likelihood_threshold = 0.5
+event_classifier.blast_window_starts = [6, 18]
+event_classifier.blast_window_ends = [8, 20]
+event_classifier.valid_event_types = ['seismic event', 'underground blast']
+event_classifier.uploaded_event_types = ['crusher noise', 'ore pass noise', 'test pulse', 'other blast', 'open pit blast']
 
 interloc.nthreads = 4
 interloc.samplerate_decimated = 3000.0
