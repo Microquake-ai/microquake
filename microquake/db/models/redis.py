@@ -5,7 +5,7 @@ from microquake.db.connectors import connect_redis
 
 
 def set_event(event_id, catalogue=None, fixed_length=None, context=None,
-              variable_length=None, ttl=10800):
+              variable_length=None, attempt_number=0, ttl=10800):
 
     redis_connector = connect_redis()
     event = redis_connector.Hash(event_id)
@@ -58,5 +58,11 @@ def get_event(event_id):
         bytes = event[b'variable_length']
         dict_in['variable_length'] = read(BytesIO(bytes),
                                           format='mseed')
+
+    if b'attempt_number' in event.keys():
+        dict_in['attempt_number'] = int(event[b'attempt_number'])
+
+    else:
+        dict_in['attempt_number'] = 0
 
     return dict_in
