@@ -247,7 +247,7 @@ def prepare_data(cat=None, stream=None, context=None, variable_length=None):
         event_file_name = base_event_file_name + '.xml'
         event_bytes.name = event_file_name
         event_bytes.seek(0)
-        files['event'] = event_bytes
+        files['event_file'] = event_bytes
         logger.info('done preparing event data')
 
     if stream is not None:
@@ -257,7 +257,7 @@ def prepare_data(cat=None, stream=None, context=None, variable_length=None):
         mseed_file_name = base_event_file_name + '.mseed'
         mseed_bytes.name = mseed_file_name
         mseed_bytes.seek(0)
-        files['waveform'] = mseed_bytes
+        files['waveform_file'] = mseed_bytes
         logger.info('done preparing waveform data')
 
     if context is not None:
@@ -267,7 +267,7 @@ def prepare_data(cat=None, stream=None, context=None, variable_length=None):
         mseed_context_file_name = base_event_file_name + '.context_mseed'
         mseed_context_bytes.name = mseed_context_file_name
         mseed_context_bytes.seek(0)
-        files['context'] = mseed_context_bytes
+        files['waveform_context_file'] = mseed_context_bytes
         logger.info('done preparing context waveform data')
 
     if variable_length is not None:
@@ -277,7 +277,7 @@ def prepare_data(cat=None, stream=None, context=None, variable_length=None):
         mseed_variable_file_name = base_event_file_name + '.variable_mseed'
         mseed_variable_bytes.name = mseed_variable_file_name
         mseed_variable_bytes.seek(0)
-        files['variable_size_waveform'] = mseed_variable_bytes
+        files['variable_size_waveform_file'] = mseed_variable_bytes
         logger.info('done preparing variable length waveform data')
 
     return files
