@@ -1,5 +1,6 @@
 [default]
 api_base_url = 'https://api.microquake.org/api/v1/'
+ims_base_url = 'http://10.95.74.35:8002/ims-database-server/databases/mgl'
 project_code = 'OT'
 site = 'Oyu Tolgoi'
 site_code = 'OT'

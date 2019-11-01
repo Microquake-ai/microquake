@@ -44,8 +44,8 @@ class Stream(obsstream.Stream):
         """
         returns a new stream object containing composite trace for all station.
         The amplitude of the composite traces are the norm of the amplitude of
-        the trace of all component and the phase of the trace (sign) is the sign
-        of the first components of a given station.
+        the trace of all component and the phase of the trace (sign) is the
+        sign of the first components of a given station.
         :param st: a stream object
         :type st: ~microquake.core.stream.Stream
         :rtype: ~microquake.core.stream.Stream
