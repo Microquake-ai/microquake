@@ -12,6 +12,9 @@ from pytz import utc
 
 def get_continuous_data(start_time, end_time, sensor_id=None):
 
+   db_lag = get_db_lag()
+   logger.info(f'the database lag is {db_lag} seconds')
+
     if type(start_time) is datetime:
         start_time = UTCDateTime(start_time)
 
@@ -77,8 +80,8 @@ def get_continuous_data(start_time, end_time, sensor_id=None):
     time_now = UTCDateTime.now()
     delay = time_now - end_time
     if st is None:
-        logger.warning(f'request result is empty, the database is lagging! '
-                       f'The current delay is {delay}')
+        logger.warning(f'no data recovered from the database! '
+                       f'the current database lag is {db_lag}')
         return None
 
     trs = []

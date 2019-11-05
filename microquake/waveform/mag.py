@@ -356,10 +356,10 @@ def calculate_energy_from_flux(cat,
 
         if not P_energy:
             P_energy = [0]
-            logger.warning('No P energy measurements. The P-wave energy will be '
-                           'set to 0, the total energy will not include the '
-                           'P-wave energy. This will bias the total energy '
-                           'value')
+            logger.warning('No P energy measurements. The P-wave energy will '
+                           'be set to 0, the total energy will not include '
+                           'the P-wave energy. This will bias the total '
+                           'energy value')
         if not S_energy:
             S_energy = [0]
             logger.warning(
