@@ -302,12 +302,13 @@ def fix_arr_takeoff_and_azimuth(cat, vp_grid, vs_grid):
     return
 
 
-def synthetic_arrival_times(event_location, origin_time):
+def synthetic_arrival_times(event_location, origin_time, stations=[]):
     """
     calculate synthetic arrival time for all the station and returns a
     list of microquake.core.event.Pick object
     :param event_location: event location
     :param origin_time: event origin time
+    :param stations: list of stations
     :return: list of microquake.core.event.Pick
     """
 

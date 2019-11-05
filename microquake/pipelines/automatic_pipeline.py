@@ -64,6 +64,7 @@ def put_data(event_id, **kwargs):
         logger.warning('request failed, resending to the queue')
         set_event(event_id, **event)
         result = api_queue.submit_task(put_data, event_id=event_key)
+        response = False
 
     logger.info(response.status_code)
 
@@ -72,8 +73,9 @@ def put_data(event_id, **kwargs):
         set_event(event_id, **event)
         result = api_queue.submit_task(put_data, event_id=event_key)
 
-    logger.info('request successful')
-    return response
+    else:
+        logger.info('request successful')
+
     processing_end_time = time()
     processing_time = processing_end_time - processing_start_time
     record_processing_logs_pg(event['catalogue'], 'success',
@@ -109,7 +111,6 @@ def put_data_processor(catalog):
         logger.error(f'The result of the GET request for event id '
                      f'{event_id} is None. Will not be able to preserve the '
                      f'event type and evaluation status')
-
 
     url = f'{base_url}/events/{event_id}/files'
 
