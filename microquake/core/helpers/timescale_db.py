@@ -130,7 +130,7 @@ def get_db_lag(percentile=75):
             times.append(record.time.timestamp())
 
     if not times:
-        return
+        return None
 
     time = datetime.utcfromtimestamp(np.percentile(times, percentile))
 

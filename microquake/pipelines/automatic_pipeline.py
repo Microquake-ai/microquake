@@ -11,7 +11,8 @@ from microquake.clients.api_client import (post_data_from_objects,
 from microquake.core.settings import settings
 from microquake.db.connectors import RedisQueue, record_processing_logs_pg
 from microquake.db.models.redis import get_event, set_event
-from microquake.processors import clean_data, simple_magnitude
+from microquake.processors import (clean_data, simple_magnitude, magnitude,
+                                   magnitude_extractor)
 from microquake.pipelines.pipeline_meta_processors import (ray_tracer,
     picking_meta_processor, location_meta_processor)
 
@@ -225,6 +226,11 @@ def automatic_pipeline_processor(cat, stream):
 
     cat_magnitude = simple_magnitude.Processor().process(cat=cat_located,
                                                          stream=stream)
+
+    # cat_magnitude = magnitude.Processor().process(cat=cat_located,
+    #                                               stream=stream)
+
+    # magnitude = magnitude_extractor.Processor().process(cat=cat_magnitude)
 
     return cat_magnitude
 
