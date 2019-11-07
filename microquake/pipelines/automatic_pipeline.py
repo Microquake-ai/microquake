@@ -5,7 +5,7 @@ from microquake.core.event import Catalog
 from time import time
 
 from loguru import logger
-from microquake.core.event import Event
+from microquake.core.event import Event, Origin, Magnitude
 from microquake.clients.api_client import (post_data_from_objects,
                                            get_event_by_id)
 from microquake.core.settings import settings
@@ -14,7 +14,7 @@ from microquake.db.models.redis import get_event, set_event
 from microquake.processors import (clean_data, simple_magnitude, magnitude,
                                    magnitude_extractor)
 from microquake.pipelines.pipeline_meta_processors import (ray_tracer,
-    picking_meta_processor, location_meta_processor)
+    picking_meta_processor, location_meta_processor, magnitude_meta_processor)
 
 __processing_step__ = 'automatic processing'
 __processing_step_id__ = 3
@@ -224,43 +224,24 @@ def automatic_pipeline_processor(cat, stream):
         cat_ray = rtp.output_catalog(cat)
         return cat_ray
 
-    cat_magnitude = simple_magnitude.Processor().process(cat=cat_located,
-                                                         stream=stream)
+    # cat_magnitude = simple_magnitude.Processor().process(cat=cat_located,
+    #                                                      stream=fixed_length)
 
-    # cat_magnitude = magnitude.Processor().process(cat=cat_located,
-    #                                               stream=stream)
+    cat_magnitude = magnitude_meta_processor(cat_located.copy(), fixed_length)
 
-    # magnitude = magnitude_extractor.Processor().process(cat=cat_magnitude)
+    origins = []
+    for ori in cat_magnitude[0].origins:
+        origins.append(Origin(ori))
 
-    return cat_magnitude
+    cat_magnitude[0].origins = origins
+    cat_magnitude[0].preferred_origin_id = origins[-1].resource_id
 
+    magnitudes = []
+    for mag in cat_magnitude[0].magnitudes:
+        magnitudes.append(Magnitude(mag))
 
-def automatic_pipeline_test(cat, stream):
-
-    start_processing_time = time()
-
-    logger.info('removing traces for sensors in the black list, or are '
-                'filled with zero, or contain NaN')
-    clean_data_processor = clean_data.Processor()
-    fixed_length = clean_data_processor.process(waveform=stream)
-
-    cat_picked = picking_meta_processor(cat, fixed_length)
-
-    min_number_pick = settings.get('picker').min_num_picks
-    if len(cat_picked[0].preferred_origin().arrivals) < min_number_pick:
-        return cat
-
-    cat_located = location_meta_processor(cat_picked)
-
-    max_uncertainty = settings.get('location').max_uncertainty
-    if cat_located[0].preferred_origin().uncertainty > max_uncertainty:
-        return cat
-
-    cat_magnitude = simple_magnitude.Processor().process(cat=cat_located,
-                                                         stream=stream)
-
-    end_processing_time = time()
-    processing_time = end_processing_time - start_processing_time
-    logger.info(f'done automatic pipeline in {processing_time} seconds')
+    cat_magnitude[0].magnitudes = magnitudes
+    cat_magnitude[0].preferred_magnitude_id = magnitudes[-1].resource_id
 
     return cat_magnitude
+
