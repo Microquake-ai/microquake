@@ -99,21 +99,38 @@ compute_velchange.whiten_corner_freqs = [90.0, 100.0, 300.0, 320.0]
 quick_magnitude.a = 1.2
 quick_magnitude.c = 1.1
 
-picker.snr_threshold = 6
+picker.snr_threshold = 3
 picker.min_num_picks = 20
-picker.residual_tolerance = 30e-3
-picker.waveform_filter.frequency_min = 100
+picker.residual_tolerance = 100e-3
+picker.waveform_filter.frequency_min = 20
 picker.waveform_filter.frequency_max = 1000
 picker.p_wave.snr_window.noise = 0.005
 picker.p_wave.snr_window.signal = 0.01
 picker.s_wave.snr_window.noise = 0.005
 picker.s_wave.snr_window.signal = 0.01
-picker.p_wave.search_window.start = -100e-3        # start of search window relative to predicted arrival time (s)
+picker.p_wave.search_window.start = -50e-3        # start of search window relative to predicted arrival time (s)
 picker.p_wave.search_window.end = 10e-3           # end of the search window relative to predicted arrival time (s)
 picker.p_wave.search_window.resolution = 0.0005   # time resolution of search window (s)
-picker.s_wave.search_window.start = -100e-3        # start of search window relative to predicted arrival time (s)
+picker.s_wave.search_window.start = -50e-3        # start of search window relative to predicted arrival time (s)
 picker.s_wave.search_window.end = 20e-3           # end of the search window relative to predicted arrival time (s)
 picker.s_wave.search_window.resolution = 0.0005   # time resolution of search window (s)
+
+picker.second_pass.snr_threshold = 6
+picker.second_pass.min_num_picks = 20
+picker.second_pass.residual_tolerance = 10e-3
+picker.second_pass.waveform_filter.frequency_min = 20
+picker.second_pass.waveform_filter.frequency_max = 1000
+picker.second_pass.p_wave.snr_window.noise = 0.005
+picker.second_pass.p_wave.snr_window.signal = 0.01
+picker.second_pass.s_wave.snr_window.noise = 0.005
+picker.second_pass.s_wave.snr_window.signal = 0.01
+picker.second_pass.p_wave.search_window.start = -10e-3        # start of search window relative to predicted arrival time (s)
+picker.second_pass.p_wave.search_window.end = 10e-3           # end of the search window relative to predicted arrival time (s)
+picker.second_pass.p_wave.search_window.resolution = 0.0005   # time resolution of search window (s)
+picker.second_pass.s_wave.search_window.start = -10e-3        # start of search window relative to predicted arrival time (s)
+picker.second_pass.s_wave.search_window.end = 10e-3           # end of the search window relative to predicted arrival time (s)
+picker.second_pass.s_wave.search_window.resolution = 0.0005   # time resolution of search window (s)
+
 
 location.max_uncertainty = 75
 

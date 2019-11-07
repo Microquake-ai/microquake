@@ -7,6 +7,7 @@ from microquake.core.event import Catalog
 from microquake.core.settings import settings
 from microquake.pipelines.pipeline_meta_processors import (
     location_meta_processor,
+    magnitude_meta_processor,
     picking_meta_processor,
     ray_tracer,
 )
@@ -48,43 +49,23 @@ def automatic_pipeline(cat: Catalog, stream: Stream):
         cat_ray = rtp.output_catalog(cat)
         return cat_ray
 
-    cat_magnitude = simple_magnitude.Processor().process(cat=cat_located,
-                                                         stream=stream)
+    # cat_magnitude = simple_magnitude.Processor().process(cat=cat_located,
+    #                                                      stream=fixed_length)
 
-    # cat_magnitude = magnitude.Processor().process(cat=cat_located,
-    #                                               stream=stream)
+    cat_magnitude = magnitude_meta_processor(cat_located.copy(), fixed_length)
 
-    # magnitude = magnitude_extractor.Processor().process(cat=cat_magnitude)
+    origins = []
+    for ori in cat_magnitude[0].origins:
+        origins.append(Origin(ori))
 
-    return cat_magnitude
+    cat_magnitude[0].origins = origins
+    cat_magnitude[0].preferred_origin_id = origins[-1].resource_id
 
+    magnitudes = []
+    for mag in cat_magnitude[0].magnitudes:
+        magnitudes.append(Magnitude(mag))
 
-def automatic_pipeline_test(cat: Catalog, stream: Stream):
-
-    start_processing_time = time()
-
-    logger.info('removing traces for sensors in the black list, or are '
-                'filled with zero, or contain NaN')
-    clean_data_processor = clean_data.Processor()
-    fixed_length = clean_data_processor.process(waveform=stream)
-
-    cat_picked = picking_meta_processor(cat, fixed_length)
-
-    min_number_pick = settings.get('picker').min_num_picks
-    if len(cat_picked[0].preferred_origin().arrivals) < min_number_pick:
-        return cat
-
-    cat_located = location_meta_processor(cat_picked)
-
-    max_uncertainty = settings.get('location').max_uncertainty
-    if cat_located[0].preferred_origin().uncertainty > max_uncertainty:
-        return cat
-
-    cat_magnitude = simple_magnitude.Processor().process(cat=cat_located,
-                                                         stream=stream)
-
-    end_processing_time = time()
-    processing_time = end_processing_time - start_processing_time
-    logger.info(f'done automatic pipeline in {processing_time} seconds')
+    cat_magnitude[0].magnitudes = magnitudes
+    cat_magnitude[0].preferred_magnitude_id = magnitudes[-1].resource_id
 
     return cat_magnitude

@@ -82,21 +82,21 @@ def picking_meta_processor(cat, fixed_length):
 
     picker_processor = picker.Processor()
     picker_processor.process(stream=fixed_length, cat=cat)
+    cat_picker = picker_processor.output_catalog(cat)
 
-    # nlloc_processor = nlloc.Processor()
-    # nlloc_processor.initializer()
-    # cat_nlloc = nlloc_processor.process(cat=cat_picker_p)['cat']
+    nlloc_processor = nlloc.Processor()
+    nlloc_processor.initializer()
+    cat_nlloc = nlloc_processor.process(cat=cat_picker)['cat']
 
-    #
-    # picker_ps_processor = picker.Processor(module_type='second_pass')
-    # picker_ps_processor.process(stream=fixed_length, cat=cat_nlloc)
-    #
+    picker_sp_processor = picker.Processor(module_type='second_pass')
+    picker_sp_processor.process(stream=fixed_length, cat=cat_nlloc)
+
     end_processing_time = time()
     processing_time = end_processing_time - start_processing_time
 
     logger.info(f'done picking in {processing_time} seconds')
 
-    return picker_processor.output_catalog(cat)
+    return picker_sp_processor.output_catalog(cat)
 
 
 def location_meta_processor(cat):
@@ -137,44 +137,44 @@ def magnitude_meta_processor(cat, fixed_length):
     logger.info('starting magnitude calculation process')
     start_processing_time = time()
 
+    cat_in = cat.copy()
+
     m_amp_processor = measure_amplitudes.Processor()
-    cat_amplitude = m_amp_processor.process(cat=cat,
+    cat_amplitude = m_amp_processor.process(cat=cat.copy(),
                                             stream=fixed_length)
 
-
-
     smom_processor = measure_smom.Processor()
-    cat_smom = smom_processor.process(cat=cat_amplitude,
+    cat_smom = smom_processor.process(cat=cat_amplitude.copy(),
                                       stream=fixed_length)
 
     fmec_processor = focal_mechanism.Processor()
-    cat_fmec = fmec_processor.process(cat=cat_smom,
+    cat_fmec = fmec_processor.process(cat=cat_smom.copy(),
                                       stream=fixed_length)
 
     energy_processor = measure_energy.Processor()
-    cat_energy = energy_processor.process(cat=cat_fmec,
+    cat_energy = energy_processor.process(cat=cat_fmec.copy(),
                                           stream=fixed_length)
 
     magnitude_processor = magnitude.Processor()
-    cat_magnitude = magnitude_processor.process(cat=cat_energy,
+    cat_magnitude = magnitude_processor.process(cat=cat_energy.copy(),
                                                 stream=fixed_length)
 
     magnitude_f_processor = magnitude.Processor(module_type='frequency')
-    cat_magnitude_f = magnitude_f_processor.process(cat=cat_magnitude,
+    cat_magnitude_f = magnitude_f_processor.process(cat=cat_magnitude.copy(),
                                                     stream=fixed_length)
 
-    mag = magnitude_extractor.Processor().process(cat=cat_magnitude_f,
+    mag = magnitude_extractor.Processor().process(cat=cat_magnitude_f.copy(),
                                                   stream=fixed_length)
 
-    cat_out = cat_magnitude_f.copy()
     preferred_origin_id = cat_magnitude_f[0].preferred_origin().resource_id
     new_mag = Magnitude.from_dict(mag, origin_id=preferred_origin_id)
+    new_mag.evaluation_mode = 'manual'
 
-    cat_out[0].magnitudes.append(new_mag)
-    cat_out[0].preferred_magnitude_id = new_mag.resource_id
+    cat_in[0].magnitudes.append(new_mag)
+    cat_in[0].preferred_magnitude_id = new_mag.resource_id
 
     end_processing_time = time()
     processing_time = end_processing_time - start_processing_time
     logger.info(f'done calculating magnitude in {processing_time} seconds')
 
-    return cat_out, mag
+    return cat_in
