@@ -41,7 +41,7 @@ After running the above command you may release a new version with:
 git bump
 ```
 
-### System prerequisits
+### System prerequisites
 
 To run the interloc module the FFTw library must be installed on the system. To install the library, simply run
 
