@@ -3,7 +3,7 @@ from time import time
 from loguru import logger
 
 from microquake.core import Stream
-from microquake.core.event import Catalog
+from microquake.core.event import (Catalog, Origin, Magnitude)
 from microquake.core.settings import settings
 from microquake.pipelines.pipeline_meta_processors import (
     location_meta_processor,
