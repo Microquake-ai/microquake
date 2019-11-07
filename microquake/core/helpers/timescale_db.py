@@ -12,8 +12,8 @@ from pytz import utc
 
 def get_continuous_data(start_time, end_time, sensor_id=None):
 
-   db_lag = get_db_lag()
-   logger.info(f'the database lag is {db_lag} seconds')
+    db_lag = get_db_lag()
+    logger.info(f'the database lag is {db_lag} seconds')
 
     if type(start_time) is datetime:
         start_time = UTCDateTime(start_time)
@@ -106,6 +106,13 @@ def get_continuous_data(start_time, end_time, sensor_id=None):
 
 
 def get_db_lag(percentile=75):
+    """
+    returns lag in seconds
+    :param percentile: percentile of data to use to determine the delay.
+    For instance, if percentile = 75, 75 percent of the trace will have a lag
+    of less than the returned value.
+    :return: lag in second
+    """
 
     session = connect_timescale()
 
@@ -122,8 +129,12 @@ def get_db_lag(percentile=75):
         for record in records:
             times.append(record.time.timestamp())
 
+    if not times:
+        return None
+
     time = datetime.utcfromtimestamp(np.percentile(times, percentile))
 
-    return time.replace(tzinfo=utc)
+    lag = datetime.utcnow().replace(tzinfo=utc) - time.replace(tzinfo=utc)
+    return lag.total_seconds()
 
 

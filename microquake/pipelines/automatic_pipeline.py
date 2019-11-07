@@ -51,6 +51,11 @@ def automatic_pipeline(cat: Catalog, stream: Stream):
     cat_magnitude = simple_magnitude.Processor().process(cat=cat_located,
                                                          stream=stream)
 
+    # cat_magnitude = magnitude.Processor().process(cat=cat_located,
+    #                                               stream=stream)
+
+    # magnitude = magnitude_extractor.Processor().process(cat=cat_magnitude)
+
     return cat_magnitude
 
 
