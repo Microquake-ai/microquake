@@ -92,7 +92,7 @@ def get_continuous_data(start_time, end_time, sensor_id=None):
         elif np.any(np.isnan(tr.data)):
             continue
 
-        trs.append(trs)
+        trs.append(tr)
 
     st.traces = trs
 
@@ -135,6 +135,9 @@ def get_db_lag(percentile=75):
     time = datetime.utcfromtimestamp(np.percentile(times, percentile))
 
     lag = datetime.utcnow().replace(tzinfo=utc) - time.replace(tzinfo=utc)
+
+    session.close()
+
     return lag.total_seconds()
 
 
