@@ -20,6 +20,8 @@ class Processor(ProcessingUnit):
         starttime = waveform[0].stats.starttime
         endtime = waveform[0].stats.endtime
 
+        inventory = self.settings.inventory
+
         for tr in waveform:
             if tr.stats.starttime < starttime:
                 starttime = tr.stats.starttime
@@ -32,10 +34,12 @@ class Processor(ProcessingUnit):
         trs = []
 
         for i, tr in enumerate(waveform):
+            if inventory.select(tr.stats.station) is None:
+                continue
             if tr.stats.station not in black_list:
                 if np.any(np.isnan(tr.data)):
                     continue
-                if ((np.sum(tr.data ** 2) > 0)):
+                if np.sum(tr.data ** 2) > 0:
                     trs.append(tr)
 
         logger.info('The seismograms have  been cleaned, %d trace remaining' %

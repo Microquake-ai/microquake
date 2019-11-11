@@ -3,10 +3,8 @@ import numpy as np
 from obspy.core.event import QuantityError
 
 from microquake.core.event import Magnitude
-from microquake.core.settings import settings
 from microquake.processors.processing_unit import ProcessingUnit
 from microquake.waveform.mag_utils import calc_static_stress_drop
-
 
 
 class Processor(ProcessingUnit):
@@ -39,9 +37,12 @@ class Processor(ProcessingUnit):
 
         ev_loc = cat[0].preferred_origin().loc
 
-        inventory = settings.inventory
+        inventory = self.settings.inventory
 
         for station in stations:
+            if inventory.select(station) is None:
+                continue
+
             st_stream = stream.select(station=station,
                                       location=location).copy()
 
