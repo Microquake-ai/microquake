@@ -82,7 +82,7 @@ def connect_timescale():
     engine = db.create_engine(timescale_url)
     session = sessionmaker(bind=engine)()
 
-    return session
+    return session, engine
 
 
 def create_postgres_session():

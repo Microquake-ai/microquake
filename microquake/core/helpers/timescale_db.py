@@ -21,7 +21,7 @@ def get_continuous_data(start_time, end_time, sensor_id=None):
     if type(end_time) is datetime:
         end_time = UTCDateTime(end_time)
 
-    session = connect_timescale()
+    session, engine = connect_timescale()
     inventory = settings.inventory
 
     e_time = end_time.datetime
@@ -97,6 +97,7 @@ def get_continuous_data(start_time, end_time, sensor_id=None):
     st.traces = trs
 
     session.close()
+    engine.dispose()
 
     if len(st) == 0:
         logger.warning('all traces were removed!')
@@ -114,7 +115,7 @@ def get_db_lag(percentile=75):
     :return: lag in second
     """
 
-    session = connect_timescale()
+    session, engine = connect_timescale()
 
     inventory = settings.inventory
     t = ContinuousData.time
@@ -137,6 +138,7 @@ def get_db_lag(percentile=75):
     lag = datetime.utcnow().replace(tzinfo=utc) - time.replace(tzinfo=utc)
 
     session.close()
+    engine.dispose()
 
     return lag.total_seconds()
 
