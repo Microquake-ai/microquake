@@ -47,7 +47,6 @@ class Processor(ProcessingUnit):
 
         return Stream(traces=trs)
 
-
     # def legacy_pipeline_handler(self, msg_in, res):
     #     """
     #         legacy pipeline handler

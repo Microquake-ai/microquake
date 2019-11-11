@@ -71,7 +71,7 @@ def connect_postgres():
     # Create tables if they do not exist
     metadata.create_all(engine)
 
-    return connection
+    return connection, engine
 
 
 def connect_timescale():
@@ -177,12 +177,11 @@ def record_processing_logs_pg(event, status, processing_step,
                 'processing_time_second': processing_time_second,
                 'processing_status': status}
 
-    with connect_postgres() as pg:
-        query = db.insert(processing_logs)
-        values_list = [document]
-
-        result = pg.execute(query, values_list)
-
-        pg.close()
+    pg, engine = connect_postgres()
+    query = db.insert(processing_logs)
+    values_list = [document]
+    result = pg.execute(query, values_list)
+    pg.close()
+    engine.dispose()
 
     return result
