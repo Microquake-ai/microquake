@@ -92,14 +92,14 @@ def create_postgres_session():
 
     engine = db.create_engine(postgres_url)
     pg = connect_postgres()
-    Session = sessionmaker(bind=engine)
+    session = sessionmaker(bind=engine)
 
-    return Session()
+    return session(), engine
 
 
 def get_continuous_data(starttime, endtime, sensor_id=None):
 
-    session = create_postgres_session()
+    session, engine = create_postgres_session()
 
     t0 = time()
 
@@ -139,6 +139,9 @@ def get_continuous_data(starttime, endtime, sensor_id=None):
     st = Stream(traces=trs)
     st.trim(starttime=UTCDateTime(starttime), endtime=UTCDateTime(endtime),
             pad=False, fill_value=0)
+
+    session.close()
+    engine.dispose()
 
     return st
 
@@ -181,6 +184,7 @@ def record_processing_logs_pg(event, status, processing_step,
     query = db.insert(processing_logs)
     values_list = [document]
     result = pg.execute(query, values_list)
+
     pg.close()
     engine.dispose()
 
