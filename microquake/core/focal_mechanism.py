@@ -52,7 +52,8 @@ def calc(cat, settings):
         event_dict['event']['sez'] = 10.
         event_dict['event']['icusp'] = 1234567
 
-        arrivals = [arr for arr in event.preferred_origin().arrivals if arr.phase == 'P']
+        arrivals = [arr for arr in event.preferred_origin().arrivals if
+                    arr.phase == 'P']
 
         for arr in arrivals:
 
@@ -62,9 +63,13 @@ def calc(cat, settings):
                     f" event {event.resource_id}")
                 continue
 
-            if arr.pulse_snr is None:
+            if arr.get_pick().snr is None:
                 logger.warning("%s P arr pulse_snr == NONE !!!" %
-                               arr.pick_id.get_referred_object().waveform_id.station_code)
+                               arr.pick_id.get_referred_object(
+                               ).waveform_id.station_code)
+                continue
+
+            if arr.polarity is None:
                 continue
 
             sname.append(arr.pick_id.get_referred_object().waveform_id.station_code)
@@ -76,7 +81,7 @@ def calc(cat, settings):
             sazi.append(2.)
             sthe.append(10.)
 
-            if arr.pulse_snr >= 100.:
+            if arr.get_pick().snr <= 6:
                 qual = 0
             else:
                 qual = 1
@@ -106,7 +111,8 @@ def calc(cat, settings):
         s, d, r = aux_plane(out['strike'], out['dip'], out['rake'])
         p2 = NodalPlane(strike=s, dip=d, rake=r)
 
-        fc = FocalMechanism(nodal_planes=NodalPlanes(nodal_plane_1=p1, nodal_plane_2=p2),
+        fc = FocalMechanism(nodal_planes=NodalPlanes(nodal_plane_1=p1,
+                                                     nodal_plane_2=p2),
                             azimuthal_gap=out['azim_gap'],
                             station_polarity_count=out['station_polarity_count'],
                             station_distribution_ratio=out['stdr'],
@@ -121,11 +127,15 @@ def calc(cat, settings):
         event = events[i]
 
         title = "%s (s,d,r)_1=(%.1f,%.1f,%.1f) _2=(%.1f,%.1f,%.1f)" % \
-                (event['event_info'], p1.strike, p1.dip, p1.rake, p2.strike, p2.dip, p2.rake)
+                (event['event_info'], p1.strike, p1.dip, p1.rake, p2.strike,
+                 p2.dip, p2.rake)
 
         if plot_focal_mechs:
-            gcf = test_stereo(np.array(event['qazi']), np.array(event['qthe']), np.array(event['p_pol']),
-                              sdr=[p1.strike, p1.dip, p1.rake], event_info=event['event_info'])
+            gcf = test_stereo(np.array(event['qazi']),
+                              np.array(event['qthe']),
+                              np.array(event['p_pol']),
+                              sdr=[p1.strike, p1.dip, p1.rake],
+                              event_info=event['event_info'])
             # sdr=[p1.strike,p1.dip,p1.rake], title=title)
             plot_figures.append(gcf)
 
@@ -148,8 +158,10 @@ def test_stereo(azimuths, takeoffs, polarities, sdr=[], event_info=None):
 
 # This assumes takeoffs are measured wrt vertical up
 #   so that i=0 (vertical) up has plunge=90:
-#          ax.line(plunge, trend) - where plunge=90 plots at center and plunge=0 at edge
-    h_rk = ax.line(90.-takeoffs[up], azimuths[up], 'bo')  # compressional first arrivals
+#          ax.line(plunge, trend) - where plunge=90 plots at center and
+    #          plunge=0 at edge
+    h_rk = ax.line(90.-takeoffs[up], azimuths[up], 'bo')  # compressional
+    # first arrivals
     h_rk = ax.line(90.-takeoffs[dn], azimuths[dn], 'go', fillstyle='none')
 
     if sdr:
