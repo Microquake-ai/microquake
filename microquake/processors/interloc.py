@@ -50,8 +50,8 @@ class Processor(ProcessingUnit):
         ngrid = ttable.shape[1]
         ttable_row_ptrs = np.array(
             [row.__array_interface__["data"][0] for row in ttable])
-        ttable_rwo_ptrs_s = np.array(
-            [row.__array_interface__["data"][0] for row in ttable])
+        ttable_row_ptrs_s = np.array(
+            [row.__array_interface__["data"][0] for row in ttable_s])
 
         logger.info("preparing data for Interloc")
         t4 = time()
@@ -59,7 +59,6 @@ class Processor(ProcessingUnit):
         # remove channels which do not have matching ttable entries
         # This should be handled upstream
 
-        ct = 0
         for trace in stream:
             station = trace.stats.station
             component = trace.stats.channel
@@ -123,7 +122,7 @@ class Processor(ProcessingUnit):
             sample_rate_decimated,
             channel_map,
             stalocs[ikeep],
-            ttable_row_ptrs[ikeep],
+            ttable_row_ptrs_s[ikeep],
             ngrid,
             whiten_corner_freqs,
             pair_dist_min,
