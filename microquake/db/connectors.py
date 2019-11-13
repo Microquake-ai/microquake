@@ -6,6 +6,7 @@ import sqlalchemy as db
 from obspy.core import UTCDateTime
 from pytz import utc
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import NullPool
 
 from loguru import logger
 from microquake.core.settings import settings
@@ -66,7 +67,7 @@ def connect_postgres():
     db_name = settings.POSTGRES_DB_NAME
     postgres_url = settings.POSTGRES_URL + db_name
 
-    engine = db.create_engine(postgres_url)
+    engine = db.create_engine(postgres_url, poolclass=NullPool)
     connection = engine.connect()
     # Create tables if they do not exist
     metadata.create_all(engine)
@@ -79,7 +80,7 @@ def connect_timescale():
     db_name = settings.TIMESCALEDB_NAME
     timescale_url = settings.TIMESCALEDB_URL + db_name
 
-    engine = db.create_engine(timescale_url)
+    engine = db.create_engine(timescale_url, poolclass=NullPool)
     session = sessionmaker(bind=engine)()
 
     return session, engine
@@ -90,7 +91,7 @@ def create_postgres_session():
     db_name = settings.POSTGRES_DB_NAME
     postgres_url = settings.POSTGRES_URL + db_name
 
-    engine = db.create_engine(postgres_url)
+    engine = db.create_engine(postgres_url, poolclass=NullPool)
     pg = connect_postgres()
     session = sessionmaker(bind=engine)
 
