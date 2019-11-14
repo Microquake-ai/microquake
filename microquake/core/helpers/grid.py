@@ -227,8 +227,8 @@ def fix_arr_takeoff_and_azimuth(cat, vp_grid, vs_grid):
 
     Here we re-create the arrivals from the picks & the NLLoc location
     so that it populates the takeoff and azimuth angles.
-    Also, we add the relevant angles at the receiver (backazimuth and incidence)
-    to the arrivals.
+    Also, we add the relevant angles at the receiver (backazimuth and
+    incidence) to the arrivals.
     """
 
     for event in cat:
@@ -243,9 +243,12 @@ def fix_arr_takeoff_and_azimuth(cat, vp_grid, vs_grid):
         for arr in origin.arrivals:
             picks.append(arr.pick_id.get_referred_object())
 
-        # MTH: create_arrivals_from_picks will create an entirely new set of arrivals (new resource_ids)
-        #      it will set arr.distance (looks exactly same as nlloc's arr.distance)
-        #      it will set arr.time_residual *** DIFFERS *** from arr.time_residual nlloc calcs/reads from last.hypo
+        # MTH: create_arrivals_from_picks will create an entirely new set of
+        # arrivals (new resource_ids)
+        #      it will set arr.distance (looks exactly same as nlloc's
+        #      arr.distance)
+        #      it will set arr.time_residual *** DIFFERS *** from
+        #      arr.time_residual nlloc calcs/reads from last.hypo
         #      it will fix the missing azim/theta that nlloc set to -1
         #      it will drop nlloc arr.time_weight field
 
