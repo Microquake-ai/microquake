@@ -25,8 +25,8 @@ def measure_pick_smom(st, inventory, event, synthetic_picks,
                       P_or_S='P',
                       debug_level=0):
     """
-        Calculate spectra of each channel/arrival and compare to Brune model to fit
-        for long_period plateau (smom)
+        Calculate spectra of each channel/arrival and compare to Brune model
+        to fit for long_period plateau (smom)
     """
 
 # Get P(S) spectra at all stations/channels that have a P(S) arrival:
@@ -55,18 +55,22 @@ def measure_pick_smom(st, inventory, event, synthetic_picks,
 
 # Now recalculate the spectra as Displacment spectra:
 
-    sta_dict = get_spectra(st, event, inventory, synthetic_picks, calc_displacement=True,
+    sta_dict = get_spectra(st, event, inventory, synthetic_picks,
+                           calc_displacement=True,
                            S_win_len=.1, P_or_S=P_or_S)
     stacked_spec, freqs = stack_spectra(sta_dict)
-    fit, _ = calc_fit1(stacked_spec, freqs, fmin=1, fmax=fmax, fit_displacement=True)
+    fit, _ = calc_fit1(stacked_spec, freqs, fmin=1, fmax=fmax,
+                       fit_displacement=True)
 
     # Calculate fmin/fmax from velocity signal/noise spec
     # and add into this displacement spec dict:
 
     for sta_code, sta_dd in sta_dict.items():
         for cha_code, cha_dict in sta_dd['chan_spec'].items():
-            cha_dict['fmin'] = vel_dict[sta_code]['chan_spec'][cha_code]['fmin']
-            cha_dict['fmax'] = vel_dict[sta_code]['chan_spec'][cha_code]['fmax']
+            cha_dict['fmin'] = vel_dict[sta_code]['chan_spec'][cha_code][
+                'fmin']
+            cha_dict['fmax'] = vel_dict[sta_code]['chan_spec'][cha_code][
+                'fmax']
 
     fit, smom_dict = calc_fit(sta_dict, fc=peak_f, fmin=fmin, fmax=fmax,
                               plot_fit=plot_fit,
@@ -150,7 +154,7 @@ def peak_freq(spec_array, freqs, fmin=0., fmax=None):
     """
 
     if fmax is None:
-        fmax = freqs[-1]
+        fmax = np.max(freqs)
 
     mask = [all(f) for f in zip(freqs >= fmin, freqs <= fmax)]
 
@@ -160,31 +164,38 @@ def peak_freq(spec_array, freqs, fmin=0., fmax=None):
 def stack_spectra(sta_dict):
     """ stack the (normalized) pre-calculated spectra (fft) of each channel
 
-        :param sta_dict: dictionary of pre-calculated P & S channel spectra (complex values) at each station
+        :param sta_dict: dictionary of pre-calculated P & S channel spectra
+        (complex values) at each station
         :return: normalized_spectrum_stack (real modulus), freqs
         :rtype: (np.array, np.array)
     """
 
     stack = 0.
     n = 0.
+    freqs = []
 
     for _, sta in sta_dict.items():
         for _, cha in sta['chan_spec'].items():
-            signal_fft = cha['signal_fft']
-            freqs = cha['freqs']
+            if len(cha['signal_fft']) > 0:
+                signal_fft = cha['signal_fft']
+                # this is very dangerous assuming that the FFT will all have
+                # the same frequency vector. Depending on how the FFT is
+                # calculated the vector will depend on the sampling rate.
+                freqs = cha['freqs']
 
-            # Normalize each fft individually and add to stack
-            stack += np.abs(signal_fft)/np.amax(np.abs(signal_fft))
+                # Normalize each fft individually and add to stack
+                stack += np.abs(signal_fft)/np.amax(np.abs(signal_fft))
 
-            n += 1
+                n += 1
 
-    return stack/np.amax(stack), freqs
+    return stack/np.amax(stack), np.array(freqs)
 
 
 def get_spectra(st, event, inventory, synthetic_picks,
                 calc_displacement=False,
                 S_win_len=.1, P_or_S='P'):
-    """ Calculate the fft at each channel in the stream that has an arrival in event.arrivals
+    """ Calculate the fft at each channel in the stream that has an arrival
+    in event.arrivals
 
         :param st: microquake.core.stream.Stream
         :type  st: microquake.core.stream.Stream
@@ -192,7 +203,8 @@ def get_spectra(st, event, inventory, synthetic_picks,
         :type  event: microquake.core.event.Event
         :param stations: list of station metadata
         :type  stations: obspy.core.inventory.network.Network
-        :param calc_displacement: If true calculate displacement spectra (else velocity)
+        :param calc_displacement: If true calculate displacement spectra (
+        else velocity)
         :type  calc_displacement: bool
 
         :return: sta_dict: dict of station P & S spectra for each channel
@@ -202,9 +214,11 @@ def get_spectra(st, event, inventory, synthetic_picks,
     pre_window_start_sec = .01
     max_S_P_time = 0.25
 
-    # TODO Right now S win len = .1, may want to make this a function of distance and/or handle
+    # TODO Right now S win len = .1, may want to make this a function of
+    #  distance and/or handle
     #     if win len exceeds trace len, etc
-    origin = event.preferred_origin() if event.preferred_origin() else event.origins[0]
+    origin = event.preferred_origin() if event.preferred_origin() else \
+        event.origins[0]
 
     # Only use picks that have an arrival used for this origin:
     picks = [arr.pick_id.get_referred_object() for arr in origin.arrivals]
@@ -231,7 +245,8 @@ def get_spectra(st, event, inventory, synthetic_picks,
     arr_stations = set()
 
     for arr in arrivals:
-        arr_stations.add(arr.pick_id.get_referred_object().waveform_id.station_code)
+        arr_stations.add(arr.pick_id.get_referred_object(
+            ).waveform_id.station_code)
 
     st_stations = set()
 
@@ -246,7 +261,8 @@ def get_spectra(st, event, inventory, synthetic_picks,
 
     # For now, let's be explicit about our assumptions:
     # For each trace, we'll use P-.01 to S-.01 to calculate the P spectrum, so
-    #   let's use the max expected S-P time (at the farthest station) to fix NFFT
+    #   let's use the max expected S-P time (at the farthest station) to fix
+    #   NFFT
     dt = st[0].stats.delta  # For now, let's assume ALL traces are sampled
     # at this rate
     npts = int(max_S_P_time/dt)
@@ -262,12 +278,14 @@ def get_spectra(st, event, inventory, synthetic_picks,
 
         d = {}
 
-        if 'P' in pick_dict[sta_code] and pick_dict[sta_code]['P'].evaluation_status != "rejected":
+        if 'P' in pick_dict[sta_code] and pick_dict[sta_code][
+            'P'].evaluation_status != "rejected":
             d['ptime'] = pick_dict[sta_code]['P'].time
         else:
             d['ptime'] = synthetic_dict[sta_code]['P'].time
 
-        if 'S' in pick_dict[sta_code] and pick_dict[sta_code]['S'].evaluation_status != "rejected":
+        if 'S' in pick_dict[sta_code] and pick_dict[sta_code][
+            'S'].evaluation_status != "rejected":
             d['stime'] = pick_dict[sta_code]['S'].time
         else:
             d['stime'] = synthetic_dict[sta_code]['S'].time
@@ -290,8 +308,11 @@ def get_spectra(st, event, inventory, synthetic_picks,
         sta_dict[sta_code] = d
 
 
-# 2. Calc/save signal/noise fft spectra at all channels that have P(S) arrivals:
-    st.detrend('demean').detrend('linear').taper(type='cosine', max_percentage=0.05, side='both')
+# 2. Calc/save signal/noise fft spectra at all channels that have P(S)
+    # arrivals:
+    st.detrend('demean').detrend('linear').taper(type='cosine',
+                                                 max_percentage=0.05,
+                                                 side='both')
 
     for sta_code, sta in sta_dict.items():
 
@@ -309,8 +330,9 @@ def get_spectra(st, event, inventory, synthetic_picks,
 
         if signal_start > signal_end:
             logger.info("Signal start time larger the end time, continuing")
-            logger.info("*** sta:%3s ptime:%s stime:%s P_or_S:%s pre_win:%f S_win:%f" %
-                        (sta_code, sta['ptime'], sta['stime'], P_or_S, pre_window_start_sec, S_win_len))
+            logger.info("*** sta:%3s ptime:%s stime:%s P_or_S:%s pre_win:%f "
+                        "S_win:%f" % (sta_code, sta['ptime'], sta['stime'],
+                                      P_or_S, pre_window_start_sec, S_win_len))
 
             continue
 
@@ -338,12 +360,15 @@ def get_spectra(st, event, inventory, synthetic_picks,
                 sensor_type = get_sensor_type_from_trace(tr)
 
                 if sensor_type == 'ACC':
-                    signal.integrate().taper(type='cosine', max_percentage=0.05, side='both')
-                    noise.integrate().taper(type='cosine', max_percentage=0.05, side='both')
+                    signal.integrate().taper(type='cosine',
+                                             max_percentage=0.05, side='both')
+                    noise.integrate().taper(type='cosine',
+                                            max_percentage=0.05, side='both')
                 elif sensor_type == 'VEL':
                     pass
                 elif sensor_type == 'DISP':
-                    logger.info("Not yet set up to handle input traces = DISPLACMENT !!")
+                    logger.info("Not yet set up to handle input traces = "
+                                "DISPLACMENT !!")
 
                     continue
                 else:
@@ -353,24 +378,31 @@ def get_spectra(st, event, inventory, synthetic_picks,
                     continue
 
                 if calc_displacement:
-                    signal.integrate().taper(type='cosine', max_percentage=0.05, side='both')
-                    noise.integrate().taper(type='cosine', max_percentage=0.05, side='both')
+                    signal.integrate().taper(type='cosine',
+                                             max_percentage=0.05, side='both')
+                    noise.integrate().taper(type='cosine',
+                                            max_percentage=0.05, side='both')
 
                 # check(signal)
                 # parsevals(signal.data, dt, nfft)
 
-                (signal_fft, freqs) = unpack_rfft(rfft(signal.data, n=nfft), df)
+                (signal_fft, freqs) = unpack_rfft(rfft(signal.data, n=nfft),
+                                                  df)
                 (noise_fft, freqs) = unpack_rfft(rfft(noise.data, n=nfft), df)
 
                 # MTH: Determine the valid freq range: fmin - fmax
                 #      To fit to model.
-                # fmin/fmax = where smoothed signal spec exceeds smoothed noise spec by snr_threshold
+                # fmin/fmax = where smoothed signal spec exceeds smoothed
+                # noise spec by snr_threshold
                 # fc1 = low-frequency corner of this trace's sensor
 
                 if not calc_displacement:
 
-                    fc1 = get_corner_freq_from_pole(tr.stats.response.get_paz().poles[0])
-                    fmin, fmax = find_fmin_fmax_from_spec(signal_fft, noise_fft, 1.3, 200., df)
+                    fc1 = get_corner_freq_from_pole(
+                        tr.stats.response.get_paz().poles[0])
+                    fmin, fmax = find_fmin_fmax_from_spec(signal_fft,
+                                                          noise_fft, 1.3,
+                                                          200., df)
 
                     # Take the maximum of fc1 and fmin to use for fitting:
                     # fmin is None if signal > noise all the way to DC
@@ -459,7 +491,8 @@ def getresidfit(data_spec, model_func, fc: float, freqs: list, Lnorm='L1',
         smom = p[0]
         ts = p[1]
         fit = 0.
-        # Neither Powell nor Nelder-Meade seem to have a way to restrict search params to be > 0,
+        # Neither Powell nor Nelder-Meade seem to have a way to restrict
+        # search params to be > 0,
         # and L-BFGS-B does not appear to work, so here's a hack:
 
         if smom < 0. or ts < 0.:
@@ -472,7 +505,8 @@ def getresidfit(data_spec, model_func, fc: float, freqs: list, Lnorm='L1',
             res = model_func(fc, smom, ts, f)
 
             if res < 0.:
-                # logger.info("** OOPS: f=%f smom=%g ts=%g model_func=%g" % (f, smom, ts, res))
+                # logger.info("** OOPS: f=%f smom=%g ts=%g model_func=%g" %
+                # (f, smom, ts, res))
                 pass
             diff = np.log10(data_spec[i]) - np.log10(res)
 
@@ -485,19 +519,21 @@ def getresidfit(data_spec, model_func, fc: float, freqs: list, Lnorm='L1',
 
         return fit
 
-    (sol, fopt, *rest) = optimize.fmin(inner, start, ftol=.01, disp=False, full_output=1)
+    (sol, fopt, *rest) = optimize.fmin(inner, start, ftol=.01, disp=False,
+                                       full_output=1)
 
     return (sol, fopt)
 
 
-def getresidfit2(data_spec, model_func, freqs: list, Lnorm='L1', weight_fr=False,
-                 fmin=1., fmax=3000.) -> float:
+def getresidfit2(data_spec, model_func, freqs: list, Lnorm='L1',
+                 weight_fr=False, fmin=1., fmax=3000.) -> float:
 
     def inner(p):
         smom = p[0]
         fc = p[1]
         fit = 0.
-        # Neither Powell nor Nelder-Meade seem to have a way to restrict search params to be > 0,
+        # Neither Powell nor Nelder-Meade seem to have a way to restrict
+        # search params to be > 0,
         # and L-BFGS-B does not appear to work, so here's a hack:
 
         if smom < 0.:
@@ -520,15 +556,16 @@ def getresidfit2(data_spec, model_func, freqs: list, Lnorm='L1', weight_fr=False
     return inner
 
 
-def getresidfit3(data_spec, model_func, freqs: list, Lnorm='L1', weight_fr=False,
-                 fmin=1., fmax=3000.) -> float:
+def getresidfit3(data_spec, model_func, freqs: list, Lnorm='L1',
+                 weight_fr=False, fmin=1., fmax=3000.) -> float:
 
     def inner(p):
         smom = p[0]
         ts = p[1]
         fc = p[2]
         fit = 0.
-        # Neither Powell nor Nelder-Meade seem to have a way to restrict search params to be > 0,
+        # Neither Powell nor Nelder-Meade seem to have a way to restrict
+        # search params to be > 0,
         # and L-BFGS-B does not appear to work, so here's a hack:
 
         if smom < 0. or ts < 0.:
@@ -541,7 +578,8 @@ def getresidfit3(data_spec, model_func, freqs: list, Lnorm='L1', weight_fr=False
             res = model_func(fc, smom, ts, f)
 
             if res < 0.:
-                logger.info("** OOPS: f=%f smom=%g ts=%g model_func=%g" % (f,  smom, ts, res))
+                logger.info("** OOPS: f=%f smom=%g ts=%g model_func=%g" % (
+                    f,  smom, ts, res))
                 pass
             diff = np.log10(data_spec[i]) - np.log10(res)
 
@@ -557,7 +595,8 @@ def getresidfit3(data_spec, model_func, freqs: list, Lnorm='L1', weight_fr=False
     return inner
 
 
-def calc_fit1(spec, freqs, fmin=1., fmax=1000., Lnorm='L2', weight_fr=False, fit_displacement=False):
+def calc_fit1(spec, freqs, fmin=1., fmax=1000., Lnorm='L2', weight_fr=False,
+              fit_displacement=False):
     # spec = spec_amp
 
     model_func = brune_vel_spec
@@ -571,7 +610,8 @@ def calc_fit1(spec, freqs, fmin=1., fmax=1000., Lnorm='L2', weight_fr=False, fit
     # Give it a starting vector:
     #    smom  t* fc
     pp = [1., .001, 100]
-    (sol, fit, *rest) = optimize.fmin(residfit, np.array(pp), xtol=10**-12, ftol=10**-6, disp=False, full_output=1)
+    (sol, fit, *rest) = optimize.fmin(residfit, np.array(pp), xtol=10**-12,
+                                      ftol=10**-6, disp=False, full_output=1)
     mom, ts, fc = sol[0], sol[1], sol[2]
     # print(fc)
 
@@ -586,7 +626,8 @@ def calc_fit1(spec, freqs, fmin=1., fmax=1000., Lnorm='L2', weight_fr=False, fit
 
         for i, f in enumerate(freqs):
             model_spec[i] = model_func(fc, mom, ts, f)
-        plot_spec2(freqs, spec, model_spec, title="Fit to spec stack fc=%.2f" % fc)
+        plot_spec2(freqs, spec, model_spec, title="Fit to spec stack "
+                                                  "fc=%.2f" % fc)
 
     return fit, fc
 
@@ -614,7 +655,8 @@ def calc_fit(sta_dict, fc, fmin=20., fmax=1000.,
     # for f in frequencies:
     #     res_dict[(fc, f)] = (fc * fc) / (fc * fc + f * f)
 
-    # (sol,fopt, _)= optimize.fmin(residfit, np.array(pp),xtol=10**-12,ftol=10**-12,disp=False, full_output=1)
+    # (sol,fopt, _)= optimize.fmin(residfit, np.array(pp),xtol=10**-12,
+    # ftol=10**-12,disp=False, full_output=1)
 
     for sta_code, sta in sta_dict.items():
         if 'chan_spec' not in sta:
@@ -624,7 +666,8 @@ def calc_fit(sta_dict, fc, fmin=20., fmax=1000.,
         dd = {}
 
         for cha_code, cha in sta['chan_spec'].items():
-            signal_fft, freqs, noise_fft = (cha['signal_fft'], cha['freqs'], cha['noise_fft'])
+            signal_fft, freqs, noise_fft = (cha['signal_fft'], cha['freqs'],
+                                            cha['noise_fft'])
 
             model_func = brune_vel_spec
 
@@ -641,8 +684,10 @@ def calc_fit(sta_dict, fc, fmin=20., fmax=1000.,
             # logger.debug("calc_fit sta:%3s cha:%s fmin:%.1f fmax:%.1f" %
             #              (sta_code, cha_code, fmin, fmax))
 
-            (sol, fopt) = getresidfit(np.abs(signal_fft), model_func, fc, freqs, Lnorm=Lnorm,
-                                      weight_fr=weight_fr, fmin=fmin, fmax=fmax)
+            (sol, fopt) = getresidfit(np.abs(signal_fft), model_func, fc,
+                                      freqs, Lnorm=Lnorm,
+                                      weight_fr=weight_fr, fmin=fmin,
+                                      fmax=fmax)
 
             if sol[0] < 0.:
                 logger.info("Ummm smom < 0 !!!")
@@ -658,7 +703,8 @@ def calc_fit(sta_dict, fc, fmin=20., fmax=1000.,
             ch_dict['fmin'] = cha['fmin']
             ch_dict['fmax'] = cha['fmax']
 
-            # logger.debug("calc_fit: sta:%s cha:%s smom:%12.10g fit:%.2f ts=%f" %
+            # logger.debug("calc_fit: sta:%s cha:%s smom:%12.10g fit:%.2f
+            # ts=%f" %
             #              (sta_code, cha_code, sol[0], fopt, sol[1]))
 
             # if plot_fit and cha['P_or_S'] == "S":
@@ -669,7 +715,8 @@ def calc_fit(sta_dict, fc, fmin=20., fmax=1000.,
                 w2_no_atten = np.array(np.zeros(freqs.size), dtype=np.float_)
                 w3_no_atten = np.array(np.zeros(freqs.size), dtype=np.float_)
                 brune_vel = np.array(np.zeros(freqs.size), dtype=np.float_)
-                corrected_vel_spec = np.array(np.zeros(freqs.size), dtype=np.float_)
+                corrected_vel_spec = np.array(np.zeros(freqs.size),
+                                              dtype=np.float_)
                 Q = 100
                 tstar = sta['R']/(5.3e3 * Q)
                 logger.debug("tstar=", tstar)
@@ -681,15 +728,20 @@ def calc_fit(sta_dict, fc, fmin=20., fmax=1000.,
                     w3_no_atten[i] = brune_omega3(fc, sol[0], 0, f)
                     # brune_vel[i] = brune_vel_spec(fc, sol[0], sol[1], f)
                     brune_vel[i] = brune_vel_spec(fc, sol[0], 0, f)
-                    corrected_vel_spec[i] = signal_fft[i] * np.exp(np.pi*f*tstar)
+                    corrected_vel_spec[i] = signal_fft[i] * np.exp(
+                        np.pi*f*tstar)
 
                 # plot_spec5(freqs, vel_spec,  np.abs(noise_fft), model_spec,
-                # plot_spec5(freqs, np.abs(signal_fft),  np.abs(noise_fft), model_spec,
-                plot_spec5(freqs, np.abs(corrected_vel_spec),  np.abs(noise_fft), model_spec,
+                # plot_spec5(freqs, np.abs(signal_fft),  np.abs(noise_fft),
+                # model_spec,
+                plot_spec5(freqs, np.abs(corrected_vel_spec),  np.abs(
+                    noise_fft), model_spec,
                            w2_no_atten, brune_vel,
-                           title="sta:%s ch:%s spec fit phase:%s [lambda=%12.10g]" %
+                           title="sta:%s ch:%s spec fit phase:%s ["
+                                 "lambda=%12.10g]" %
                            (sta_code, cha_code, ch_dict['P_or_S'], sol[0]),
-                           subtitle="fmin:%.1f fmax:%.1f use_fixed_fmin_fmax:%s" %
+                           subtitle="fmin:%.1f fmax:%.1f "
+                                    "use_fixed_fmin_fmax:%s" %
                            (fmin, fmax, use_fixed_fmin_fmax))
 
             dd[cha_code] = ch_dict
@@ -730,7 +782,8 @@ def plot_spec5(freqs, signal_fft, noise_fft, model_spec,
     plt.show()
 
 
-def plot_spec3(freqs, signal_fft, noise_fft, model_spec, title=None, subtitle=None):
+def plot_spec3(freqs, signal_fft, noise_fft, model_spec, title=None,
+               subtitle=None):
 
     plt.loglog(freqs, np.abs(signal_fft), color='blue')
     plt.loglog(freqs, np.abs(noise_fft),  color='red')
@@ -884,8 +937,10 @@ def smooth(x, window_len=11, window='hanning'):
 
     input:
         x: the input signal
-        window_len: the dimension of the smoothing window; should be an odd integer
-        window: the type of window from 'flat', 'hanning', 'hamming', 'bartlett', 'blackman'
+        window_len: the dimension of the smoothing window; should be an odd
+        integer
+        window: the type of window from 'flat', 'hanning', 'hamming',
+        'bartlett', 'blackman'
             flat window will produce a moving average smoothing.
 
     output:
@@ -902,8 +957,10 @@ def smooth(x, window_len=11, window='hanning'):
     numpy.hanning, numpy.hamming, numpy.bartlett, numpy.blackman, numpy.convolve
     scipy.signal.lfilter
 
-    TODO: the window parameter could be the window itself if an array instead of a string
-    NOTE: length(output) != length(input), to correct this: return y[(window_len/2-1):-(window_len/2)] instead of just y.
+    TODO: the window parameter could be the window itself if an array
+    instead of a string
+    NOTE: length(output) != length(input), to correct this: return y[(
+    window_len/2-1):-(window_len/2)] instead of just y.
     """
 
     if x.ndim != 1:
@@ -918,8 +975,10 @@ def smooth(x, window_len=11, window='hanning'):
         return x
 
     if window not in ['flat', 'hanning', 'hamming', 'bartlett', 'blackman']:
-        raise ValueError("Window is on of 'flat', 'hanning', 'hamming', 'bartlett', 'blackman'")
-        # raise ValueError, "Window is on of 'flat', 'hanning', 'hamming', 'bartlett', 'blackman'"
+        raise ValueError("Window is on of 'flat', 'hanning', 'hamming', "
+                         "'bartlett', 'blackman'")
+        # raise ValueError, "Window is on of 'flat', 'hanning', 'hamming',
+        # 'bartlett', 'blackman'"
 
     s = np.r_[x[window_len-1:0:-1], x, x[-2:-window_len-1:-1]]
     # print(len(s))
