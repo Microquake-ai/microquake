@@ -299,7 +299,7 @@ def post_event_data(api_base_url, event_resource_id, request_files,
 
 
 def put_data_from_objects(api_base_url, cat=None, stream=None, context=None,
-             variable_length=None):
+                          variable_length=None):
 
     event_id = cat[0].resource_id.id
 
@@ -309,12 +309,12 @@ def put_data_from_objects(api_base_url, cat=None, stream=None, context=None,
 
     # check if the event type and event status has changed on the API
 
-    re = get_event_by_id(api_base_url, event_id)
-    try:
-        cat[0].event_type = re.event_type
-        cat[0].preferred_origin().evaluation_status = re.status
-    except AttributeError as e:
-        logger.error(e)
+    # re = get_event_by_id(api_base_url, event_id)
+    # try:
+    #     cat[0].event_type = re.event_type
+    #     cat[0].preferred_origin().evaluation_status = re.status
+    # except AttributeError as e:
+    #     logger.error(e)
 
     url = f'{base_url}/events/{event_id}/files'
 

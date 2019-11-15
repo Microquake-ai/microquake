@@ -115,7 +115,7 @@ picker.s_wave.search_window.start = -50e-3        # start of search window relat
 picker.s_wave.search_window.end = 20e-3           # end of the search window relative to predicted arrival time (s)
 picker.s_wave.search_window.resolution = 0.0005   # time resolution of search window (s)
 
-picker.second_pass.snr_threshold = 6
+picker.second_pass.snr_threshold = 3
 picker.second_pass.min_num_picks = 20
 picker.second_pass.residual_tolerance = 10e-3
 picker.second_pass.waveform_filter.frequency_min = 20

@@ -541,7 +541,11 @@ def _find_signal_zeros(tr, istart, max_pulse_duration=.1, nzeros_to_find=3,
     i0 = 0
     snr_thresh = 10.
 
-    for i in range(istart, istart + nmax_look):
+    iend = istart + nmax_look
+    if iend > len(data):
+        iend = len(data)
+
+    for i in range(istart, iend):
         if np.abs(data[i]) >= snr_thresh * np.abs(noise_level):
             s0 = sign[i]
             i0 = i
