@@ -331,9 +331,9 @@ def read_scatter_file(filename):
     points = []
 
     for k in range(0, nsamples):
-        x = unpack('f', f.read(4))[0]
-        y = unpack('f', f.read(4))[0]
-        z = unpack('f', f.read(4))[0]
+        x = unpack('f', f.read(4))[0] * 1000
+        y = unpack('f', f.read(4))[0] * 1000
+        z = unpack('f', f.read(4))[0] * 1000
         pdf = unpack('f', f.read(4))[0]
 
         points.append([x, y, z, pdf])
