@@ -316,14 +316,14 @@ def put_data_from_objects(api_base_url, cat=None, stream=None, context=None,
     # except AttributeError as e:
     #     logger.error(e)
 
-    url = f'{base_url}/events/{event_id}/files'
+    url = f'{base_url}/events/{event_id}'
 
     files = prepare_data(cat=cat, stream=stream, context=context,
                          variable_length=variable_length)
 
     logger.info(f'attempting to PUT catalog for event {event_id}')
 
-    response = requests.put(url, files=files)
+    response = requests.patch(url, files=files)
 
     logger.info(f'API responded with {response.status_code} code')
     return response
