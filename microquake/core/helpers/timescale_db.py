@@ -77,7 +77,7 @@ def get_continuous_data(start_time, end_time, sensor_id=None):
     time_now = UTCDateTime.now()
     delay = time_now - end_time
 
-    st = Stream(traces=traces)
+    st = Stream(traces=traces).trim(starttime=start_time, endtime=end_time)
 
     if st is None:
         logger.warning(f'no data recovered from the database! '
