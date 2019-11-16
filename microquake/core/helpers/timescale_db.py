@@ -85,7 +85,7 @@ def get_continuous_data(start_time, end_time, sensor_id=None):
         return None
 
     trs = []
-    st = st.merge(fill_value=np.nan)
+    # st = st.merge(fill_value=np.nan)
     for i, tr in enumerate(st):
         if np.all(tr.data == 0):
             continue
@@ -94,14 +94,13 @@ def get_continuous_data(start_time, end_time, sensor_id=None):
 
         trs.append(tr)
 
+    if not trs:
+        return None
+
     st.traces = trs
 
     session.close()
     engine.dispose()
-
-    if len(st) == 0:
-        logger.warning('all traces were removed!')
-        return None
 
     return st.detrend('demean')
 
