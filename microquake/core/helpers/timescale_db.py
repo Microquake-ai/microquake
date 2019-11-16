@@ -74,22 +74,33 @@ def get_continuous_data(start_time, end_time, sensor_id=None):
         tr_z.stats.network = network_code
         traces.append(tr_z)
 
-    st = Stream(traces=traces).trim(starttime=start_time,
-                                    endtime=end_time)
-
     time_now = UTCDateTime.now()
     delay = time_now - end_time
+
+    st = Stream(traces=traces)
+
     if st is None:
         logger.warning(f'no data recovered from the database! '
                        f'the current database lag is {db_lag}')
         return None
 
+    duration = (end_time - start_time)
+
     trs = []
     # st = st.merge(fill_value=np.nan)
     for i, tr in enumerate(st):
+        expected_number_sample = tr.stats.sampling_rate * duration
         if np.all(tr.data == 0):
+            logger.warning(f'data from sensor {tr.stats.station} contains '
+                           f'only zero. The trace will not be kept')
             continue
         elif np.any(np.isnan(tr.data)):
+            logger.warning(f'data from sensor {tr.stats.station} contains '
+                           f'some NaN. The trace will not be kept')
+            continue
+        elif len(tr) < 0.9 * expected_number_sample:
+            logger.warning(f'data from sensor {tr.stats.station} contains '
+                           f'too little data. The trace will not be kepy')
             continue
 
         trs.append(tr)
@@ -97,7 +108,8 @@ def get_continuous_data(start_time, end_time, sensor_id=None):
     if not trs:
         return None
 
-    st.traces = trs
+    st = Stream(traces=trs).trim(starttime=start_time,
+                                 endtime=end_time)
 
     session.close()
     engine.dispose()
