@@ -275,7 +275,7 @@ class Magnitude(obsevent.Magnitude):
     @property
     def static_stress_drop_mpa(self):
         ssd = None
-        if self.magnitude_type is "Mw":
+        if self.magnitude_type == "Mw":
             if self.mag and self.corner_frequency_hz:
                 ssd = calc_static_stress_drop(self.mag,
                                               self.corner_frequency_hz)
@@ -284,7 +284,7 @@ class Magnitude(obsevent.Magnitude):
     @property
     def apparent_stress(self):
         app_stress = None
-        if self.magnitude_type is 'Mw':
+        if self.magnitude_type == 'Mw':
             if self.energy_joule and self.mag:
                 app_stress = 2 * self.energy_joule / self.potency_m3
         return app_stress
@@ -292,7 +292,7 @@ class Magnitude(obsevent.Magnitude):
     @property
     def seismic_moment(self):
         seismic_moment = None
-        if self.magnitude_type is 'Mw':
+        if self.magnitude_type == 'Mw':
             seismic_moment = 10 ** (3 * (self.mag + 6.02) / 2)
         return seismic_moment
 
@@ -305,7 +305,7 @@ class Magnitude(obsevent.Magnitude):
     def potency_m3(self):
         potency = None
         mu = 29.5e9
-        if self.magnitude_type is 'Mw':
+        if self.magnitude_type == 'Mw':
             if self.mag:
                 potency = self.seismic_moment / mu
         return potency
