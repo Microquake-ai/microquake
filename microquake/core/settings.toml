@@ -63,7 +63,7 @@ data_connector.reconciliation_delay_minutes = 60
 data_connector.reconciliation_interval_hours = 72
 data_connector.maximum_event_elevation = 900
 data_connector.request_range_hours = 72
-data_connector.closing_window_time_seconds = 200 # time after which we
+data_connector.closing_window_time_seconds = 60 # time after which we
 # consider the continuous data window closed after the event occurred
 data_connector.context_trace_forbiden_sensor = ['7', '9']  # Accelerometers
 
@@ -102,7 +102,7 @@ quick_magnitude.c = 1.1
 picker.snr_threshold = 6
 picker.min_num_picks = 20
 picker.residual_tolerance = 100e-3
-picker.waveform_filter.frequency_min = 20
+picker.waveform_filter.frequency_min = 100
 picker.waveform_filter.frequency_max = 1000
 picker.p_wave.snr_window.noise = 0.005
 picker.p_wave.snr_window.signal = 0.01
@@ -118,7 +118,7 @@ picker.s_wave.search_window.resolution = 0.0005   # time resolution of search wi
 picker.second_pass.snr_threshold = 6
 picker.second_pass.min_num_picks = 20
 picker.second_pass.residual_tolerance = 10e-3
-picker.second_pass.waveform_filter.frequency_min = 20
+picker.second_pass.waveform_filter.frequency_min = 100
 picker.second_pass.waveform_filter.frequency_max = 1000
 picker.second_pass.p_wave.snr_window.noise = 0.005
 picker.second_pass.p_wave.snr_window.signal = 0.01
