@@ -704,6 +704,9 @@ def _get_pulse_width_and_area(tr, ipick, icross, max_pulse_duration=.08):
 
     epsilon = 1e-10
 
+    if icross >= iend:
+       i = iend - 1
+
     for i in range(icross, iend):
         diff = np.abs(data[i] - data[ipick])
 
