@@ -19,7 +19,7 @@ class Processor(ProcessingUnit):
         logger.info("pipeline: measure energy")
 
         cat = kwargs["cat"].copy()
-        stream = kwargs["stream"]
+        stream = kwargs["stream"].copy()
 
         correct_attenuation = self.params.correct_attenuation
         Q = self.params.attenuation_Q

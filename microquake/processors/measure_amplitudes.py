@@ -35,8 +35,8 @@ class Processor(ProcessingUnit):
 
         logger.info("pipeline: measure_amplitudes")
 
-        cat = kwargs["cat"]
-        stream = kwargs["stream"]
+        cat = kwargs["cat"].copy()
+        stream = kwargs["stream"].copy()
 
         pulse_min_width = self.params.pulse_min_width
         pulse_min_snr_P = self.params.pulse_min_snr_P

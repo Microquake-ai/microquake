@@ -283,6 +283,21 @@ def prepare_data(cat=None, stream=None, context=None, variable_length=None):
     return files
 
 
+def get_event_types(api_base_url):
+
+    url = api_base_url + 'inventory/microquake_event_types'
+    response = requests.get(url)
+
+    if not response:
+        raise ConnectionError('API Connection Error')
+
+    data = json.loads(response.content)
+    dict_out = {}
+    for d in data:
+        dict_out[d['microquake_type']] = d['quakeml_type']
+
+    return dict_out
+
 def post_event_data(api_base_url, event_resource_id, request_files,
                     send_to_bus=False):
     # removing id from URL as no longer used

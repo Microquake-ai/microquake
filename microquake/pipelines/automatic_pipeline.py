@@ -21,6 +21,8 @@ def automatic_pipeline(cat: Catalog, stream: Stream):
     fixed_length = clean_data_processor.process(waveform=stream)
 
     cat_picked = picking_meta_processor(cat, fixed_length)
+    if cat_picked is None:
+        return cat
     rtp = ray_tracer.Processor()
 
     min_number_pick = settings.get('picker').min_num_picks
@@ -29,13 +31,16 @@ def automatic_pipeline(cat: Catalog, stream: Stream):
         logger.warning(f'number of picks ({n_picks}) is lower than the '
                        f'minimum number of picks ({min_number_pick}). '
                        f'Aborting automatic processing!')
-        if cat[0].preferred_origin().rays:
+
+        if hasattr(cat_picked[0].preferred_origin(), 'rays'):
             return cat
         rtp.process(cat=cat)
         cat_ray = rtp.output_catalog(cat)
         return cat_ray
 
     cat_located = location_meta_processor(cat_picked)
+    if cat_located is None:
+        return cat
 
     max_uncertainty = settings.get('location').max_uncertainty
     uncertainty = cat_located[0].preferred_origin().uncertainty

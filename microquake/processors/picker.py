@@ -51,7 +51,7 @@ class Processor(ProcessingUnit):
         list of phase and time
         """
         # cat = kwargs["cat"]
-        stream = kwargs['stream']
+        stream = kwargs['stream'].copy()
         phase_filter = None
 
         if "location" and "event_time_utc" in kwargs:
@@ -59,8 +59,12 @@ class Processor(ProcessingUnit):
             ot_utc = kwargs['event_time_utc']
         elif "cat" in kwargs:
             cat = kwargs["cat"]
-            o_loc = cat[0].origins[-1].loc
-            ot_utc = estimate_origin_time(stream, o_loc)
+            if cat[0].preferred_origin_id is None:
+                o_loc = cat[0].origins[-1].loc
+                ot_utc = estimate_origin_time(stream, o_loc)
+            else:
+                o_loc = cat[0].preferred_origin().loc
+                ot_utc = cat[0].preferred_origin().time
         else:
             raise Exception("Missing parameters to run this module.")
 

@@ -35,8 +35,8 @@ class Processor(ProcessingUnit):
 
         logger.info("pipeline: measure smom")
 
-        cat = kwargs["cat"]
-        stream = kwargs["stream"]
+        cat = kwargs["cat"].copy()
+        stream = kwargs["stream"].copy()
 
         plot_fit = False
 

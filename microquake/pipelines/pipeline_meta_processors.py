@@ -9,6 +9,8 @@ from microquake.processors import (focal_mechanism, magnitude,
                                    magnitude_extractor, ray_tracer)
 from microquake.core.settings import settings
 
+min_number_picks = settings.get('picker').min_num_picks
+
 
 def picker_election(location, event_time_utc, cat, stream):
     """
@@ -84,8 +86,13 @@ def picking_meta_processor(cat, fixed_length):
     picker_processor.process(stream=fixed_length, cat=cat)
     cat_picker = picker_processor.output_catalog(cat)
 
+    if len(cat_picker[0].preferred_origin().arrivals) < min_number_picks:
+        logger.warning('not enough picks... aborting automatic processing')
+        return None
+
     nlloc_processor = nlloc.Processor()
     nlloc_processor.initializer()
+
     cat_nlloc = nlloc_processor.process(cat=cat_picker)['cat']
 
     picker_sp_processor = picker.Processor(module_type='second_pass')
@@ -103,6 +110,10 @@ def location_meta_processor(cat):
 
     logger.info('starting location process')
     start_processing_time = time()
+
+    if len(cat[0].preferred_origin().arrivals) < min_number_pick:
+        logger.warning('insufficient number of picks... aborting')
+        return None
 
     nlloc_processor = nlloc.Processor()
     nlloc_processor.initializer()

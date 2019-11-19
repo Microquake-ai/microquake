@@ -21,8 +21,8 @@ class Processor(ProcessingUnit):
         """
             Process event and returns its classification.
         """
-        stream = kwargs["stream"]
-        cat = kwargs["cat"]
+        stream = kwargs["stream"].copy()
+        cat = kwargs["cat"].copy()
         context_trace = kwargs["context"].composite()
         station = context_trace[0].stats.station
 
