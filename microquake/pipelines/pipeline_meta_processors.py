@@ -111,7 +111,7 @@ def location_meta_processor(cat):
     logger.info('starting location process')
     start_processing_time = time()
 
-    if len(cat[0].preferred_origin().arrivals) < min_number_pick:
+    if len(cat[0].preferred_origin().arrivals) < min_number_picks:
         logger.warning('insufficient number of picks... aborting')
         return None
 
