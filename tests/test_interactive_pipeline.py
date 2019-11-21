@@ -48,13 +48,16 @@ def test_rom(api_event, picks):
 def test_put_event(api_url, api_event, picks):
     catalog = read_events(BytesIO(api_event['event_bytes']), format='quakeml')
     waveform = read(BytesIO(api_event['waveform_bytes']), format='mseed')
+    network = 'OT'
 
     api_url = "http://localhost:8000/api/v1/"
-    api_client.post_data_from_objects(api_url, event_id=None, cat=catalog,
+    api_client.post_data_from_objects(api_url, network, event_id=None,
+                                      cat=catalog,
                                       stream=waveform, tolerance=None,
                                       send_to_bus=False)
     event_id = "smi:local/2019/06/27/07/46_32_689969117.e"
-    api_client.put_event_from_objects(api_url, event_id=event_id, event=catalog, waveform=waveform)
+    api_client.put_event_from_objects(api_url, network, event_id=event_id,
+                                      event=catalog, waveform=waveform)
 
 
 def test_interactive_pipeline(api_event, redis):

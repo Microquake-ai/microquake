@@ -98,13 +98,14 @@ def encode(resource_id):
     return urllib.parse.quote(resource_id, safe='')
 
 
-def post_data_from_files(api_base_url, event_id=None, event_file=None,
+def post_data_from_files(api_base_url, network, event_id=None, event_file=None,
                          mseed_file=None, mseed_context_file=None,
                          variable_length_stream_file=None,
                          tolerance=0.5):
     """
     Build request directly from objects
     :param api_base_url: base url of the API
+    :param network: network code
     :param event_id: event_id (not required if an event is provided)
     :param event_file: path to a QuakeML file
     :param stream_file: path to a mseed seismogram file
@@ -142,15 +143,16 @@ def post_data_from_files(api_base_url, event_id=None, event_file=None,
         variable_length_stream = read(variable_length_stream_file,
                                       format='MSEED')
 
-    return post_data_from_objects(api_base_url, event_id=event_id, cat=event,
-                                  stream=stream, context=context_stream,
+    return post_data_from_objects(api_base_url, network, event_id=event_id,
+                                  cat=event, stream=stream,
+                                  context=context_stream,
                                   variable_length=variable_length_stream,
                                   tolerance=tolerance)
 
 
-def post_data_from_objects(api_base_url, event_id=None, cat=None, stream=None,
-                           context=None, variable_length=None, tolerance=0.5,
-                           send_to_bus=False):
+def post_data_from_objects(api_base_url, network, event_id=None, cat=None,
+                           stream=None, context=None, variable_length=None,
+                           tolerance=0.5, send_to_bus=False):
     """
     Build request directly from objects
     :param api_base_url: base url of the API
@@ -298,7 +300,8 @@ def get_event_types(api_base_url):
 
     return dict_out
 
-def post_event_data(api_base_url, event_resource_id, request_files,
+
+def post_event_data(api_base_url, network, event_resource_id, request_files,
                     send_to_bus=False):
     # removing id from URL as no longer used
     # url = api_base_url + "%s/" % event_resource_id
@@ -306,15 +309,16 @@ def post_event_data(api_base_url, event_resource_id, request_files,
     logger.info('posting data on %s' % url)
 
     event_resource_id = encode(event_resource_id)
-    result = requests.post(url, data={"send_to_bus": send_to_bus},
+    result = requests.post(url, data={"network": network,
+                                      "send_to_bus": send_to_bus},
                            files=request_files)
     logger.info(result)
 
     return result
 
 
-def put_data_from_objects(api_base_url, cat=None, stream=None, context=None,
-                          variable_length=None):
+def put_data_from_objects(api_base_url, network, cat=None, stream=None,
+                          context=None, variable_length=None):
 
     event_id = cat[0].resource_id.id
 
@@ -338,7 +342,7 @@ def put_data_from_objects(api_base_url, cat=None, stream=None, context=None,
 
     logger.info(f'attempting to PUT catalog for event {event_id}')
 
-    response = requests.patch(url, files=files)
+    response = requests.patch(url, data={'network': network}, files=files)
 
     logger.info(f'API responded with {response.status_code} code')
     return response
@@ -351,7 +355,8 @@ def get_events_catalog(api_base_url, start_time, end_time,
     :param api_base_url:
     :param start_time:
     :param end_time:
-    :param event_type:  example seismic_event,blast,drilling noise,open pit blast,quarry blast... etc
+    :param event_type:  example seismic_event,blast,drilling noise,open pit
+    blast,quarry blast... etc
     :param status: Event status, accepted, rejected, accepted,rejected
     :return:
     """
