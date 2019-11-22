@@ -233,7 +233,7 @@ def post_data_from_objects(api_base_url, network, event_id=None, cat=None,
     files = prepare_data(cat=cat, stream=stream, context=context,
                          variable_length=variable_length)
 
-    return post_event_data(api_url, event_resource_id, files,
+    return post_event_data(api_url, network, event_resource_id, files,
                            send_to_bus=send_to_bus)
 
 
@@ -309,8 +309,7 @@ def post_event_data(api_base_url, network, event_resource_id, request_files,
     logger.info('posting data on %s' % url)
 
     event_resource_id = encode(event_resource_id)
-    result = requests.post(url, data={"network": network,
-                                      "send_to_bus": send_to_bus},
+    result = requests.post(url, data={"send_to_bus": send_to_bus},
                            files=request_files)
     logger.info(result)
 
@@ -342,7 +341,7 @@ def put_data_from_objects(api_base_url, network, cat=None, stream=None,
 
     logger.info(f'attempting to PUT catalog for event {event_id}')
 
-    response = requests.patch(url, data={'network': network}, files=files)
+    response = requests.patch(url, files=files)
 
     logger.info(f'API responded with {response.status_code} code')
     return response
