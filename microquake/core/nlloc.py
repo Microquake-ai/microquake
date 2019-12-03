@@ -247,13 +247,37 @@ def read_nlloc_hypocenter_file(filename, picks=None,
 def calculate_uncertainty(event, base_directory, base_name, perturbation=5,
                           pick_uncertainty=1e-3):
     """
-    :param cat: event
-    :type cat: microquake.core.event.Event
+    :param event: event
+    :type event: microquake.core.event.Event
     :param base_directory: base directory
     :param base_name: base name for grids
     :param perturbation:
     :return: microquake.core.event.Event
     """
+
+    if hasattr(event.preferred_origin(), 'scatter'):
+        scatter = event.preferred_origin().scatter[:, 1:]
+        scatter[:, 0] -= np.mean(scatter[:, 0])
+        scatter[:, 1] -= np.mean(scatter[:, 1])
+        scatter[:, 2] -= np.mean(scatter[:, 2])
+        u, d, v = np.linalg.svd(scatter)
+        uncertainty = np.sqrt(d)
+
+        h = np.linalg.norm(v[0, :-1])
+        vert = v[0, -1]
+        major_axis_plunge = np.arctan2(-vert, h)
+        major_axis_azimuth = np.arctan2(v[0, 0], v[0, 1])
+        major_axis_rotation = 0
+
+        ce = obspy.core.event.ConfidenceEllipsoid(
+             semi_major_axis_length=uncertainty[0],
+             semi_intermediate_axis_length=uncertainty[1],
+             semi_minor_axis_length=uncertainty[2],
+             major_axis_plunge=major_axis_plunge,
+             major_axis_azimuth=major_axis_azimuth,
+             major_axis_rotation=major_axis_rotation)
+        ou = obspy.core.event.OriginUncertainty(confidence_ellipsoid=ce)
+        return ou
 
     narr = len(event.preferred_origin().arrivals)
 
