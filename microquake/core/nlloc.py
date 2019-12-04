@@ -256,7 +256,7 @@ def calculate_uncertainty(event, base_directory, base_name, perturbation=5,
     """
 
     if hasattr(event.preferred_origin(), 'scatter'):
-        scatter = event.preferred_origin().scatter[:, 1:]
+        scatter = event.preferred_origin().scatter[:, 1:].copy()
         scatter[:, 0] -= np.mean(scatter[:, 0])
         scatter[:, 1] -= np.mean(scatter[:, 1])
         scatter[:, 2] -= np.mean(scatter[:, 2])
