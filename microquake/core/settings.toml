@@ -71,7 +71,7 @@ event_classifier.likelihood_threshold = 0.5
 event_classifier.blast_window_starts = [6, 18]
 event_classifier.blast_window_ends = [8, 20]
 event_classifier.valid_event_types = ['seismic event']
-event_classifier.blast_event_types = ['underground_blast']
+event_classifier.blast_event_types = ['underground blast']
 event_classifier.uploaded_event_types = ['crusher noise', 'ore pass noise', 'test pulse', 'other blast', 'open pit blast', 'test pulse']
 
 interloc.nthreads = 4
