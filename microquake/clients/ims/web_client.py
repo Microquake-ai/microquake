@@ -131,10 +131,9 @@ def get_continuous(base_url, start_datetime, end_datetime,
 
         fileobj.seek(0)
         te = timer()
-        logger.info('Completing request in %f seconds' % (te - ts))
+        logger.info('Completing request in %.2f seconds' % (te - ts))
 
         # Reading header
-        # try:
 
         if len(r.content) < 44:
             continue
@@ -153,7 +152,11 @@ def get_continuous(base_url, start_datetime, end_datetime,
         ts = timer()
         # Reading data
         fileobj.seek(header_size)
-        content = fileobj.read()
+        try:
+            content = fileobj.read()
+        except(IOError):
+            logger.info(f"Error reading channel data, skipping site {site}")
+            continue
 
         time, sigs = strided_read(content)
 
@@ -176,6 +179,7 @@ def get_continuous(base_url, start_datetime, end_datetime,
 
         te = timer()
 
+        ts = timer()
         chans = ['X', 'Y', 'Z']
 
         for i in range(len(newsigs)):
@@ -188,13 +192,15 @@ def get_continuous(base_url, start_datetime, end_datetime,
             # it seems that the time returned by IMS is local time...
             # The IMS API has changed. It was returning the time in local
             # time, now the time is UTC.
-            starttime_utc = datetime.utcfromtimestamp(time[0]/1e9)
+            starttime_utc = datetime.utcfromtimestamp(time[0] / 1e9)
             # starttime_local = starttime_local.replace(tzinfo=time_zone)
             tr.stats.starttime = UTCDateTime(starttime_utc)
             tr.stats.channel = chans[i]
             stream.append(tr)
 
-        te_processing = timer()
+        te = timer()
+        logger.info('Completing stream build in %.2f seconds' % (te - ts))
+
 
     return stream
 
