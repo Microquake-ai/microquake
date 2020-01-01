@@ -83,23 +83,27 @@ interloc.pair_dist_max = 2000.0
 interloc.cc_smooth_length_sec = 0.005
 interloc.detection_threshold = 0.2
 
+compute_xcorrs.rolling_database_keep_hours = 80
 compute_xcorrs.samplerate_decimated = 2000.0
 compute_xcorrs.onebit_normalization = true
 compute_xcorrs.whiten_corner_freqs = [40.0, 50.0, 390.0, 400.0]
+compute_xcorrs.request_continuous_length_sec = 600
+compute_xcorrs.request_continuous_lag_sec = 1800
 compute_xcorrs.wlen_sec = 10
 compute_xcorrs.stepsize_sec = 10
 compute_xcorrs.keeplag_sec = 1.0
-compute_xcorrs.stack_length_hours = 3.0
+compute_xcorrs.stack_length_hours = 24.0
 compute_xcorrs.pair_dist_min = 50.0
-compute_xcorrs.pair_dist_max = 800.0
+compute_xcorrs.pair_dist_max = 500.0
 compute_xcorrs.channel_blacklist = ['.131.X', '.131.Y', '.131.Z', '.56.Y', '.67.Y', '.83.X', '.86.X', '.86.Y', '.86.Z', '.88.X', '.88.Y', '.88.Z', '.90.X', '.90.Z']
 
 
-# compute_velchange.cc_samplerate = 1000.0
-compute_velchange.wlen_sec = 0.05
 compute_velchange.coda_start_velocity = 3000.0
 compute_velchange.coda_end_sec = 0.8
-compute_velchange.whiten_corner_freqs = [90.0, 100.0, 300.0, 320.0]
+compute_velchange.freq_band_measure = [70.0, 240.0]
+compute_velchange.wlen_sec = 0.02
+compute_velchange.step_factor = 10
+compute_velchange.coherence_welch_nwin = 10
 
 # parameter of the PPV vs Magnitude relationship
 quick_magnitude.a = 1.2
