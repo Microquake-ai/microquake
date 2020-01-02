@@ -46,7 +46,8 @@ def calc(cat, settings):
 
         origin = event.preferred_origin()
 
-        event_dict['event_info'] = origin.time.datetime.strftime('%Y-%m-%d %H:%M:%S')
+        event_dict['event_info'] = origin.time.datetime.strftime('%Y-%m-%d '
+                                                                 '%H:%M:%S')
         event_dict['event'] = {}
         event_dict['event']['qdep'] = origin.loc[2]
         event_dict['event']['sez'] = 10.
@@ -72,11 +73,13 @@ def calc(cat, settings):
             if arr.polarity is None:
                 continue
 
-            sname.append(arr.pick_id.get_referred_object().waveform_id.station_code)
+            sname.append(arr.pick_id.get_referred_object(
+            ).waveform_id.station_code)
             p_pol.append(arr.polarity)
             qdist.append(arr.distance)
             qazi.append(arr.azimuth)
-    # MTH: both HASH and test_stereo expect takeoff theta measured wrt vertical Up!
+    # MTH: both HASH and test_stereo expect takeoff theta measured wrt
+            # vertical Up!
             qthe.append(180. - arr.takeoff_angle)
             sazi.append(2.)
             sthe.append(10.)
@@ -114,12 +117,14 @@ def calc(cat, settings):
         fc = FocalMechanism(nodal_planes=NodalPlanes(nodal_plane_1=p1,
                                                      nodal_plane_2=p2),
                             azimuthal_gap=out['azim_gap'],
-                            station_polarity_count=out['station_polarity_count'],
+                            station_polarity_count=out[
+                                'station_polarity_count'],
                             station_distribution_ratio=out['stdr'],
                             misfit=out['misfit'],
                             evaluation_mode='automatic',
                             evaluation_status='preliminary',
-                            comments=[Comment(text="HASH v1.2 Quality=[%s]" % out['quality'])]
+                            comments=[Comment(text="HASH v1.2 Quality=[%s]"
+                                                   % out['quality'])]
                             )
 
         focal_mechanisms.append(fc)

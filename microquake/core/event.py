@@ -377,7 +377,7 @@ class Pick(obsevent.Pick):
 class Arrival(obsevent.Arrival):
     __doc__ = obsevent.Arrival.__doc__.replace('obspy', 'microquake')
 
-    extra_keys = ['ray', 'backazimuth', 'inc_angle', 'polarity',
+    extra_keys = ['ray', 'backazimuth', 'inc_angle',
                   'peak_vel', 'tpeak_vel', 't1', 't2', 'pulse_snr',
                   'peak_dis', 'tpeak_dis', 'max_dis', 'tmax_dis',
                   'dis_pulse_width', 'dis_pulse_area', 'smom', 'fit',
@@ -398,6 +398,33 @@ class Arrival(obsevent.Arrival):
         if self.pick_id is not None:
             pick = self.pick_id.get_referred_object()
             return pick.get_sta()
+
+    @property
+    def polarity(self):
+        if self.get_pick().polarity == 'positive':
+            return 1.0
+        elif self.get_pick().polarity == 'negative':
+            return -1.0
+        else:
+            return None
+
+    @polarity.setter
+    def polarity(self, value):
+        if value in ['positive', 'negative', 'undecidable']:
+            self.get_pick().polarity = value
+        elif value == -1:
+            self.get_pick().polarity = 'negative'
+        elif value == 1:
+            self.get_pick().polarity = 'positive'
+        else:
+            self.get_pick().polarity = 'undecidable'
+
+class FocalMechanism(obsevent.FocalMechanism):
+    __doc__ = obsevent.FocalMechanism.__doc__.replace('obspy', 'microquake')
+
+    @staticmethod
+    def plot(self):
+        pass
 
 
 def get_arrival_from_pick(arrivals, pick):
@@ -688,7 +715,6 @@ class Ray:
             h = np.sqrt(v[0] ** 2 + v[1] ** 2)
             ia = np.arctan2(h, v[2])
         return ia
-
 
     def __len__(self):
         return self.length

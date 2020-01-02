@@ -37,15 +37,23 @@ class Processor(ProcessingUnit):
         if len(focal_mechanisms) > 0:
             for i, event in enumerate(cat):
                 focal_mechanism = focal_mechanisms[i]
-                cat[i].focal_mechanisms = [focal_mechanism]
-                cat[i].preferred_focal_mechanism_id = ResourceIdentifier(
-                    id=focal_mechanism.resource_id.id,
-                    referred_object=focal_mechanism)
+                cat[i].focal_mechanisms = [focal_mechanism.copy()]
+                # cat[i].preferred_focal_mechanism_id = ResourceIdentifier(
+                #     id=focal_mechanism.resource_id.id,
+                #     referred_object=focal_mechanism)
+                cat[i].preferred_focal_mechanism_id = \
+                    focal_mechanism.resource_id
                 logger.info(event.preferred_focal_mechanism())
 
             if self.save_figs:
                 for i, fig in enumerate(figs):
                     fig.savefig('foc_mech_%d.png' % i)
+
+        # for i, arrival in enumerate(cat.arrivals):
+        #     if cat.arrivals == 1:
+        #         cat.arrivals[i].get_pick().polarity = "positive"
+        #         cat.arrivals[i].get_pick().polarity = "negative"
+        #         cat.
 
         return cat.copy()
 
