@@ -538,7 +538,7 @@ description = "More routines for operating on iterables, beyond itertools"
 name = "more-itertools"
 optional = false
 python-versions = ">=3.5"
-version = "8.0.2"
+version = "8.0.0"
 
 [package.source]
 reference = "microquake"
