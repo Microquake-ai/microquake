@@ -123,7 +123,7 @@ def measure_pick_amps(st_in, cat, phase_list=None,
                 else:
                     pass
 
-    return cat
+    return cat.copy()
 
 
 def measure_velocity_pulse(st,

@@ -138,6 +138,9 @@ class Event(obsevent.Event):
 
         return obsevent.Event.write(self, fileobj, **kwargs)
 
+    def plot_focal_mechanism(self):
+        pass
+
 
 class Origin(obsevent.Origin):
     __doc__ = obsevent.Origin.__doc__.replace('obspy', 'microquake')
@@ -242,6 +245,15 @@ class Origin(obsevent.Origin):
                self.evaluation_status,
                len(self.arrivals))
         return string
+
+    def get_incidence_baz_angles(self, station_code, phase):
+        baz = None
+        inc = None
+        for ray in self.rays:
+            if (ray.station_code == station_code) and (ray.phase == phase):
+                baz = ray.back_azimuth
+                inc = ray.incidence_angle
+        return baz, inc
 
 
 class Magnitude(obsevent.Magnitude):
@@ -388,16 +400,18 @@ class Arrival(obsevent.Arrival):
         _init_handler(self, obspy_obj, **kwargs)
 
     def __setattr__(self, name, value):
-        _set_attr_handler(self, name, value)
+        if name == 'polarity':
+            if value in ['positive', 'negative', 'undecidable']:
+                self.get_pick().polarity = value
+            elif value == -1:
+                self.get_pick().polarity = 'negative'
+            elif value == 1:
+                self.get_pick().polarity = 'positive'
+            else:
+                self.get_pick().polarity = 'undecidable'
 
-    def get_pick(self):
-        if self.pick_id is not None:
-            return self.pick_id.get_referred_object()
-
-    def get_sta(self):
-        if self.pick_id is not None:
-            pick = self.pick_id.get_referred_object()
-            return pick.get_sta()
+        else:
+            _set_attr_handler(self, name, value)
 
     @property
     def polarity(self):
@@ -408,23 +422,14 @@ class Arrival(obsevent.Arrival):
         else:
             return None
 
-    @polarity.setter
-    def polarity(self, value):
-        if value in ['positive', 'negative', 'undecidable']:
-            self.get_pick().polarity = value
-        elif value == -1:
-            self.get_pick().polarity = 'negative'
-        elif value == 1:
-            self.get_pick().polarity = 'positive'
-        else:
-            self.get_pick().polarity = 'undecidable'
+    def get_pick(self):
+        if self.pick_id is not None:
+            return self.pick_id.get_referred_object()
 
-class FocalMechanism(obsevent.FocalMechanism):
-    __doc__ = obsevent.FocalMechanism.__doc__.replace('obspy', 'microquake')
-
-    @staticmethod
-    def plot(self):
-        pass
+    def get_sta(self):
+        if self.pick_id is not None:
+            pick = self.pick_id.get_referred_object()
+            return pick.get_sta()
 
 
 def get_arrival_from_pick(arrivals, pick):

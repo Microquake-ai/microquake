@@ -24,10 +24,15 @@ def rotate_to_P_SV_SH(st, cat, debug=False):
         takeoff = arr.takeoff_angle
         inc_angle = arr.inc_angle
 
+        inc_angle, _ = event.preferred_origin().get_incidence_baz_angles(sta,
+                                                                   arr.phase)
+
         if inc_angle is None:
-            print("%s: sta:%s [%s] has inc_angle=None --> skip rotation!" % \
-                        (fname, sta, arr.phase))
+            logger.warning("%s: sta:%s [%s] has inc_angle=None --> skip "
+                           "rotation!" % (fname, sta, arr.phase))
             continue
+
+        inc_angle *= 180 / np.pi
 
         trs = st_new.select(station=sta)
         if len(trs) == 3:
@@ -113,10 +118,6 @@ def rotate_to_ENZ(st, inventory):
                 continue
 
         if len(trs) == 3 and len(inventory.select(sta).channels) == 3:
-            # trs.plot()
-            # col1 = sta_meta_data[sta]['chans']['x'].cosines
-            # col2 = sta_meta_data[sta]['chans']['y'].cosines
-            # col3 = sta_meta_data[sta]['chans']['z'].cosines
 
             try:
                 col1 = inventory.get_channel(sta=sta, cha='X').cosines
@@ -128,8 +129,6 @@ def rotate_to_ENZ(st, inventory):
 
             A = np.column_stack((col1,col2,col3))
             At = A.transpose()
-            #print(A)
-            #print(At)
 
             x = trs[0].data
             y = trs[1].data
@@ -138,18 +137,12 @@ def rotate_to_ENZ(st, inventory):
 
             foo = At @ D
 
-            #print(At.shape)
-            #print(D.shape)
-            #print(foo.shape)
-
             trs[0].data = foo[0,:]
             trs[1].data = foo[1,:]
             trs[2].data = foo[2,:]
             trs[0].stats.channel='E'
             trs[1].stats.channel='N'
             trs[2].stats.channel='Z'
-
-            #trs.plot()
 
 
     return st_new
