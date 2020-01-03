@@ -162,17 +162,16 @@ def magnitude_meta_processor(cat, fixed_length):
     cat_fmec = fmec_processor.process(cat=cat_smom.copy(),
                                       stream=fixed_length)
 
-    cat_in[0].focal_mechanisms = [fm.copy() for fm in cat_fmec[
-        0].focal_mechanisms]
+    if cat_in[0].focal_mechanisms:
+        cat_in[0].focal_mechanisms = [fm.copy() for fm in cat_fmec[
+            0].focal_mechanisms]
 
-    cat_in[0].preferred_focal_mechanism_id = cat_in[0].focal_mechanisms[
-        0].resource_id
+        cat_in[0].preferred_focal_mechanism_id = cat_in[0].focal_mechanisms[
+            0].resource_id
 
     cat_in[0].picks = []
     for pick in cat_fmec[0].picks:
         cat_in[0].picks.append(pick.copy())
-
-    from ipdb import set_trace; set_trace()
 
     energy_processor = measure_energy.Processor()
     cat_energy = energy_processor.process(cat=cat_fmec.copy(),
