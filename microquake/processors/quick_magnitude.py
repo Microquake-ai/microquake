@@ -89,8 +89,6 @@ class Processor(ProcessingUnit):
             i = np.argmax(np.abs(velocity_f[0:int(len_sign/2)]))
             fcs.append(f[i])
 
-
-
             # The PPV/Mag relationship is valid for mm/s, the velocity is
             # expressed in m/s in the file, we need to multiply by 1000
             ppv = np.max(np.abs(velocity)) * 1000 * dist
@@ -109,7 +107,21 @@ class Processor(ProcessingUnit):
         self.mag_uncertainty = np.std(mags)
         self.station_count = len(mags)
 
-        return (self.mag, self.mag_uncertainty)
+        error = QuantityError(uncertainty=self.mag_uncertainty)
+        mag = Magnitude(mag=self.mag, magnitude_type='Mw',
+                        evaluation_station='automatic',
+                        evaluation_status='preliminary',
+                        station_count=self.station_count,
+                        mag_errors=error,
+                        origin_id=cat[0].preferred_origin_id,
+                        corner_frequency_hz=self.corner_frequency_hz)
+        mag.seismic_moment = 10 ** (3 / 2 * (self.mag + 6.02))
+        mag.potency_m3 = mag.seismic_moment / 29.5e9
+        ssd = calc_static_stress_drop(mag.mag, mag.corner_frequency_hz)
+        mag.static_stress_drop_mpa = ssd
+        mag.corner_frequency_hz = self.corner_frequency_hz
+
+        return (self.mag, self.mag_uncertainty, mag)
 
     def output_catalog(self, catalog):
 
@@ -128,7 +140,8 @@ class Processor(ProcessingUnit):
         mag.static_stress_drop_mpa = ssd
         mag.corner_frequency_hz = self.corner_frequency_hz
 
-        catalog[0].magnitudes.append(mag)
-        catalog[0].preferred_magnitude_id = mag.resource_id
+        catalog[0].magnitudes.append(mag.copy())
+        catalog[0].preferred_magnitude_id = catalog[0].magnitudes[
+            -1].resource_id
 
-        return catalog
+        return catalog.copy()
