@@ -4,7 +4,7 @@ stages:
 
 build:
   stage: build
-  image: python:3.7.5
+  image: python:fbf9f709ca9f5d96dec78cc074963bc44f0497bb73792bf2cd1cb40072ad0f8f
   script:
   - pip install poetry
   - poetry config repositories.microquake https://pkg.microquake.org
@@ -18,7 +18,7 @@ build:
 
 release:tag:
   stage: release
-  image: python:3.7-alpine
+  image: python:3.7
   only:
   - tags
   script:
