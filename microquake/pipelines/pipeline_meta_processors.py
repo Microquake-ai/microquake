@@ -162,7 +162,7 @@ def magnitude_meta_processor(cat, fixed_length):
     cat_fmec = fmec_processor.process(cat=cat_smom.copy(),
                                       stream=fixed_length)
 
-    if cat_in[0].focal_mechanisms:
+    if cat_fmec[0].focal_mechanisms:
         cat_in[0].focal_mechanisms = [fm.copy() for fm in cat_fmec[
             0].focal_mechanisms]
 

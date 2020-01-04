@@ -41,5 +41,6 @@ def plot_beachball(cat):
     # compression
     h_rk = ax.line(90. - takeoffs[up], azimuths[up], 'ko')
     # first arrivals
-    h_rk = ax.line(90. - takeoffs[dn], azimuths[dn], 'ko', fillstyle='none')
+    h_rk = ax.line(90. - takeoffs[dn], azimuths[dn], 'ko',
+                   fillstyle='none')
 
