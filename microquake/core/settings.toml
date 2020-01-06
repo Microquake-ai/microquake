@@ -111,7 +111,7 @@ compute_velchange.coherence_welch_nwin = 10
 quick_magnitude.a = 1.2
 quick_magnitude.c = 1.1
 
-picker.snr_threshold = 6
+picker.snr_threshold = 8
 picker.min_num_picks = 20
 picker.residual_tolerance = 100e-3
 picker.waveform_filter.frequency_min = 100

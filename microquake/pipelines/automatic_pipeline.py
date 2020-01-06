@@ -14,7 +14,7 @@ from microquake.pipelines.pipeline_meta_processors import (
 from microquake.processors import clean_data, simple_magnitude
 
 
-def automatic_pipeline(cat: Catalog, stream: Stream):
+def automatic_pipeline(cat: Catalog, stream: Stream, min_number_pick=None):
     logger.info('removing traces for sensors in the black list, or are '
                 'filled with zero, or contain NaN')
     clean_data_processor = clean_data.Processor()
@@ -25,7 +25,9 @@ def automatic_pipeline(cat: Catalog, stream: Stream):
         return cat
     rtp = ray_tracer.Processor()
 
-    min_number_pick = settings.get('picker').min_num_picks
+    if min_number_pick is None:
+        min_number_pick = settings.get('picker').min_num_picks
+
     n_picks = len(cat_picked[0].preferred_origin().arrivals)
     if n_picks < min_number_pick:
         logger.warning(f'number of picks ({n_picks}) is lower than the '
