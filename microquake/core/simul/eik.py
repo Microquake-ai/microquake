@@ -27,11 +27,25 @@ def angles(travel_time):
     (travel_time.seed).
     :rparam: azimuth and takeoff angles grids
     .. Note: The convention for the takeoff angle is that 0 degree is down.
+
+    The angle convention can be found at
+
+    http://www.eas.slu.edu/eqc/eqc_cps/TUTORIAL/PMOTION/index.html
+
+    The convention of the takeoff angle is that a value of 0 represents a
+    ray going directly downward from the source into the earth, while a
+    value of 180 represents a ray propagating upward. The azimuth is
+    measured with respect to local north, with values of 0, 90, 180, and 270
+    representing north, east, south and west.
+
     """
     import numpy as np
 
     gds_tmp = np.gradient(travel_time.data)
     gds = [-gd for gd in gds_tmp]
+
+    # make sure gds if normalized
+    gds /= np.linalg.norm(gds)
 
     tmp = np.arctan2(gds[0], gds[1])  # azimuth is zero northwards
     azimuth = travel_time.copy()
@@ -56,7 +70,7 @@ def ray_tracer(travel_time, start, grid_coordinates=False, max_iter=1000):
     This function calculates the ray between a starting point (start) and an end
     point, which should be the seed of the travel_time grid, using the gradient
     descent method.
-    :param trave_time: travel time grid with a seed defined
+    :param travel_time: travel time grid with a seed defined
     :type travel_time: ~microquake.core.data.grid.GridData with an additional
     seed property(travel_time.seed). Note that seed is automatically added to
     the travel time grid by the Eikonal solver or when read from NLLOC grid

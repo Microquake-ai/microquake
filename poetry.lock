@@ -1,7 +1,7 @@
 [[package]]
-category = "dev"
+category = "main"
 description = "Disable App Nap on OS X 10.9"
-marker = "sys_platform == \"darwin\""
+marker = "python_version >= \"3.4\" and sys_platform == \"darwin\" or sys_platform == \"darwin\""
 name = "appnope"
 optional = false
 python-versions = "*"
@@ -90,7 +90,7 @@ type = "legacy"
 url = "https://pkg.microquake.org/simple"
 
 [[package]]
-category = "dev"
+category = "main"
 description = "Specifications for callback functions passed in to an API"
 name = "backcall"
 optional = false
@@ -161,7 +161,7 @@ url = "https://pkg.microquake.org/simple"
 [[package]]
 category = "main"
 description = "Cross-platform colored terminal text."
-marker = "sys_platform == \"win32\""
+marker = "python_version >= \"3.4\" and sys_platform == \"win32\" or sys_platform == \"win32\""
 name = "colorama"
 optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
@@ -342,7 +342,27 @@ type = "legacy"
 url = "https://pkg.microquake.org/simple"
 
 [[package]]
-category = "dev"
+category = "main"
+description = "IPython-enabled pdb"
+name = "ipdb"
+optional = false
+python-versions = ">=2.7"
+version = "0.12.3"
+
+[package.dependencies]
+setuptools = "*"
+
+[package.dependencies.ipython]
+python = ">=3.4"
+version = ">=5.1.0"
+
+[package.source]
+reference = "microquake"
+type = "legacy"
+url = "https://pkg.microquake.org/simple"
+
+[[package]]
+category = "main"
 description = "IPython: Productive Interactive Computing"
 name = "ipython"
 optional = false
@@ -368,7 +388,7 @@ type = "legacy"
 url = "https://pkg.microquake.org/simple"
 
 [[package]]
-category = "dev"
+category = "main"
 description = "Vestigial utilities from IPython"
 name = "ipython-genutils"
 optional = false
@@ -394,7 +414,7 @@ type = "legacy"
 url = "https://pkg.microquake.org/simple"
 
 [[package]]
-category = "dev"
+category = "main"
 description = "An autocompletion tool for Python that can be used for text editors."
 name = "jedi"
 optional = false
@@ -547,6 +567,23 @@ url = "https://pkg.microquake.org/simple"
 
 [[package]]
 category = "main"
+description = "Stereonets for matplotlib"
+name = "mplstereonet"
+optional = false
+python-versions = "*"
+version = "0.5"
+
+[package.dependencies]
+matplotlib = ">=1.1"
+numpy = ">=1.1"
+
+[package.source]
+reference = "microquake"
+type = "legacy"
+url = "https://pkg.microquake.org/simple"
+
+[[package]]
+category = "main"
 description = "compiling Python code using LLVM"
 name = "numba"
 optional = false
@@ -618,7 +655,7 @@ type = "legacy"
 url = "https://pkg.microquake.org/simple"
 
 [[package]]
-category = "dev"
+category = "main"
 description = "A Python Parser"
 name = "parso"
 optional = false
@@ -644,9 +681,9 @@ type = "legacy"
 url = "https://pkg.microquake.org/simple"
 
 [[package]]
-category = "dev"
+category = "main"
 description = "Pexpect allows easy control of interactive console applications."
-marker = "sys_platform != \"win32\""
+marker = "python_version >= \"3.4\" and sys_platform != \"win32\" or sys_platform != \"win32\""
 name = "pexpect"
 optional = false
 python-versions = "*"
@@ -661,7 +698,7 @@ type = "legacy"
 url = "https://pkg.microquake.org/simple"
 
 [[package]]
-category = "dev"
+category = "main"
 description = "Tiny 'shelve'-like database with concurrency support"
 name = "pickleshare"
 optional = false
@@ -708,7 +745,7 @@ type = "legacy"
 url = "https://pkg.microquake.org/simple"
 
 [[package]]
-category = "dev"
+category = "main"
 description = "Library for building powerful interactive command lines in Python"
 name = "prompt-toolkit"
 optional = false
@@ -724,9 +761,9 @@ type = "legacy"
 url = "https://pkg.microquake.org/simple"
 
 [[package]]
-category = "dev"
+category = "main"
 description = "Run a subprocess in a pseudo terminal"
-marker = "sys_platform != \"win32\""
+marker = "python_version >= \"3.4\" and sys_platform != \"win32\" or sys_platform != \"win32\""
 name = "ptyprocess"
 optional = false
 python-versions = "*"
@@ -764,7 +801,7 @@ type = "legacy"
 url = "https://pkg.microquake.org/simple"
 
 [[package]]
-category = "dev"
+category = "main"
 description = "Pygments is a syntax highlighting package written in Python."
 name = "pygments"
 optional = false
@@ -1041,7 +1078,7 @@ type = "legacy"
 url = "https://pkg.microquake.org/simple"
 
 [[package]]
-category = "dev"
+category = "main"
 description = "Traitlets Python config system"
 name = "traitlets"
 optional = false
@@ -1133,7 +1170,7 @@ type = "legacy"
 url = "https://pkg.microquake.org/simple"
 
 [[package]]
-category = "dev"
+category = "main"
 description = "Measures number of Terminal column cells of wide-character codes"
 name = "wcwidth"
 optional = false
@@ -1206,7 +1243,7 @@ type = "legacy"
 url = "https://pkg.microquake.org/simple"
 
 [metadata]
-content-hash = "20c46c1b405adb29c3f2175eb2bcfdda69b9e49c89e3fd5687ac84c92b618aee"
+content-hash = "cec3d85fcc3a7bb94e8e98a2f0082bc125e598ea12ad41fca03baaeacf4461d4"
 python-versions = "^3.6 || ^3.7"
 
 [metadata.hashes]
@@ -1233,6 +1270,7 @@ h5py = ["063947eaed5f271679ed4ffa36bb96f57bc14f44dd4336a827d9a02702e6ce6b", "13c
 idna = ["c357b3f628cf53ae2c4c05627ecc484553142ca23264e593d327bcde5e9c3407", "ea8b7f6188e6fa117537c3df7da9fc686d485087abf6ac197f9c46432f7e4a3c"]
 importlib-metadata = ["b044f07694ef14a6683b097ba56bd081dbc7cdc7c7fe46011e499dfecc082f21", "e6ac600a142cf2db707b1998382cc7fc3b02befb7273876e01b8ad10b9652742"]
 instresp = ["c5b67d41993b248924f066d78e7be42c27f98f0f26a82546989d4654c592d3f0"]
+ipdb = ["5d9a4a0e3b7027a158fc6f2929934341045b9c3b0b86ed5d7e84e409653f72fd"]
 ipython = ["c66c7e27239855828a764b1e8fc72c24a6f4498a2637572094a78c5551fb9d51", "f186b01b36609e0c5d0de27c7ef8e80c990c70478f8c880863004b3489a9030e"]
 ipython-genutils = ["72dd37233799e619666c9f639a9da83c34013a73e8bbc79a7a6348d93c61fab8", "eb2e116e75ecef9d4d228fdc66af54269afa26ab4463042e33785b887c628ba8"]
 isort = ["54da7e92468955c4fceacd0c86bd0ec997b0e1ee80d97f67c35a78b719dccab1", "6e811fcb295968434526407adb8796944f1988c5b65e8139058f2014cbe100fd"]
@@ -1246,6 +1284,7 @@ matplotlib = ["08ccc8922eb4792b91c652d3e6d46b1c99073f1284d1b6705155643e8046463a"
 mccabe = ["ab8a6258860da4b6677da4bd2fe5dc2c659cff31b3ee4f7f5d64e79735b80d42", "dd8d182285a0fe56bace7f45b5e7d1a6ebcbf524e8f3bd87eb0f125271b8831f"]
 microquake-hashwrap = ["06d70baa5a1d03e81aa8c3fb5eea90015e77961b987548602d2f77c391ecb535", "2df1593640d35209e27a3dd8f418d3f04729008210bd80b84896f9b191f928cd", "7a909f7d1e578f4c3574e44ec8d752aca53cf35f8c120dff4bbd126b5cbec596", "7d0b96b7a86f771ea8b0a66f890b02173e5f3e26bb8519758b7e58b10d19d9a1", "86b516988ce509b651cc02fa90ebe1749b2482c28919db6a50505d18b857aefc", "d6e8057bfbda0b51c79ff3547d00a412134885028c8d33f96f06d17b5c6dceef", "f67c62b992368274d771f47cf1d5c9d1302400b8feb45c77abfdb0f4a303d2e8"]
 more-itertools = ["53ff73f186307d9c8ef17a9600309154a6ae27f25579e80af4db8f047ba14bc2", "a0ea684c39bc4315ba7aae406596ef191fd84f873d2d2751f84d64e81a7a2d45"]
+mplstereonet = ["12f33c873c2e1e3391869b0bab7c8ccf50f246838e642831db93be58dc62e3d7"]
 numba = ["045b182f08cf4afeaa9e43ee196e0ab51aa724e1f841befa7beec0d7a3221dcb", "04a5a469ce31a96c57c900b190b296634b616098a1d17a11ce5bcbfc52a793e7", "1daf5127236c620613d639dd8d381ef7baec714a7fb14b74e53a57655f48d69e", "3487326010f0752b135a943b7dde435781a495e7d8322543c495b89cd0b17baf", "41376e8635fa43743ca7ff9b4fb503c0c3315a9243d523b5870207d6199bdfd9", "46a671a1bf39eb6f96ecd90db2eb1b1072aab038dec7facdc711fc181a4e5467", "4fbbd0149b1fb0240e30cd90b0839465400b2419e679933f6ce38f2a83cc7638", "56f4a8380e21521bec0e3514ad001d5d87d5f7868c6db0d4b71ada69f0226ed6", "573df6dd2f88f86964dc5fa19e1fb7749f7ce9a1c0c4b9c042d1e6bb9f45282b", "5b0ef46cdaa030a5f9cbbe468c7e7567aaa673caff438a4134a8f00fcd3c7270", "6b1300179f1f66fd0d3b159c8ccebecdfe1c56792841f5d614748f8bd929e167", "7739204244f2bc4265f3f09ad37acd35ea713deca926d2021512eadbaec703eb", "a6e8dd91e6975176944c2969bc22dc68608b680859beafc56e687d9459e0df09", "b189f342968dede7d213fefab77193da6015d3b6c1eace3bf6990865ece094c7", "b45f5a6b163dec4262e64188dd29728dc9c1e48fea796b168dfe24e21c1e0dd7", "bdbc97fb1232a59bf73a1132fd837b5708c5b88f9d13ea925e9b8cc5c742329f", "bf740193bc932a6141908d1dfe297fb25a03219e96412244eba81c89b17f3af0", "cb4c1d89b0f0c39aec911cc4023c7caf1599585f6d671a7191f07322bf13fb25", "dda3fbf43967999da3a6b53e88600015e1afaf55e300be300ae105004c3f34c4", "ed18d783c4d88f6c82ddaf075e197d25a5ca608362681c25c231f69cd4a21abd", "f02ec4eba07311ea403fd5fa84a8e2d68f6d1c740263c1bf4b26c8d3f68465c3"]
 numpy = ["0a7a1dd123aecc9f0076934288ceed7fd9a81ba3919f11a855a7887cbe82a02f", "0c0763787133dfeec19904c22c7e358b231c87ba3206b211652f8cbe1241deb6", "3d52298d0be333583739f1aec9026f3b09fdfe3ddf7c7028cb16d9d2af1cca7e", "43bb4b70585f1c2d153e45323a886839f98af8bfa810f7014b20be714c37c447", "475963c5b9e116c38ad7347e154e5651d05a2286d86455671f5b1eebba5feb76", "64874913367f18eb3013b16123c9fed113962e75d809fca5b78ebfbb73ed93ba", "683828e50c339fc9e68720396f2de14253992c495fdddef77a1e17de55f1decc", "6ca4000c4a6f95a78c33c7dadbb9495c10880be9c89316aa536eac359ab820ae", "75fd817b7061f6378e4659dd792c84c0b60533e867f83e0d1e52d5d8e53df88c", "7d81d784bdbed30137aca242ab307f3e65c8d93f4c7b7d8f322110b2e90177f9", "8d0af8d3664f142414fd5b15cabfd3b6cc3ef242a3c7a7493257025be5a6955f", "9679831005fb16c6df3dd35d17aa31dc0d4d7573d84f0b44cc481490a65c7725", "a8f67ebfae9f575d85fa859b54d3bdecaeece74e3274b0b5c5f804d7ca789fe1", "acbf5c52db4adb366c064d0b7c7899e3e778d89db585feadd23b06b587d64761", "ada4805ed51f5bcaa3a06d3dd94939351869c095e30a2b54264f5a5004b52170", "c7354e8f0eca5c110b7e978034cd86ed98a7a5ffcf69ca97535445a595e07b8e", "e2e9d8c87120ba2c591f60e32736b82b67f72c37ba88a4c23c81b5b8fa49c018", "e467c57121fe1b78a8f68dd9255fbb3bb3f4f7547c6b9e109f31d14569f490c3", "ede47b98de79565fcd7f2decb475e2dcc85ee4097743e551fe26cfc7eb3ff143", "f58913e9227400f1395c7b800503ebfdb0772f1c33ff8cb4d6451c06cabdf316", "fe39f5fd4103ec4ca3cb8600b19216cd1ff316b4990f4c0b6057ad982c0a34d5"]
 obspy = ["14e7ff1b87c2cb901f3a6bebb64cbc5e8d624a067319c242b55cf77c341018fc", "17786240e76629b2e2004232fe97a988c9de5f91e2d3367906598760e0f86fa8", "20dbfdfffcbcea675f3749132eddf7ec4fb4e1defb23372573dcb8669651aa9d", "290dea98f7a8577911dae7816aae9117adc536b0baf6dde1db0b02c53b108a96", "5693b17ef7e7b62e69d28af0732d8f53beea35f64aba3c6a4e0b0996e1f5123e", "6141112cf264c7baf345333f6b32effefdc268098f499cc1bc7f14587af17149", "6268fceec0a8e717fb3eafd9cf25cc2ead9f956e3e7149ca10124ee488a9901c", "ce6fe921980bd877d91abda2b1046b95222b304ba2f50800a932979c87ec1c82", "d4f61569702a9cbc4bd00ea54589437ee220edd68c56168c6ebf6710e7e93bcd"]

@@ -76,9 +76,6 @@ def create_arrivals_from_picks(picks, event_location, origin_time):
     :return: list of microquake.core.event.Arrival
     """
 
-    # print("create_arrival_from_picks: event_location:<%.1f, %.1f, %.1f>" % \
-    # (event_location[0], event_location[1], event_location[2]))
-
     arrivals = []
 
     for pick in picks:
@@ -91,11 +88,6 @@ def create_arrivals_from_picks(picks, event_location, origin_time):
         ray = get_ray(station_code, phase, event_location)
         arrival.distance = ray.length
 
-        # TODO: MTH: Gotta think about how to store the ray points. Obspy
-        #  will not handle
-        #       a list in the extra dict, so you won't be able to do
-        #       something like event.copy() later
-        # arrival.ray = list(ray.nodes)
         # for node in ray.nodes:
         # print(node)
 
@@ -285,7 +277,8 @@ def fix_arr_takeoff_and_azimuth(cat, vp_grid, vs_grid):
 
             inc_p = np.arcsin(p * v_sta) * 180. / np.pi
 
-            # I have the incidence angle now, need backazimuth so rotate to P,SV,SH
+            # I have the incidence angle now, need backazimuth so rotate to
+            # P,SV,SH
             back_azimuth = np.arctan2(xoff, yoff) * 180. / np.pi
 
             if back_azimuth < 0:
@@ -293,12 +286,6 @@ def fix_arr_takeoff_and_azimuth(cat, vp_grid, vs_grid):
 
             arr.backazimuth = back_azimuth
             arr.inc_angle = inc_p
-
-            '''
-            print("%3s: [%s] takeoff:%6.2f [stx=%6.2f] inc_p:%.2f [inc_stx:%.2f] baz:%.1f [az:%.1f]" % \
-                (sta, arr.phase, arr.takeoff_angle, takeoff_straight, \
-                inc_p, inc_straight, back_azimuth, arr.azimuth))
-            '''
 
         origin.arrivals = arrivals
 

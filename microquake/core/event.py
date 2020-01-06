@@ -253,7 +253,16 @@ class Origin(obsevent.Origin):
             if (ray.station_code == station_code) and (ray.phase == phase):
                 baz = ray.back_azimuth
                 inc = ray.incidence_angle
+                break
         return baz, inc
+
+    def get_ray_station_phase(self, station_code, phase):
+        out_ray = None
+        for ray in self.rays:
+            if (ray.station_code == station_code) and (ray.phase == phase):
+                out_ray = ray
+                break
+        return out_ray
 
 
 class Magnitude(obsevent.Magnitude):
