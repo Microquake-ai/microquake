@@ -14,6 +14,11 @@ from microquake.core import read
 from microquake.core.event import Ray, read_events
 from uuid import uuid4
 
+from datetime import datetime
+from pytz import utc
+
+from microquake.core.decorators import deprecated
+
 
 class RequestRay(AttribDict):
     def __init__(self, json_data):
@@ -287,6 +292,9 @@ def prepare_data(cat=None, stream=None, context=None, variable_length=None):
 
 def get_event_types(api_base_url):
 
+    if api_base_url[-1] != '/':
+        api_base_url += '/'
+
     url = api_base_url + 'inventory/microquake_event_types'
     response = requests.get(url)
 
@@ -347,6 +355,7 @@ def put_data_from_objects(api_base_url, network, cat=None, stream=None,
     return response
 
 
+@deprecated
 def get_events_catalog(api_base_url, start_time, end_time,
                        status='accepted', event_type=''):
     """
@@ -532,3 +541,62 @@ def reject_event(api_base_url, event_id):
 
     return session.post("{}{}/interactive/reject".format(api_base_url,
                                                          event_id))
+
+
+def get_catalog(api_base_url, start_time, end_time, event_type=None,
+                status=None):
+    """
+    get the event catalogue from the API
+    :param api_base_url: API base url
+    :param start_time: start time as datetime if not time aware, UTC is
+    assumed
+    :param end_time: end time as datetime if not time aware, UTC is assumed
+    :param time_zone:
+    :param event_type: microquake event type
+    :param status: event status acceptable values are ('preliminary',
+    'reviewed', 'confirmed', 'final', 'rejected', accepted'). 'accepted'
+    encompasses all status with the exception of 'rejected'
+    :return: a RequestEvent object
+    """
+
+    if api_base_url[-1] != '/':
+        api_base_url += '/'
+
+    api_base_url += 'events'
+
+    event_types = get_event_types(api_base_url)
+
+    try:
+        obs_event_type = event_types[event_type]
+    except KeyError:
+        logger.error(f'event type: {event_type} does not appear to be a '
+                     f'valid event type for your system')
+
+        raise KeyError
+
+    request_dict = {'time_utc_after': str(start_time),
+                    'time_utc_before': str(end_time),
+                    'event_type': obs_event_type,
+                    'status': status}
+    tmp = urllib.parse.urlencode(request_dict)
+    query = f'{api_base_url}?{tmp}'
+
+    magnitudes = []
+    times = []
+
+    events = []
+    while query:
+        re = requests.get(query)
+        if not re:
+            logger.error('Problem communicating with the API')
+            exit()
+        response = re.json()
+        logger.info(f"page {response['current_page']} of "
+                    f"{response['total_pages']}")
+
+        query = response['next']
+
+        for event in response['results']:
+            events.append(RequestEvent(event))
+
+    return events

@@ -97,7 +97,7 @@ class Event(obsevent.Event):
                   'LOCATION_Y', 'LOCATION_Z', 'MANUALLY_PROCESSED',
                   'NUM_ACCEPTED_TRIGGERS', 'NUM_TRIGGERS', 'POTENCY',
                   'POTENCY_P', 'POTENCY_S', 'STATIC_STRESS_DROP', 'TAP_TEST',
-                  'TEST', 'TRIGGERED_SITES', 'USER_NAME']
+                  'TEST', 'TRIGGERED_SITES', 'USER_NAME', 'network']
 
     __doc__ = obsevent.Event.__doc__.replace('obspy', 'microquake')
 
@@ -317,10 +317,10 @@ class Magnitude(obsevent.Magnitude):
             seismic_moment = 10 ** (3 * (self.mag + 6.02) / 2)
         return seismic_moment
 
-    @seismic_moment.setter
-    def seismic_moment(self, val):
-        self.mag = val
-        self.magnitude_type = 'Mw'
+    # @seismic_moment.setter
+    # def seismic_moment(self, val):
+    #     self.mag = val
+    #     self.magnitude_type = 'Mw'
 
     @property
     def potency_m3(self):

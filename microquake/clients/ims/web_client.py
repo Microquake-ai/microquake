@@ -395,8 +395,58 @@ def get_catalogue(base_url, start_datetime, end_datetime, inventory,
         magnitude.mag = -999
         magnitude.error = -999
 
+        extra_keys = ['energy_joule', 'energy_p_joule', 'energy_p_std',
+                      'energy_s_joule', 'energy_s_std', 'corner_frequency_hz',
+                      'corner_frequency_p_hz', 'corner_frequency_s_hz',
+                      'time_domain_moment_magnitude',
+                      'frequency_domain_moment_magnitude',
+                      'moment_magnitude', 'moment_magnitude_uncertainty',
+                      'seismic_moment', 'potency_m3', 'source_volume_m3',
+                      'apparent_stress', 'static_stress_drop_mpa',
+                      'quick_magnitude', 'error']
+
         if row[1]['LOCAL_MAGNITUDE']:
-            magnitude.mag = row[1]['LOCAL_MAGNITUDE']
+            magnitude.mag = float(row[1]['LOCAL_MAGNITUDE'])
+
+        if row[1]['CORNER_FREQUENCY']:
+            try:
+                magnitude.corner_frequency_hz = float(row[1][
+                                                          'CORNER_FREQUENCY'])
+            except ValueError:
+                pass
+
+        if row[1]['ENERGY_P']:
+            try:
+                magnitude.energy_p_joule = float(row[1]['ENERGY_P'])
+            except ValueError:
+                pass
+
+        if row[1]['ENERGY_S']:
+            try:
+                magnitude.energy_s_joule = float(row[1]['ENERGY_S'])
+            except ValueError:
+                pass
+
+        if row[1]['ENERGY_S'] and row[1]['ENERGY_P']:
+            try:
+                magnitude.energy_joule = float(row[1]['ENERGY_S']) + \
+                                         float(row[1]['ENERGY_P'])
+            except ValueError:
+                pass
+
+        # if row[1]['STATIC_STRESS_DROP']:
+        #     magnitude.static_stress_drop_mpa = float(row[1][
+        #
+        #
+        #                                               'STATIC_STRESS_DROP'])
+
+        if row[1]['POTENCY_P'] and row[1]['POTENCY_S']:
+            try:
+                potency = (float(row[1]['POTENCY_P']) +
+                           float(row[1]['POTENCY_S'])) / 2
+                magnitude.potency_m3 = potency
+            except ValueError:
+                pass
 
         magnitude.magnitude_type = 'Mw'
         magnitude.origin_id = origin.resource_id.id
