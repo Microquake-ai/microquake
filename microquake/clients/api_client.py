@@ -565,38 +565,53 @@ def get_catalog(api_base_url, start_time, end_time, event_type=None,
     api_base_url += 'events'
 
     event_types = get_event_types(api_base_url)
+    obs_event_type = None
 
-    try:
-        obs_event_type = event_types[event_type]
-    except KeyError:
-        logger.error(f'event type: {event_type} does not appear to be a '
-                     f'valid event type for your system')
+    if event_type is not None:
 
-        raise KeyError
+        try:
+            obs_event_type = event_types[event_type]
+        except KeyError:
+            logger.error(f'event type: {event_type} does not appear to be a '
+                         f'valid event type for your system')
+
+            raise KeyError
 
     request_dict = {'time_utc_after': str(start_time),
-                    'time_utc_before': str(end_time),
-                    'event_type': obs_event_type,
-                    'status': status}
-    tmp = urllib.parse.urlencode(request_dict)
-    query = f'{api_base_url}?{tmp}'
+                    'time_utc_before': str(end_time)}
+
+    if status is not None:
+        request_dict['status'] = status
 
     magnitudes = []
     times = []
 
     events = []
-    while query:
-        re = requests.get(query)
-        if not re:
-            logger.error('Problem communicating with the API')
-            exit()
-        response = re.json()
-        logger.info(f"page {response['current_page']} of "
-                    f"{response['total_pages']}")
 
-        query = response['next']
+    if event_type is not None:
+        qml_event_types = [event_type]
 
-        for event in response['results']:
-            events.append(RequestEvent(event))
+    qml_event_types = [event_types[mq_et] for mq_et in event_types.keys()]
+
+    for et in qml_event_types:
+        request_dict['event_type'] = et
+
+        tmp = urllib.parse.urlencode(request_dict)
+        query = f'{api_base_url}?{tmp}'
+
+        while query:
+            re = requests.get(query)
+            if not re:
+                # logger.info('The API catalogue does not contain any events that'
+                #             'corresponds to the request')
+                break
+            response = re.json()
+            logger.info(f"page {response['current_page']} of "
+                        f"{response['total_pages']}")
+
+            query = response['next']
+
+            for event in response['results']:
+                events.append(RequestEvent(event))
 
     return events

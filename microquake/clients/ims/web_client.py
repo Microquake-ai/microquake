@@ -395,16 +395,6 @@ def get_catalogue(base_url, start_datetime, end_datetime, inventory,
         magnitude.mag = -999
         magnitude.error = -999
 
-        extra_keys = ['energy_joule', 'energy_p_joule', 'energy_p_std',
-                      'energy_s_joule', 'energy_s_std', 'corner_frequency_hz',
-                      'corner_frequency_p_hz', 'corner_frequency_s_hz',
-                      'time_domain_moment_magnitude',
-                      'frequency_domain_moment_magnitude',
-                      'moment_magnitude', 'moment_magnitude_uncertainty',
-                      'seismic_moment', 'potency_m3', 'source_volume_m3',
-                      'apparent_stress', 'static_stress_drop_mpa',
-                      'quick_magnitude', 'error']
-
         if row[1]['LOCAL_MAGNITUDE']:
             magnitude.mag = float(row[1]['LOCAL_MAGNITUDE'])
 
@@ -625,13 +615,10 @@ def get_picks(base_url, event_name, inventory, timezone):
                 arrival.pick_id = pick.resource_id.id
                 arrival.phase = 'P'
 
-                try:
-                    station = inventory.select(station_code).stations(
-
-                    )[0]
-                except:
-                    logger.warning("Station %s not found!\n The station object needs to be updated" % station_code)
-
+                station = inventory.select(str(station_code))
+                if station is None:
+                    logger.warning("Station %s not found!\n The station "
+                                  "object needs to be updated" % station_code)
                     continue
 
                 arrival.distance = np.linalg.norm(station.loc - origin.loc)
@@ -655,12 +642,7 @@ def get_picks(base_url, event_name, inventory, timezone):
                 pick.evaluation_status = origin.evaluation_status
                 arrival.pick_id = pick.resource_id.id
                 arrival.phase = 'S'
-                try:
-                    station = inventory.select(station_code).stations()[0]
-                except:
-                    logger.warning("Station %s not found!\n The station object needs to be updated" % station_code)
-
-                    continue
+                station = inventory.select(station_code)
 
                 arrival.distance = np.linalg.norm(station.loc - origin.loc)
                 arrival.takeoff_angle = np.arccos((station.z - origin.z)
