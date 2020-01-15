@@ -43,7 +43,7 @@ class RequestEvent:
                 setattr(self, key, ev_dict[key])
 
     def get_event(self):
-        event_file = requests.request('GET', self.event_file)
+        event_file = requests.request('GET', self.event_file, timeout=20)
 
         return read_events(event_file.content, format='QUAKEML')
 
@@ -52,7 +52,7 @@ class RequestEvent:
             logger.warning(f'No waveform object associated with event '
                            f'{self.event_resource_id}')
             return None
-        waveform_file = requests.request('GET', self.waveform_file)
+        waveform_file = requests.request('GET', self.waveform_file, timeout=20)
         byte_stream = BytesIO(waveform_file.content)
 
         return read(byte_stream, format='MSEED')
@@ -63,7 +63,8 @@ class RequestEvent:
                            f'{self.event_resource_id}')
             return None
         waveform_context_file = requests.request('GET',
-                                                 self.waveform_context_file)
+                                                 self.waveform_context_file,
+                                                 timeout=20)
         byte_stream = BytesIO(waveform_context_file.content)
 
         return read(byte_stream)
@@ -75,7 +76,8 @@ class RequestEvent:
             return None
 
         variable_length_waveform_file = requests.request('GET',
-                                                         self.variable_size_waveform_file)
+                                                         self.variable_size_waveform_file,
+                                                         timeout=20)
 
         byte_stream = BytesIO(variable_length_waveform_file.content)
 
@@ -296,7 +298,7 @@ def get_event_types(api_base_url):
         api_base_url += '/'
 
     url = api_base_url + 'inventory/microquake_event_types'
-    response = requests.get(url)
+    response = requests.get(url, timeout=20)
 
     if not response:
         raise ConnectionError('API Connection Error')
@@ -318,7 +320,7 @@ def post_event_data(api_base_url, network, event_resource_id, request_files,
 
     event_resource_id = encode(event_resource_id)
     result = requests.post(url, data={"send_to_bus": send_to_bus},
-                           files=request_files)
+                           files=request_files, timeout=20)
     logger.info(result)
 
     return result
@@ -349,7 +351,7 @@ def put_data_from_objects(api_base_url, network, cat=None, stream=None,
 
     logger.info(f'attempting to PUT catalog for event {event_id}')
 
-    response = requests.patch(url, files=files)
+    response = requests.patch(url, files=files, timeout=20)
 
     logger.info(f'API responded with {response.status_code} code')
     return response
@@ -376,7 +378,8 @@ def get_events_catalog(api_base_url, start_time, end_time,
     querystring = {"start_time": start_time, "end_time": end_time, "status":
                    status, "type": event_type}
 
-    response = requests.request("GET", url, params=querystring).json()
+    response = requests.request("GET", url, params=querystring,
+                                timeout=20).json()
 
     events = []
 
@@ -392,7 +395,7 @@ def get_event_by_id(api_base_url, event_resource_id):
     # querystring = {"event_resource_id": event_resource_id}
 
     event_resource_id = encode(event_resource_id)
-    response = requests.request("GET", url + event_resource_id)
+    response = requests.request("GET", url + event_resource_id, timeout=20)
 
     if response.status_code != 200:
         return None
@@ -407,7 +410,7 @@ def get_continuous_stream(api_base_url, start_time, end_time, station=None,
     querystring = {'start_time': str(start_time), 'end_time': str(end_time),
                    "station": station, }
 
-    response = requests.request('GET', url, params=querystring)
+    response = requests.request('GET', url, params=querystring, timeout=20)
     file = BytesIO(response.content)
     wf = read(file, format='MSEED')
 
@@ -437,7 +440,8 @@ def post_continuous_stream(api_base_url, stream, post_to_kafka=True,
     else:
         request_data['stream_id'] = str(uuid4())
 
-    result = requests.post(url, data=request_data, files=request_files)
+    result = requests.post(url, data=request_data, files=request_files,
+                           timeout=20)
     print(result)
 
 
@@ -472,7 +476,7 @@ def post_ray(api_base_url, site_code, network_code, event_id, origin_id,
     #         print(key + ":" + (str(value) if value else ""))
 
     try:
-        result = requests.post(url, json=request_data)
+        result = requests.post(url, json=request_data, timeout=20)
         print(result)
         result.raise_for_status()
     except requests.exceptions.HTTPError as err_http:
@@ -498,7 +502,7 @@ def get_rays(api_base_url, event_resource_id, origin_resource_id=None,
     # remove last extra question mark in the query params
     url = url[:-1]
 
-    response = requests.request("GET", url)
+    response = requests.request("GET", url, timeout=20)
 
     if response.status_code != 200:
         return None
@@ -600,7 +604,7 @@ def get_catalog(api_base_url, start_time, end_time, event_type=None,
         query = f'{api_base_url}?{tmp}'
 
         while query:
-            re = requests.get(query)
+            re = requests.get(query, timeout=20)
             if not re:
                 # logger.info('The API catalogue does not contain any events that'
                 #             'corresponds to the request')

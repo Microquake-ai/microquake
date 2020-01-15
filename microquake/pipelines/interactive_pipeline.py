@@ -92,6 +92,9 @@ def interactive_pipeline(
     stream = read(BytesIO(waveform_bytes), format='mseed')
     picks = json.loads(picks_jsonb)
 
+    if cat[0].preferred_origin() is None:
+        cat[0].preferred_origin_id = cat[0].origins[-1].resource_id
+
     cat = prepare_catalog(picks, cat)
 
     # find traces with nans, which will choke `detrend()` calls:
