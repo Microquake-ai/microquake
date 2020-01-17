@@ -571,51 +571,62 @@ def get_catalog(api_base_url, start_time, end_time, event_type=None,
     event_types = get_event_types(api_base_url)
     obs_event_type = None
 
-    if event_type is not None:
+    request_dict = {'time_utc_after': str(start_time),
+                    'time_utc_before': str(end_time)}
 
+    if event_type is not None:
         try:
-            obs_event_type = event_types[event_type]
+            request_dict['event_type'] = event_types[event_type]
         except KeyError:
             logger.error(f'event type: {event_type} does not appear to be a '
                          f'valid event type for your system')
 
             raise KeyError
-
-    request_dict = {'time_utc_after': str(start_time),
-                    'time_utc_before': str(end_time)}
+    else:
+        event_type_str = ''
+        for key in event_types.keys():
+            event_type_str += f'{event_types[key]},'
+        event_type_str = event_type_str[:-1]
+        request_dict['event_type'] = event_type_str
 
     if status is not None:
         request_dict['status'] = status
 
-    magnitudes = []
-    times = []
-
     events = []
 
-    if event_type is not None:
-        qml_event_types = [event_type]
+    tmp = urllib.parse.urlencode(request_dict)
+    query = f'{api_base_url}?{tmp}'
 
-    qml_event_types = [event_types[mq_et] for mq_et in event_types.keys()]
+    while query:
+        re = requests.get(query, timeout=20)
+        # from ipdb import set_trace; set_trace()()
+        if not re:
+            # logger.info('The API catalogue does not contain any events that'
+            #             'corresponds to the request')
+            break
+        response = re.json()
+        logger.info(f"page {response['current_page']} of "
+                    f"{response['total_pages']}")
 
-    for et in qml_event_types:
-        request_dict['event_type'] = et
+        query = response['next']
 
-        tmp = urllib.parse.urlencode(request_dict)
-        query = f'{api_base_url}?{tmp}'
-
-        while query:
-            re = requests.get(query, timeout=20)
-            if not re:
-                # logger.info('The API catalogue does not contain any events that'
-                #             'corresponds to the request')
-                break
-            response = re.json()
-            logger.info(f"page {response['current_page']} of "
-                        f"{response['total_pages']}")
-
-            query = response['next']
-
-            for event in response['results']:
-                events.append(RequestEvent(event))
+        for event in response['results']:
+            events.append(RequestEvent(event))
 
     return events
+
+
+def get_magnitude(api_base_url, magnitude_id):
+
+    if api_base_url[-1] != '/':
+        api_base_url += '/'
+
+    request_url = f'{api_base_url}magnitudes/{magnitude_id}'
+
+    # requests_dict = {'event_id': event_id,
+    #                  'origin_id': origin_id}
+
+    # tmp = urllib.parse.urlencode(requests_dict)
+    # query = f'{_url}'
+
+    return requests.get(request_url)
