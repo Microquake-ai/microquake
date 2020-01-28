@@ -46,7 +46,7 @@ sensors.source     = 'local'
 sensors.units      = 'meter'
 sensors.format     = 'csv'
 sensors.path       = 'sensors.csv'
-sensors.stationXML = 'OT.xml'
+sensors.stationXML = 'inventory.xml'
 sensors.black_list = ['7', '9', '10', '23', '25', '31', '32', '54', '91', '96', '99', '100', '102', '107', '88', '90', '77']
 
 ug_blast_windows_local_time = [7, 19]
