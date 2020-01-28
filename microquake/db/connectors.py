@@ -7,6 +7,7 @@ from obspy.core import UTCDateTime
 from pytz import utc
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import NullPool
+from sqlalchemy_utils import database_exists, create_database
 
 from loguru import logger
 from microquake.core.settings import settings
@@ -69,6 +70,10 @@ def connect_postgres():
 
     engine = db.create_engine(postgres_url, poolclass=NullPool,
                               connect_args={'connect_timeout': 10})
+
+    if not database_exists(engine.url):
+        create_database(engine.url)
+
     connection = engine.connect()
     # Create tables if they do not exist
     metadata.create_all(engine)
@@ -95,7 +100,15 @@ def create_postgres_session():
 
     engine = db.create_engine(postgres_url, poolclass=NullPool,
                               connect_args={'connect_timeout': 10})
-    pg = connect_postgres()
+
+    try:
+        pg = connect_postgres()
+    except OperationalError:
+        engine = db.create_engine(settings.POSTGRES_URL, poolclass=NullPool,
+                                  connect_args={'connect_timeout': 10})
+        engine.execute(f"CREATE DATABASE {db_name}")
+        engine.execute(f"USE {db_name}")
+
     session = sessionmaker(bind=engine)
 
     return session(), engine
