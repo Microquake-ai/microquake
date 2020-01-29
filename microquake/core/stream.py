@@ -202,7 +202,7 @@ class Stream(obsstream.Stream):
         for tr in st:
             station_code = tr.stats.station
             # search for arrival
-            station = site.select(station=station_code).stations()[0]
+            station = site.select(station_code).stations()[0]
             station_location = station.loc
             distance = np.linalg.norm(event_location - station_location)
             p_pick = None
@@ -339,7 +339,7 @@ def is_valid(st_in, return_stream=False, STA=0.005, LTA=0.1, min_num_valid=5):
                 accept = True
 
         if accept:
-            for tr_accepted in st_in.select(station=tr.stats.station):
+            for tr_accepted in st_in.select(tr.stats.station):
                 trs_out.append(tr_accepted)
 
     st_out = Stream(traces=trs_out)
@@ -386,7 +386,7 @@ def composite_traces(st_in):
     st.detrend('demean')
 
     for station in st.unique_stations():
-        trs = st.select(station=station)
+        trs = st.select(station)
 
         if len(trs) == 1:
             trsout.append(trs[0].copy())
