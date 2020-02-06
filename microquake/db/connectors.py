@@ -88,6 +88,10 @@ def connect_timescale():
 
     engine = db.create_engine(timescale_url, poolclass=NullPool,
                               connect_args={'connect_timeout': 10})
+
+    if not database_exists(engine.url):
+        create_database(engine.url)
+
     session = sessionmaker(bind=engine)()
 
     return session, engine
