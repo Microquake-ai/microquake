@@ -24,15 +24,15 @@ def rotate_to_P_SV_SH(st, cat, debug=False):
         takeoff = arr.takeoff_angle
         inc_angle = arr.inc_angle
 
-        inc_angle, _ = event.preferred_origin().get_incidence_baz_angles(sta,
-                                                                   arr.phase)
+        if inc_angle is None:
+            baz, inc_angle = event.preferred_origin(
+            ).get_incidence_baz_angles(sta, arr.phase)
+            inc_angle *= 180 / np.pi
 
         if inc_angle is None:
             logger.warning("%s: sta:%s [%s] has inc_angle=None --> skip "
                            "rotation!" % (fname, sta, arr.phase))
             continue
-
-        inc_angle *= 180 / np.pi
 
         trs = st_new.select(station=sta)
         if len(trs) == 3:

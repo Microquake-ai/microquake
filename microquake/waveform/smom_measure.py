@@ -1,7 +1,7 @@
 import copy
 
 import matplotlib.pyplot as plt
-import numba
+# import numba
 import numpy as np
 from loguru import logger
 from scipy import optimize
@@ -386,8 +386,7 @@ def get_spectra(st, event, inventory, synthetic_picks,
                 # check(signal)
                 # parsevals(signal.data, dt, nfft)
 
-                (signal_fft, freqs) = unpack_rfft(rfft(signal.data, n=nfft),
-                                                  df)
+                (signal_fft, freqs) = unpack_rfft(rfft(signal.data, n=nfft), df)
                 (noise_fft, freqs) = unpack_rfft(rfft(noise.data, n=nfft), df)
 
                 # MTH: Determine the valid freq range: fmin - fmax
@@ -461,7 +460,7 @@ def brune_omega3(fc: float, mom: float, ts: float, f: float) -> float:
     return mom * 1. / (1 + np.power(f/fc, 3.)) * np.exp(-np.pi * ts * f)
 
 
-@numba.jit(nopython=True)
+# @numba.jit(nopython=True)
 def brune_dis_spec(fc: float, mom: float, ts: float, f: float) -> float:
     return mom * (fc * fc) / (fc * fc + f * f) * np.exp(-np.pi * ts * f)
 
@@ -486,7 +485,7 @@ def getresidfit(data_spec, model_func, fc: float, freqs: list, Lnorm='L1',
     tt_s = .02
     start = np.array([1e-10, tt_s/200.])
 
-    @numba.jit(nopython=True)
+    # @numba.jit(nopython=True)
     def inner(p):
         smom = p[0]
         ts = p[1]
@@ -902,13 +901,14 @@ def plot_signal(signal, noise=None):
     plt.show()
 
 
-@numba.jit(nopython=True)
+# @numba.jit(nopython=True)
 def unpack_rfft(rfft, df):
     n = rfft.size
 
     if n % 2 == 0:
         n2 = int(n/2)
     else:
+        # n2 = int((n + 1) / 2)
         raise Exception("n is odd!!")
     # print("n2=%d" % n2)
 
