@@ -8,6 +8,7 @@ from pytz import utc
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import NullPool
 from sqlalchemy_utils import database_exists, create_database
+from sqlalchemy.exc import OperationalError
 
 from loguru import logger
 from microquake.core.settings import settings

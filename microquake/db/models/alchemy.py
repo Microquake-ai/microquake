@@ -42,6 +42,7 @@ ground_velocity = db.Table('ground_velocity', metadata,
 
 Base = declarative_base()
 
+
 class ContinuousData(Base):
 
     __tablename__ = 'recordings'
