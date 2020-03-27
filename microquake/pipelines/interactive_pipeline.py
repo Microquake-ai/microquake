@@ -119,7 +119,7 @@ def interactive_pipeline(
     # Removing the Origin object used to hold the picks
     # try:
     cat_magnitude = simple_magnitude.Processor().process(cat=cat_located,
-                                                             stream=stream)
+                                                         stream=stream)
     # except ValueError as ve:
     #     logger.error(f'Calculation of the magnitude failed. \n{ve}')
     #     cat_magnitude = cat_located.copy()
