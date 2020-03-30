@@ -32,7 +32,7 @@ url = "https://pkg.microquake.org/simple/"
 
 [tool.poetry.dependencies]
 python = "^3.6 || ^3.7"
-obspy = "^1.1"
+obspy = "~1.1.1"
 numpy = "^1.16"
 pytz = "^2019.1"
 scipy = "^1.3"
