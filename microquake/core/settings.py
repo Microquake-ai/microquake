@@ -65,7 +65,10 @@ class Settings(LazySettings):
 
         if self.sensors.source == 'local':
             fpath = os.path.join(self.common_dir, self.sensors.stationXML)
-            self.inventory = Inventory.load_from_xml(fpath)
+            try:
+                self.inventory = Inventory.load_from_xml(fpath)
+            except Exception as e:
+                logger.error(e)
 
         elif self.sensors.get('sensors').source == 'remote':
             self.inventory = None
