@@ -619,6 +619,78 @@ def get_catalog(api_base_url, start_time, end_time, event_type=None,
     return events
 
 
+def get_catalog_modified(api_base_url, modification_start_time,
+                         modification_end_time, event_type=None,
+                         status=None):
+    """
+    get the event catalogue from the API
+    :param api_base_url: API base url
+    :param start_time: start time as datetime if not time aware, UTC is
+    assumed
+    :param end_time: end time as datetime if not time aware, UTC is assumed
+    :param time_zone:
+    :param event_type: microquake event type
+    :param status: event status acceptable values are ('preliminary',
+    'reviewed', 'confirmed', 'final', 'rejected', accepted'). 'accepted'
+    encompasses all status with the exception of 'rejected'
+    :return: a RequestEvent object
+    """
+
+    if api_base_url[-1] != '/':
+        api_base_url += '/'
+
+    api_base_url += 'events'
+
+    event_types = get_event_types(api_base_url)
+    obs_event_type = None
+
+    request_dict = {'modification_timestamp_after': str(
+                     modification_start_time),
+                    'modification_timestamp_before': str(
+                     modification_end_time)}
+
+    if event_type is not None:
+        try:
+            request_dict['event_type'] = event_types[event_type]
+        except KeyError:
+            logger.error(f'event type: {event_type} does not appear to be a '
+                         f'valid event type for your system')
+
+            raise KeyError
+    else:
+        event_type_str = ''
+        for key in event_types.keys():
+            event_type_str += f'{event_types[key]},'
+        event_type_str = event_type_str[:-1]
+        request_dict['event_type'] = event_type_str
+
+    if status is not None:
+        request_dict['status'] = status
+
+    events = []
+
+    tmp = urllib.parse.urlencode(request_dict)
+    query = f'{api_base_url}?{tmp}'
+
+    while query:
+        re = requests.get(query, timeout=timeout)
+        # from ipdb import set_trace; set_trace()()
+        if not re:
+            # logger.info('The API catalogue does not contain any events that'
+            #             'corresponds to the request')
+            break
+        response = re.json()
+        logger.info(f"page {response['current_page']} of "
+                    f"{response['total_pages']}")
+
+        query = response['next']
+
+        for event in response['results']:
+            events.append(RequestEvent(event))
+
+    return events
+
+
 def get_magnitude(api_base_url, magnitude_id):
 
     if api_base_url[-1] != '/':

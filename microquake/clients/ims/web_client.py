@@ -40,6 +40,20 @@ if sys.version_info[0] < 3:
 else:
     from io import StringIO, BytesIO
 
+# for retries
+from requests.adapters import HTTPAdapter
+from requests.packages.urllib3.util.retry import Retry
+
+retry_strategy = Retry(
+    total=3,
+    status_forcelist=[429, 500, 502, 503, 504],
+    method_whitelist=["HEAD", "GET", "OPTIONS"]
+)
+adapter = HTTPAdapter(max_retries=retry_strategy)
+s = requests.Session()
+s.mount("https://", adapter)
+s.mount("http://", adapter)
+
 
 def get_continuous(base_url, start_datetime, end_datetime,
                    site_ids, time_zone, format='binary-gz', network='',
@@ -113,11 +127,14 @@ def get_continuous(base_url, start_datetime, end_datetime,
                     "%s" % (site, start_datetime, end_datetime))
 
         ts = timer()
-        r = requests.get(url, stream=True)
+        try:
+            r = s.get(url, stream=True)
+        except requests.RequestException as e:
+            logger.error(e)
+            continue
 
         if r.status_code != 200:
             # raise Exception('request failed! \n %s' % url)
-
             continue
 
         if format == 'binary-gz':
@@ -200,7 +217,6 @@ def get_continuous(base_url, start_datetime, end_datetime,
 
         te = timer()
         logger.info('Completing stream build in %.2f seconds' % (te - ts))
-
 
     return stream
 
@@ -694,8 +710,15 @@ def get_seismogram_event(base_url, event, network_code, timezone):
     traces = []
 
     for sname, station_code in zip(seismogram_names, station_codes):
-        st = get_seismogram(base_url, sname, network_code, station_code,
-                            timezone)
+        try:
+            st = get_seismogram(base_url, sname, network_code, station_code,
+                                timezone)
+        except requests.exceptions.RequestException as e:
+            logger.error(e)
+
+            st = get_seismogram(base_url, sname, network_code, station_code,
+                                timezone)
+
 
         for tr in st:
             traces.append(tr)
