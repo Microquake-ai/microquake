@@ -118,6 +118,7 @@ class Catalog(obsevent.Catalog):
                 new_magnitudes[0].resource_id = ResourceIdentifier()
                 preferred_magnitude_id = ResourceIdentifier()
                 new_magnitudes[0].resource_id = preferred_magnitude_id
+                
 
             new_event = Event(origins=new_origins, magnitudes=new_magnitudes)
             new_event.preferred_origin_id = preferred_origin_id
