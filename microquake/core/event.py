@@ -23,7 +23,7 @@ import warnings
 
 import numpy as np
 import obspy.core.event as obsevent
-from obspy.core.event import WaveformStreamID
+from obspy.core.event import WaveformStreamID, ResourceIdentifier
 from obspy.core.util import AttribDict
 from copy import deepcopy
 from loguru import logger
@@ -81,6 +81,51 @@ class Catalog(obsevent.Catalog):
                 ori.arrivals = ars
 
         return result
+
+    def duplicate(self):
+        """
+        this function duplicates a catalog object, this function does not
+        duplicate picks. It creates an object containing multiple event
+        containing each one origin and one magnitude.
+        :param duplicate_picks: duplicate the picks if True
+        :return: a new catalog object
+        """
+
+        new_events = []
+        for event in self.events:
+            preferred_origin_id = None
+            if len(event.origins) == 0:
+                new_origins = []
+
+            else:
+                if not event.preferred_origin():
+                    new_origins = [event.origins[-1]]
+                else:
+                    new_origins = [event.preferred_origin()]
+
+                preferred_origin_id = ResourceIdentifier()
+                new_origins[0].resource_id = preferred_origin_id
+                new_origins[0].arrivals = []
+
+            if len(event.magnitudes) == 0:
+                new_magnitudes = []
+            else:
+                if not event.preferred_magnitude():
+                    new_magnitudes = [event.magnitudes[-1]]
+                else:
+                    new_magnitudes = [event.preferred_magnitude()]
+
+                new_magnitudes[0].resource_id = ResourceIdentifier()
+                preferred_magnitude_id = ResourceIdentifier()
+                new_magnitudes[0].resource_id = preferred_magnitude_id
+
+            new_event = Event(origins=new_origins, magnitudes=new_magnitudes)
+            new_event.preferred_origin_id = preferred_origin_id
+            new_event.preferred_magnitude_id = preferred_magnitude_id
+
+            new_events.append(new_event)
+
+            return Catalog(events=new_events)
 
     def copy(self):
         return deepcopy(self)
@@ -263,6 +308,13 @@ class Origin(obsevent.Origin):
                 out_ray = ray
                 break
         return out_ray
+
+    def distance_station(self, station_code, phase='P'):
+        ray = self.get_ray_station_phase(self, station_code, phase)
+        if ray is None:
+            return None
+
+        return ray.length
 
 
 class Magnitude(obsevent.Magnitude):
