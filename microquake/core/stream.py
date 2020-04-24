@@ -415,6 +415,12 @@ def read(fname, format='MSEED', **kwargs):
                                        'obspy.plugin.waveform.%s' %
                                        format_ep.name, 'readFormat')
 
+        st = Stream(stream=read_format(fname, **kwargs))
+
+        # making sure the channel names are upper case
+        for tr in st:
+            tr.stats.channel = tr.stats.channels.uppper()
+
         return Stream(stream=read_format(fname, **kwargs))
     else:
         return Stream(stream=obsstream.read(fname, format=format, **kwargs))
