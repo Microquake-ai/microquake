@@ -419,7 +419,7 @@ def read(fname, format='MSEED', **kwargs):
 
         # making sure the channel names are upper case
         for tr in st:
-            tr.stats.channel = tr.stats.channels.uppper()
+            tr.stats.channel = tr.stats.channel.upper()
 
         return Stream(stream=read_format(fname, **kwargs))
     else:
