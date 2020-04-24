@@ -131,11 +131,11 @@ def get_continuous(base_url, start_datetime, end_datetime,
             r = s.get(url, stream=True)
         except requests.RequestException as e:
             logger.error(e)
-            return None
+            continue
 
         if r.status_code != 200:
             # raise Exception('request failed! \n %s' % url)
-            return None
+            continue
 
         if format == 'binary-gz':
             fileobj = GzipFile(fileobj=BytesIO(r.content))
@@ -143,7 +143,7 @@ def get_continuous(base_url, start_datetime, end_datetime,
             fileobj = BytesIO(r.content)
         else:
             raise Exception('unsuported format!')
-            return None
+            continue
 
         fileobj.seek(0)
         te = timer()
