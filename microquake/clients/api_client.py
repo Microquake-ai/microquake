@@ -625,10 +625,9 @@ def get_catalog_modified(api_base_url, modification_start_time,
     """
     get the event catalogue from the API
     :param api_base_url: API base url
-    :param start_time: start time as datetime if not time aware, UTC is
+    :param modification_start_time: start time as datetime if not time aware, UTC is
     assumed
-    :param end_time: end time as datetime if not time aware, UTC is assumed
-    :param time_zone:
+    :param modification_end_time: end time as datetime if not time aware, UTC is assumed
     :param event_type: microquake event type
     :param status: event status acceptable values are ('preliminary',
     'reviewed', 'confirmed', 'final', 'rejected', accepted'). 'accepted'
