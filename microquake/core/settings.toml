@@ -67,6 +67,26 @@ data_connector.closing_window_time_seconds = 60 # time after which we
 # consider the continuous data window closed after the event occurred
 data_connector.context_trace_forbiden_sensor = ['7', '9']  # Accelerometers
 
+event_detection.sta_lta_on_value = 3.0
+event_detection.sta_lta_off_value = 1.5
+event_detection.sta_length_second = 10e-3
+event_detection.lta_length_second = 100e-3
+event_detection.onset_threshold = 3
+event_detection.max_trigger_length_second = 0.2
+event_detection.association_time_window_length_second = 1
+#event_detection.seismogram_resulting_length_second = 2
+
+#<STALTA_on value="3.0"/>
+#        <STALTA_off value="1.25"/>
+#        <STA value="10e-3"/>
+#		<LTA value="100e-3"/>
+#        <onset_threshold value="3"/> <!-- STALTA function threshold to declare a trigger -->
+#        <max_trigger_length value="0.05"/> <!-- maximum trigger length to declare a trigger valid -->
+#        <association_time value="0.1"/> <!-- length of time window within which trigger are associated -->
+#        <hold_off_time value="0.1"/> <!-- hold off time after an event has been detected to trigger another event -->
+#        <min_number_trigger value="5"/>  <!-- minimum number of trigger required to declare an event -->
+#        <seismogram_length value="300"/>
+
 event_classifier.likelihood_threshold = 0.5
 event_classifier.blast_window_starts = [6, 18]
 event_classifier.blast_window_ends = [8, 20]

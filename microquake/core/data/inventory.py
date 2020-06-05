@@ -6,10 +6,12 @@ import numpy as np
 import obspy.core.inventory
 from obspy.core import AttribDict
 from obspy.core.inventory import Network
-from obspy.core.inventory.inventory import read_inventory as read_inventory_obs
+from obspy.core.inventory.inventory import read_inventory as \
+    read_inventory_obs
 from obspy.core.inventory.util import (Equipment, Operator, Person,
                                        PhoneNumber, Site, _textwrap,
                                        _unified_content_strings)
+
 from obspy.core.utcdatetime import UTCDateTime
 
 from microquake.core.data.response_utils import read_NRL_from_dump
@@ -31,13 +33,14 @@ ns = 'MICROQUAKE'
 
 def load_inventory_from_excel(xls_file: str)\
         -> 'microquake.core.data.inventory.Inventory':
-    '''
+    """
     Read in a multi-sheet excel file with network metadata sheets:
         Sites, Networks, Hubs, Stations, Components, Sensors, Cables, Boreholes
     Organize these into a microquake Inventory object
 
     Note: The returned channel responses will be *generic* (= L-22D).
-          To replace these with actual (calculated) responses, pass the inventory on to:
+          To replace these with actual (calculated) responses, pass the
+          inventory on to:
           write_ot.fix_OT_responses(inventory)
           (requires libInst module be installed!)
 
@@ -45,7 +48,7 @@ def load_inventory_from_excel(xls_file: str)\
     :type: xls_file: str
     :return: inventory
     :rtype: microquake.core.data.inventory.Inventory
-    '''
+    """
 
     fname = 'load_inventory_from_excel'
 
@@ -66,7 +69,7 @@ def load_inventory_from_excel(xls_file: str)\
     df_dict = pd.read_excel(xls_file, sheet_name=None)
 
     # Initialize Inventory object containing Network from Sites+Networks sheets:
-    '''
+    """
 Sites:
    code coordinate_system country    description   id       name   operator timezone
    OT   Cartesian/Local  Mongolia  Added Manually   1  Oyu Tolgoi  Rio Tinto   +08:00
@@ -75,10 +78,10 @@ Networks:
    code                contact_email           contact_name   ...    id                            name  site_id
    HNUG  jean-philippem@riotinto.com  Jean-Philippe Mercier   ...     1  Hugo North Underground Network        1
 
-    '''
-# source (str) Network ID of the institution sending the message.
+    """
+    # source (str) Network ID of the institution sending the message.
     source = df_dict['Sites'].iloc[0]['code']
-# sender (str, optional) Name of the institution sending this message.
+    # sender (str, optional) Name of the institution sending this message.
     sender = df_dict['Sites'].iloc[0]['operator']
     net_code = df_dict['Networks'].iloc[0]['code']
     net_descriptions = df_dict['Networks'].iloc[0]['name']
@@ -99,7 +102,8 @@ Networks:
     inventory = Inventory([network], source)
 
 # MTH: obspy requirements for PhoneNumber are super specific:
-# So likely this will raise an error if/when someone changes the value in Networks.contact_phone
+# So likely this will raise an error if/when someone changes the value in
+    # Networks.contact_phone
     '''
     PhoneNumber(self, area_code, phone_number, country_code=None, description=None):
         :type area_code: int
@@ -122,7 +126,8 @@ Networks:
     operator = Operator(agencies=[site_operator], contacts=[person])
     site = Site(name=site_name, description=site_name, country=site_country)
 
-    # Merge Stations+Components+Sensors+Cables info into sorted stations + channels dicts:
+    # Merge Stations+Components+Sensors+Cables info into sorted stations +
+    # channels dicts:
 
     df_dict['Stations']['station_code'] = df_dict['Stations']['code']
     df_dict['Sensors']['sensor_code'] = df_dict['Sensors']['code']
@@ -146,7 +151,8 @@ Networks:
 
     df = df_merge4.sort_values(['sensor_code', 'location_code']).fillna(0)
 
-    # Need to sort by unique station codes, then look through 1-3 channels to add
+    # Need to sort by unique station codes, then look through 1-3 channels
+    # to add
     stn_codes = set(df['sensor_code'])
     stations = []
 
@@ -207,7 +213,8 @@ Networks:
 
         stations.append(station)
 
-    # Convert these station dicts to inventory.Station objects and attach to inventory.network:
+    # Convert these station dicts to inventory.Station objects and attach to
+    # inventory.network:
     obspy_stations = []
 
     for station in stations:
@@ -300,11 +307,12 @@ class Inventory(obspy.core.inventory.inventory.Inventory):
     @classmethod
     def load_from_xml(cls, path_or_file_object=None, format='STATIONXML',
                       *args, **kwargs):
-        '''
+        """
             Load stationXMLfile and return a microquake Inventory object
-        '''
+        """
 
-        source = 'mth-test'         # Network ID of the institution sending the message.
+        source = 'microquake'         # Network ID of the institution sending
+        # the message.
 
         obspy_inv = read_inventory_obs(path_or_file_object, format=format,
                                        *args, **kwargs)
