@@ -55,6 +55,21 @@ s.mount("https://", adapter)
 s.mount("http://", adapter)
 
 
+def get_continuous_wrapper(base_url, start_datetime, end_datetime, site_id,
+                           format='binary-gz', network='', sampling_rate=6000.,
+                           nan_limit=10):
+
+    try:
+        st = get_continuous(base_url, start_datetime, end_datetime,
+                            [site_id], None, format=format, network=network,
+                            sampling_rate=sampling_rate, nan_limit=nan_limit)
+    except Exception as e:
+        logger.error(e)
+        return 0
+
+    return st
+
+
 def get_continuous(base_url, start_datetime, end_datetime,
                    site_ids, time_zone, format='binary-gz', network='',
                    sampling_rate=6000., nan_limit=10):
