@@ -50,18 +50,16 @@ class Processor(ProcessingUnit):
 
         logger.info("pipeline: event_detection")
 
-        st = kwargs['stream']
+        tr = kwargs['trace']
 
-        st = st.detrend('demean').detrend('linear')
-        sensor_id = st[0].stats.station
+        tr = tr.detrend('demean').detrend('linear')
+        sensor_id = tr.stats.station
 
         sensor = self.inventory.select(sensor_id)
 
         poles = np.abs(sensor[0].response.get_paz().poles)
         low_bp_freq = np.min(poles) / (2 * np.pi)
-        st = st.filter('highpass', freq=low_bp_freq)
-
-        tr = st.composite()[0]
+        tr = tr.filter('highpass', freq=low_bp_freq)
 
         df = tr.stats.sampling_rate
         cft = recursive_sta_lta(tr.data, int(self.sta_length_second * df),
