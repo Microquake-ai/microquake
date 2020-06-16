@@ -53,7 +53,7 @@ class Processor(ProcessingUnit):
         st = kwargs['stream']
 
         st = st.detrend('demean').detrend('linear')
-        sensor_id = st.stats.station
+        sensor_id = st[0].stats.station
 
         sensor = self.inventory.select(sensor_id)
 
