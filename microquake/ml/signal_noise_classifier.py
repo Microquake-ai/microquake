@@ -14,9 +14,9 @@ _version_ = 1.0
 
 
 class SignalNoiseClassifier:
-    '''
+    """
     Class to detect noise
-    '''
+    """
     REF_MAGNITUDE = -1.2
     RES_BLOCKS = 2
 
@@ -27,15 +27,17 @@ class SignalNoiseClassifier:
         pass
 
     def __init__(self, model_name='signal-classifier-model.hdf5'):
-        '''
+        """
             :param model_name: Name of the model weight file name.
-        '''
+        """
         self.base_directory = Path(settings.common_dir) / '../data/weights'
         # Model was trained at these dimensions
         self.D = (128, 128, 1)
-        self.microquake_class_names = ['blast', 'crusher noise', 'electrical noise', 'mechanical noise',
+        self.microquake_class_names = ['blast', 'crusher noise',
+                                       'electrical noise', 'mechanical noise',
                                        'open pit blast',
-                                       'ore pass noise', 'seismic event', 'surface event', 'test pulse']
+                                       'ore pass noise', 'seismic event',
+                                       'surface event', 'test pulse']
         self.num_classes = len(self.microquake_class_names)
         self.model_file = self.base_directory / f"{model_name}"
         self.create_model()
@@ -52,16 +54,17 @@ class SignalNoiseClassifier:
 
     @staticmethod
     def librosa_spectrogram(tr, height=128, width=128):
-        '''
+        """
             Using Librosa mel-spectrogram to obtain the spectrogram
             :param tr: stream trace
             :param height: image hieght
             :param width: image width
             :return: numpy array of spectrogram with height and width dimension
-        '''
+        """
         data = SignalNoiseClassifier.get_norm_trace(tr).data
         signal = data * 255
-        hl = int(signal.shape[0] // (width * 1.1))  # this will cut away 5% from
+        hl = int(signal.shape[0] // (width * 1.1))
+        # this will cut away 5% from
         # start and end
         spec = lr.feature.melspectrogram(signal, n_mels=height,
                                          hop_length=int(hl))
@@ -121,13 +124,13 @@ class SignalNoiseClassifier:
 
     @staticmethod
     def resnet50_layers(i):
-        '''
+        """
             wrapper around the resnet 50 model, it starts by converting the
             one channel input to 3 channgels and then
             load resnet50 model
             :param i: input layer in this case the context trace
             :retun the flattend layer after the resent50 block
-        '''
+        """
         x = Conv2D(filters=3, kernel_size=2, padding='same', activation='relu')(i)
 
         x = applications.ResNet50V2(include_top=False)(x)
@@ -136,11 +139,11 @@ class SignalNoiseClassifier:
 
     @staticmethod
     def conv_layers(i):
-        '''
+        """
             create convolution layers for 2 second stream.
             :param i: input layers
             :return Flattened layer
-        '''
+        """
         kern_size = (3, 3)
         dim = 64
         x = Conv2D(filters=16, kernel_size=2, padding='same', activation='relu')(i)

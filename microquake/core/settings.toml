@@ -74,6 +74,7 @@ event_detection.lta_length_second = 100e-3
 event_detection.onset_threshold = 3
 event_detection.max_trigger_length_second = 0.2
 event_detection.association_time_window_length_second = 1
+event_detection.association_hold_off_time_second = 1.2 # from the start of the sequence
 #event_detection.seismogram_resulting_length_second = 2
 
 #<STALTA_on value="3.0"/>

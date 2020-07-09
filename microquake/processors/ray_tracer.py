@@ -34,6 +34,8 @@ class Processor(ProcessingUnit):
             station_code = station.code
             for phase in ['P', 'S']:
                 try:
+                    logger.info(f'calculating ray for {phase}-wave for '
+                                f'station {station_code}')
                     ray = get_ray(station_code, phase, ev_loc)
                     ray.station_code = station_code
                     ray.phase = phase
