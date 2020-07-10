@@ -3,8 +3,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 import librosa as lr
 from tensorflow.keras import applications
-from tensorflow.keras.layers import (Add, BatchNormalization, Conv2D, Dense, Embedding,
-                                     Flatten, Input, MaxPooling2D, concatenate, Activation)
+from tensorflow.keras.layers import (Add, BatchNormalization, Conv2D, Dense,
+                                     Embedding,Flatten, Input, MaxPooling2D,
+                                     concatenate, Activation)
 from tensorflow.keras.models import Model
 from loguru import logger
 from microquake.core.settings import settings
@@ -17,7 +18,7 @@ class SignalNoiseClassifier:
     """
     Class to detect noise
     """
-    REF_MAGNITUDE = -1.2
+    REF_MAGNITUDE = -3.0
     RES_BLOCKS = 2
 
     def __enter__(self):
@@ -43,14 +44,19 @@ class SignalNoiseClassifier:
         self.create_model()
         self.qmp = quick_magnitude.Processor()
 
-    def get_energy(self, tr: Stream, cat):
+    def get_magnitude(self, tr: Stream, cat):
         """
         :param cat:
         :param tr: mseed stream
-        :return: Energy content
+        :return: magnitude
         """
-        _, _, mag = self.qmp.process(cat=cat, stream=tr)
-        return mag.mag
+
+        if cat[0].preferred_magnitude() is not None:
+            mag = cat[0].preferred_magnitude().mag
+        else:
+            _, _, magnitude = self.qmp.process(cat=cat, stream=tr)
+            mag = magnitude.mag
+        return mag
 
     @staticmethod
     def librosa_spectrogram(tr, height=128, width=128):
@@ -86,15 +92,15 @@ class SignalNoiseClassifier:
         """
 
         # c = tr[0]
+        tr = tr.detrend(type='demean')
         c = tr.composite()
         c[0].data = c[0].data / np.abs(c[0].data).max()  # we only
         # interested in c[0]
-        c = c.detrend(type='demean')
 
         nan_in_context = np.any(np.isnan(c[0].data))
 
         if nan_in_context:
-            logger.warning('NaN found in context trace. The NaN will be set '
+            logger.warning('NaN found in trace. The NaN will be set '
                            'to 0.\nThis may cause instability')
             c[0].data = np.nan_to_num(c[0].data)
 
@@ -131,7 +137,8 @@ class SignalNoiseClassifier:
             :param i: input layer in this case the context trace
             :retun the flattend layer after the resent50 block
         """
-        x = Conv2D(filters=3, kernel_size=2, padding='same', activation='relu')(i)
+        x = Conv2D(filters=3, kernel_size=2, padding='same',
+                   activation='relu')(i)
 
         x = applications.ResNet50V2(include_top=False)(x)
         x = Flatten()(x)
@@ -146,16 +153,22 @@ class SignalNoiseClassifier:
         """
         kern_size = (3, 3)
         dim = 64
-        x = Conv2D(filters=16, kernel_size=2, padding='same', activation='relu')(i)
+        x = Conv2D(filters=16, kernel_size=2, padding='same',
+                   activation='relu')(i)
         x = MaxPooling2D(pool_size=2)(x)
-        x = Conv2D(filters=32, kernel_size=2, padding='same', activation='relu')(x)
+        x = Conv2D(filters=32, kernel_size=2, padding='same',
+                   activation='relu')(x)
         x = MaxPooling2D(pool_size=2)(x)
-        x = Conv2D(filters=64, kernel_size=2, padding='same', activation='relu')(x)
+        x = Conv2D(filters=64, kernel_size=2, padding='same',
+                   activation='relu')(x)
+
         x = MaxPooling2D(pool_size=2)(x)
         X_shortcut = x
         for _ in range(SignalNoiseClassifier.RES_BLOCKS):
-            y = Conv2D(filters=dim, kernel_size=kern_size, activation='relu', padding='same')(X_shortcut)
-            y = Conv2D(filters=dim, kernel_size=kern_size, activation='relu', padding='same')(y)
+            y = Conv2D(filters=dim, kernel_size=kern_size, activation='relu',
+                       padding='same')(X_shortcut)
+            y = Conv2D(filters=dim, kernel_size=kern_size, activation='relu',
+                       padding='same')(y)
             X_shortcut = Add()([y, X_shortcut])
         x = Flatten()(x)
         x = Dense(500, activation='relu')(x)
@@ -188,17 +201,19 @@ class SignalNoiseClassifier:
 
     def predict(self, tr, context_trace, cat):
         """
-        :param tr: Obspy stream object (2 s) that is good for discriminating
+        :param tr: microquake stream object (2 s) that is good for discriminating
         between events
         :param context_trace: context trace object (20s) good for
         discriminating blast and earth quake
-        :param cat: catalog.
+        :param cat: microquake catalog.
         :return: dictionary of  event classes probability
         """
-        spectrogram = SignalNoiseClassifier.librosa_spectrogram(context_trace, height=self.D[0],
+        spectrogram = SignalNoiseClassifier.librosa_spectrogram(context_trace,
+                                               height=self.D[0],
                                                width=self.D[1])
         contxt_img = SignalNoiseClassifier.normalize_gray(spectrogram)
-        spectrogram = SignalNoiseClassifier.librosa_spectrogram(tr, height=self.D[0],
+        spectrogram = SignalNoiseClassifier.librosa_spectrogram(tr,
+                                               height=self.D[0],
                                                width=self.D[1])
         normgram = SignalNoiseClassifier.normalize_gray(spectrogram)
         img = normgram[None, ..., None]  # Needed to in the form of batch
@@ -206,15 +221,15 @@ class SignalNoiseClassifier:
         contxt = contxt_img[None, ..., None]
         m = []
 
-        if self.get_energy(tr, cat) >= self.REF_MAGNITUDE:
+        if self.get_magnitude(tr, cat) >= self.REF_MAGNITUDE:
             m.append(1)
         else:
             m.append(0)
 
         data = {'spectrogram': img, 'context_trace': contxt,
                 'magnitude': np.asarray(m)}
-        p = self.model.predict(data)
+        p = self.model.predict(data)[0]
 
-        classes = {'noise': p[0],
-                   'signal': p[1]}
+        classes = {'signal': p[0],
+                   'noise': p[1]}
         return classes
