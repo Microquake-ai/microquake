@@ -336,7 +336,11 @@ def get_catalogue(base_url, start_datetime, end_datetime, inventory,
 
     # will need to add tags for the error ellipsoid
 
-    r = requests.get(url)
+    try:
+        r = requests.get(url)
+    except requests.RequestException as e:
+        logger.error(e)
+        return
 
     enable = False
 
@@ -517,7 +521,11 @@ def get_seismogram(base_url, sgram_name, network_code, site_code, timezone):
 
     url = base_url + '/sgrams/assoc/read_sgram?sgramName=%s' % sgram_name
 
-    r = requests.get(url)
+    try:
+        r = requests.get(url)
+    except requests.RequestException as e:
+        logger.error(e)
+        return
 
     traces = []
     indata = False
@@ -593,7 +601,11 @@ def get_picks(base_url, event_name, inventory, timezone):
     """
 
     url = base_url + '/events/read_event?eventName=%s' % (event_name)
-    r2 = requests.get(url)
+    try:
+        r2 = requests.get(url)
+    except requests.RequestException as e:
+        logger.error(e)
+        return
 
     origin = Origin()
     picks = []
