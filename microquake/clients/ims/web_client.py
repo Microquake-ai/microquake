@@ -143,7 +143,7 @@ def get_continuous(base_url, start_datetime, end_datetime,
 
         ts = timer()
         try:
-            r = s.get(url, stream=True)
+            r = requests.get(url, stream=True)
         except requests.RequestException as e:
             logger.error(e)
             continue
@@ -336,7 +336,7 @@ def get_catalogue(base_url, start_datetime, end_datetime, inventory,
 
     # will need to add tags for the error ellipsoid
 
-    r = s.get(url)
+    r = requests.get(url)
 
     enable = False
 
@@ -517,7 +517,7 @@ def get_seismogram(base_url, sgram_name, network_code, site_code, timezone):
 
     url = base_url + '/sgrams/assoc/read_sgram?sgramName=%s' % sgram_name
 
-    r = s.get(url)
+    r = requests.get(url)
 
     traces = []
     indata = False
@@ -593,7 +593,7 @@ def get_picks(base_url, event_name, inventory, timezone):
     """
 
     url = base_url + '/events/read_event?eventName=%s' % (event_name)
-    r2 = s.get(url)
+    r2 = requests.get(url)
 
     origin = Origin()
     picks = []
