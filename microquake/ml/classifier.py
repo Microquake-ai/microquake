@@ -1,27 +1,27 @@
 from pathlib import Path
-
 import matplotlib.pyplot as plt
 import numpy as np
-
 import librosa as lr
 from tensorflow.keras import applications
-from tensorflow.keras.layers import (Add, BatchNormalization, Conv2D, Dense, Embedding,
-                          Flatten, Input, MaxPooling2D, concatenate)
+from tensorflow.keras.layers import (Add, BatchNormalization, Conv2D, Dense,
+                                     Embedding,
+                                     Flatten, Input, MaxPooling2D, concatenate,
+                                     Activation)
 from tensorflow.keras.models import Model
 from loguru import logger
 from microquake.core.settings import settings
+from obspy.core.stream import Stream
+from microquake.processors import quick_magnitude
 
-_version_ = 1.0
+_version_ = 2.0
 
 
-class SeismicModel:
+class EventClassifier:
     '''
-    Class to classify mseed stream into one of the classes
-        anthropogenic event, controlled explosion, earthquake, explosion,
-        quarry blast
+    Class to classify events
     '''
-    REF_HEIGHT = 900.00
     REF_MAGNITUDE = -1.2
+    RES_BLOCKS = 2
 
     def __enter__(self):
         return self
@@ -29,25 +29,32 @@ class SeismicModel:
     def __exit__(self, exc_type, exc_val, exc_tb):
         pass
 
-    def __init__(self, model_name='multiclass-model.hdf5', ):
+    def __init__(self, model_name='event-classifier-model.hdf5'):
         '''
             :param model_name: Name of the model weight file name.
         '''
-        self.base_directory = Path(settings.common_dir)/'../data/weights'
+        self.base_directory = Path(settings.common_dir) / '../data/weights'
         # Model was trained at these dimensions
         self.D = (128, 128, 1)
-        self.microquake_class_names = ['blast', 'crusher noise', 'drilling noise', 'electrical noise/lightning', 'mechanical noise', 'open pit blast', 
-                'orepass noise', 'seismic event', 'surface event', 'test pulse']
+        self.microquake_class_names = ['blast', 'electrical noise',
+                                       'mechanical noise', 'openpit blast',
+                                       'seismic event', 'test pulse']
         self.num_classes = len(self.microquake_class_names)
-        self.model_file = self.base_directory/f"{model_name}"
+        self.model_file = self.base_directory / f"{model_name}"
         self.create_model()
+        self.qmp = quick_magnitude.Processor()
 
-    ###############################################
-    # Librosa gives mel Spectrum which shows events clearly,
-    # it is designed for audio frequencies which is suitable
-    # to seismic events
-    ################################################
-    def librosa_spectrogram(self, tr, height=128, width=128):
+    def get_energy(self, tr: Stream, cat):
+        """
+        :param cat:
+        :param tr: mseed stream
+        :return: Energy content
+        """
+        _, _, mag = self.qmp.process(cat=cat, stream=tr)
+        return mag.mag
+
+    @staticmethod
+    def librosa_spectrogram(tr, height=128, width=128):
         '''
             Using Librosa mel-spectrogram to obtain the spectrogram
             :param tr: stream trace
@@ -55,16 +62,17 @@ class SeismicModel:
             :param width: image width
             :return: numpy array of spectrogram with height and width dimension
         '''
-        data = self.get_norm_trace(tr).data
+        data = SignalNoiseClassifier.get_norm_trace(tr).data
         signal = data * 255
-        hl = int(signal.shape[0] // (width * 1.1))  # this will cut away 5%
-        # from start and end
+        hl = int(
+            signal.shape[0] // (width * 1.1))  # this will cut away 5% from
+        # start and end
         spec = lr.feature.melspectrogram(signal, n_mels=height,
                                          hop_length=int(hl))
         img = lr.amplitude_to_db(spec)
         start = (img.shape[1] - width) // 2
 
-        return img[:, start:start+width]
+        return img[:, start:start + width]
 
     #############################################
     # Data preparation
@@ -94,37 +102,6 @@ class SeismicModel:
             c = c.taper(max_percentage=0.05)
 
         return c[0]
-
-    @staticmethod
-    def get_spectrogram(tr, nfft=512, noverlap=511):
-        """
-        :param tr: mseed stream
-        :param nfft: The number of data points used in each block for the FFT
-        :param noverlap: The number of points of overlap between blocks
-        :param output_dir: directory to save spectrogram.png such as
-        SPEC_BLAST_UG
-        :return: RBG image array
-        """
-        rate = SeismicModel.get_norm_trace(tr).stats.sampling_rate
-        data = SeismicModel.get_norm_trace(tr).data
-
-        fig, ax = plt.subplots(1)
-        fig.subplots_adjust(left=0, right=1, bottom=0, top=1)
-        ax.axis('off')
-        _, _, _, _ = ax.specgram(x=data, Fs=rate,
-                                 noverlap=noverlap, NFFT=nfft)
-        ax.axis('off')
-        fig.set_size_inches(.64, .64)
-
-        fig.canvas.draw()
-
-        width, height = fig.get_size_inches() * fig.get_dpi()
-        mplimage = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
-
-        imarray = np.reshape(mplimage, (int(height), int(width), 3))
-        plt.close(fig)
-
-        return imarray
 
     @staticmethod
     def rgb2gray(rgb):
@@ -157,9 +134,8 @@ class SeismicModel:
         x = Conv2D(filters=3, kernel_size=2, padding='same',
                    activation='relu')(i)
 
-        x = applications.ResNet50(weights=None, include_top=False)(x)
+        x = applications.ResNet50V2(include_top=False)(x)
         x = Flatten()(x)
-
         return x
 
     @staticmethod
@@ -180,23 +156,17 @@ class SeismicModel:
         x = Conv2D(filters=64, kernel_size=2, padding='same',
                    activation='relu')(x)
         x = MaxPooling2D(pool_size=2)(x)
-
-        X_shortcut = BatchNormalization()(x)
-
-        for _ in range(4):
-            y = Conv2D(filters=dim, kernel_size=kern_size,
-                       activation='relu', padding='same')(X_shortcut)
-            y = BatchNormalization()(y)
-            # y = Conv2D(filters = dim, kernel_size = kern_size,
-            # activation='relu', padding='same')(y)
-            y = Conv2D(filters=dim, kernel_size=kern_size,
-                       activation='relu', padding='same')(y)
+        X_shortcut = Dropout(0.4)(x)  # not needed to do inference
+        for _ in range(EventClassifier.RES_BLOCKS):
+            y = Conv2D(filters=dim, kernel_size=kern_size, activation='relu',
+                       padding='same')(X_shortcut)
+            y = Conv2D(filters=dim, kernel_size=kern_size, activation='relu',
+                       padding='same')(y)
             X_shortcut = Add()([y, X_shortcut])
         x = Flatten()(x)
-        x = Dense(500, activation='relu')(x)
+        x = Dense(512, activation='linear', use_bias=False)(x)
         x = BatchNormalization()(x)
-        # x = Dense(128, activation='relu')(x)
-
+        x = Activation('relu')(x)
         return x
 
     def create_model(self):
@@ -205,65 +175,66 @@ class SeismicModel:
         """
         input_shape = (self.D[0], self.D[1], 1)
         i1 = Input(shape=input_shape, name="spectrogram")
-        i2 = Input(shape=(1,), name='height', dtype='int32')
-        i3 = Input(shape=input_shape, name='context_trace')
-        i4 = Input(shape=(1,), name='magnitude', dtype='int32')
-        emb = Embedding(3, 2)(i2)
-        flat1 = Flatten()(emb)
-        emb = Embedding(3, 2)(i4)
-        flat2 = Flatten()(emb)
+        i2 = Input(shape=input_shape, name='context_trace')
+        i3 = Input(shape=(1,), name='magnitude', dtype='int32')
 
-        x1 = self.conv_layers(i1)
-        x2 = self.resnet50_layers(i3)
+        emb = Embedding(3, 2)(i3)
+        flat = Flatten()(emb)
+
+        x1 = EventClassifier.conv_layers(i1)
+        x2 = EventClassifier.resnet50_layers(i2)
 
         x = concatenate([x1, x2], axis=-1)
-        x = Dense(64, activation='relu')(x)
-        x = concatenate([x,  flat1, flat2], axis=-1)
-        x = Dense(32, activation='relu')(x)
+        x = Dense(1024, use_bias=False, activation='linear')(x)
+        x = BatchNormalization()(x)
+        x = Activation('relu')(x)
+        x = concatenate([x, flat], axis=-1)
+        x = Dense(512, use_bias=False, activation='linear')(x)
+        x = BatchNormalization()(x)
+        x = Activation('relu')(x)
         x = Dense(self.num_classes, activation='sigmoid')(x)
-        self.model = Model([i1, i2, i3, i4], x)
+        self.model = Model([i1, i2, i3], x)
         self.model.load_weights(f"{self.model_file.resolve()}")
 
-    def predict(self, tr, context_trace, height, magnitude):
+    def predict(self, tr, context_trace, cat):
         """
         :param tr: Obspy stream object (2 s) that is good for discriminating
         between events
         :param context_trace: context trace object (20s) good for
         discriminating blast and earth quake
-        :param height: the z-value of event.
+        :param cat: catalog.
         :return: dictionary of  event classes probability
         """
-        spectrogram = self.librosa_spectrogram(context_trace, height=self.D[0], 
-            width=self.D[1])
-        contxt_img = self.normalize_gray(spectrogram)
-        spectrogram = self.librosa_spectrogram(tr, height=self.D[0],
-                                               width=self.D[1])
-        normgram = self.normalize_gray(spectrogram)
+        spectrogram = SignalNoiseClassifier.librosa_spectrogram(context_trace,
+                                                                height=self.D[
+                                                                    0],
+                                                                width=self.D[
+                                                                    1])
+        contxt_img = SignalNoiseClassifier.normalize_gray(spectrogram)
+        spectrogram = SignalNoiseClassifier.librosa_spectrogram(tr,
+                                                                height=self.D[
+                                                                    0],
+                                                                width=self.D[
+                                                                    1])
+        normgram = SignalNoiseClassifier.normalize_gray(spectrogram)
         img = normgram[None, ..., None]  # Needed to in the form of batch
         # with one channel.
         contxt = contxt_img[None, ..., None]
-        h = []
         m = []
-        # We use the height as a category, greater than 900 or not
 
-        if height >= self.REF_HEIGHT:
-            h.append(1)
-        else:
-            h.append(0)
-
-        if magnitude >= self.REF_MAGNITUDE:
+        if self.get_energy(tr, cat) >= self.REF_MAGNITUDE:
             m.append(1)
         else:
             m.append(0)
 
         data = {'spectrogram': img, 'context_trace': contxt,
-                'height': np.asarray(h), 'magnitude': np.asarray(m)}
+                'magnitude': np.asarray(m)}
         a = self.model.predict(data)
 
         classes = {}
-
         for p, n in zip(a.reshape(-1), self.microquake_class_names):
             classes[n] = p
-        classes['noise/unknown'] = 1-np.max(a.reshape(-1))
+
+        classes['unknown'] = 1 - np.max(a.reshape(-1))
 
         return classes
