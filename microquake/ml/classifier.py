@@ -12,6 +12,7 @@ from loguru import logger
 from microquake.core.settings import settings
 from obspy.core.stream import Stream
 from microquake.processors import quick_magnitude
+from microquake.ml.signal_noise_classifier import SignalNoiseClassifier
 
 _version_ = 2.0
 
