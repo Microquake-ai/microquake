@@ -6,7 +6,7 @@ from tensorflow.keras import applications
 from tensorflow.keras.layers import (Add, BatchNormalization, Conv2D, Dense,
                                      Embedding,
                                      Flatten, Input, MaxPooling2D, concatenate,
-                                     Activation)
+                                     Activation, Dropout)
 from tensorflow.keras.models import Model
 from loguru import logger
 from microquake.core.settings import settings
