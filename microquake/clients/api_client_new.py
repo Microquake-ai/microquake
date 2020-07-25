@@ -9,15 +9,13 @@ from microquake.core.event import Catalog
 from obspy.core.util.attribdict import AttribDict
 
 from loguru import logger
-from microquake.core import read
+from microquake.core import read, settings
 from microquake.core.event import Ray, read_events
 from uuid import uuid4
-import seismic_client
-from microquake.core.settings import settings
-
-timeout=200
-
 from microquake.core.decorators import deprecated
+import seismic_client
+
+timeout = 200
 
 
 class RequestRay(AttribDict):
@@ -103,37 +101,29 @@ class RequestEvent:
 
 
 class SeismicClient:
-    def __init__(self, api_base_url, username, password):
+    def __init__(self, username, password):
         configuration = seismic_client.Configuration()
         configuration.username = username
         configuration.password = password
-        self.api_base_url = api_base_url
-        self.username = username
-        self.password = password
         self.api_instance = seismic_client.ApiApi(
              seismic_client.ApiClient(configuration))
-
-    @staticmethod
-    def event_detail():
-        return seismic_client.EventDetail()
 
     def events_list(self, start_time=None, end_time=None, **kwargs):
         """
         get the list of event from start_time to end_time
         :param start_time: start_time in UTC expressed as
-        "YYYY-MM-DDTHH:MM:SS.MS" or a UTCDateTime, or a datetime
+        "YYYY-MM-DDTHH:MM:SS.MS".
         explicitely providing this paramter will override the time_utc_after
         :param end_time: end_time in UTC expressed as "YYYY-MM-DDTHH:MM:SS.MS"
-        or a UTCDateTime, or a datetime
         explicitely providing this paramter will override the time_utc_before
         :param kwargs:
         :return:
         """
 
         if start_time:
-            kwargs['time_utc_after'] = str(start_time)
+            kwargs['time_utc_after'] = start_time
         if end_time:
-            kwargs['time_utc_before'] = str(end_time)
+            kwargs['time_utc_before'] = end_time
 
         events = []
 
@@ -162,46 +152,15 @@ class SeismicClient:
 
         return response, events
 
-    def events_read(self, event_resource_id):
-        encoded_id = encode(event_resource_id)
-        if self.api_base_url[-1] != '/':
-            self.api_base_url + '/'
-        encoded_id = event_resource_id
-        url = self.api_base_url + 'events/' + encoded_id
 
-        try:
-            # api_response = self.api_instance.api_v1_events_read(encoded_id)
-            api_response = requests.get(url,
-                                        auth=(self.username, self.password))
-        except Exception as e:
-            logger.error(e)
-            return None, None
 
-        if not api_response:
-            return api_response, None
 
-        event = None
-        if api_response.json():
-            event = RequestEvent(api_response.json())
+def event_list(**kwargs):
 
-        return api_response, event
+    configuration = seismic_client.Configuration()
+    configuration.username = api_username
+    configuration.password = api_password
 
-    def events_partial_update(self, event_resource_id, **kwargs):
-
-        data = kwargs
-        encoded_id = urllib.parse.quote(event_resource_id, safe='')
-        url = self.api_base_url + 'events/' + encoded_id
-        resp = requests.patch(url, json=data, auth=(self.username,
-                                                    self.password))
-        logger.info(resp)
-        return(resp)
-
-        # try:
-        #     response = self.api_instance.api_v1_events_partial_update_0(body,
-        #                                  event_resource_id)
-        # except Exception as e:
-        #     logger.error(e)
-        # return response
 
 
 def encode(resource_id):
@@ -717,8 +676,6 @@ def get_catalog(api_base_url, start_time, end_time, event_type=None,
             events.append(RequestEvent(event))
 
     return events
-
-
 
 
 def get_catalog_modified(api_base_url, modification_start_time,
