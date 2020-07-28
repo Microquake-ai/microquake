@@ -102,6 +102,7 @@ class Catalog(obsevent.Catalog):
                 preferred_origin_id = ResourceIdentifier()
                 new_origins[0].resource_id = preferred_origin_id
                 new_origins[0].arrivals = []
+                new_origins[0].rays = []
 
             if len(event.magnitudes) == 0:
                 new_magnitudes = []
