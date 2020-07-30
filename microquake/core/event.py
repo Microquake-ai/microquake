@@ -87,37 +87,37 @@ class Catalog(obsevent.Catalog):
         this function duplicates a catalog object, this function does not
         duplicate picks. It creates an object containing multiple event
         containing each one origin and one magnitude.
-        :param duplicate_picks: duplicate the picks if True
         :return: a new catalog object
         """
 
         new_events = []
         for event in self.events:
-            preferred_origin_id = None
             if len(event.origins) == 0:
                 new_origins = []
+                preferred_origin_id = None
 
             else:
-                if not event.preferred_origin():
-                    new_origins = [event.origins[-1]]
-                else:
-                    new_origins = [event.preferred_origin()]
+                new_origins = [event.preferred_origin() or event.origins[-1]]
 
                 preferred_origin_id = ResourceIdentifier()
                 new_origins[0].resource_id = preferred_origin_id
                 new_origins[0].arrivals = []
+                new_rays = []
+                for ray in new_origins[0].rays:
+                    ray.resource_id = ResourceIdentifier()
+                    new_rays.append(ray)
+                new_origins[0].rays = new_rays
 
             if len(event.magnitudes) == 0:
                 new_magnitudes = []
+                preferred_magnitude_id = None
             else:
-                if not event.preferred_magnitude():
-                    new_magnitudes = [event.magnitudes[-1]]
-                else:
-                    new_magnitudes = [event.preferred_magnitude()]
+                new_magnitudes = [event.preferred_magnitude()
+                                  or event.magnitudes[-1]]
 
-                new_magnitudes[0].resource_id = ResourceIdentifier()
                 preferred_magnitude_id = ResourceIdentifier()
                 new_magnitudes[0].resource_id = preferred_magnitude_id
+                new_magnitudes[0].origin_id = preferred_origin_id
 
             new_event = Event(origins=new_origins, magnitudes=new_magnitudes)
             new_event.preferred_origin_id = preferred_origin_id
