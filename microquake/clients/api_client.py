@@ -103,7 +103,8 @@ class RequestEvent:
 
 
 class SeismicClient:
-    def __init__(self, api_base_url, username, password):
+    def __init__(self, api_base_url, username, password,
+                 microquake_event_type=True):
         configuration = seismic_client.Configuration()
         configuration.username = username
         configuration.password = password
@@ -117,7 +118,10 @@ class SeismicClient:
     def event_detail():
         return seismic_client.EventDetail()
 
-    def events_list(self, start_time=None, end_time=None, **kwargs):
+    def events_list(self, start_time=None,
+                    end_time=None,
+                    microquake_event_type=True,
+                    **kwargs):
         """
         get the list of event from start_time to end_time
         :param start_time: start_time in UTC expressed as
@@ -129,6 +133,13 @@ class SeismicClient:
         :param kwargs:
         :return:
         """
+
+        if 'event_type' in kwargs.keys():
+            if microquake_event_type:
+                event_types_lut = get_event_types(self.api_base_url,
+                                                  username=self.username,
+                                                  password=self.password)
+                kwargs['event_type'] = event_types_lut[kwargs['event_type']]
 
         if start_time:
             kwargs['time_utc_after'] = str(start_time)
@@ -143,9 +154,9 @@ class SeismicClient:
             logger.error(e)
             return {}, events
 
-        for event in response['results']:
-            events.append(RequestEvent(event))
-        query = response['next']
+        for event in response.results:
+            events.append(RequestEvent(event.to_dict()))
+        query = response.next
 
         while query:
             re = requests.get(query, timeout=timeout)
@@ -395,13 +406,16 @@ def prepare_data(cat=None, stream=None, context=None, variable_length=None):
     return files
 
 
-def get_event_types(api_base_url):
+def get_event_types(api_base_url, username=None, password=None):
 
     if api_base_url[-1] != '/':
         api_base_url += '/'
 
     url = api_base_url + 'inventory/microquake_event_types'
-    response = requests.get(url, timeout=timeout)
+    if username:
+        response = requests.get(url, auth=(username, password))
+    else:
+        response = requests.get(url, timeout=timeout)
 
     if not response:
         raise ConnectionError('API Connection Error')
