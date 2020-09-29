@@ -106,13 +106,14 @@ def picking_meta_processor(cat, fixed_length):
     return picker_sp_processor.output_catalog(cat)
 
 
-def location_meta_processor(cat):
+def location_meta_processor(cat, min_number_picks=0):
 
     logger.info('starting location process')
     start_processing_time = time()
 
     if settings.get('PICKER_MIN_NUMBER_PICKS') is not None:
         min_number_picks = settings.get('PICKER_MIN_NUMBER_PICKS')
+
 
     if len(cat[0].preferred_origin().arrivals) < min_number_picks:
         logger.warning('insufficient number of picks... aborting')

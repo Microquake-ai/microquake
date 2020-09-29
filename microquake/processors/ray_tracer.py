@@ -3,7 +3,6 @@
 from microquake.processors.processing_unit import ProcessingUnit
 from loguru import logger
 
-from microquake.core.simul.eik import ray_tracer
 from microquake.core.helpers.grid import get_ray, get_grid_point
 
 
@@ -36,7 +35,7 @@ class Processor(ProcessingUnit):
                 try:
                     logger.info(f'calculating ray for {phase}-wave for '
                                 f'station {station_code}')
-                    ray = get_ray(station_code, phase, ev_loc)
+                    ray = get_ray(station_code, phase, ev_loc, max_iter=100)
                     ray.station_code = station_code
                     ray.phase = phase
                     ray.arrival_id = p_ori.get_arrival_id(phase, station_code)

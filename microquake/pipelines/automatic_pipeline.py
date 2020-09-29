@@ -40,7 +40,8 @@ def automatic_pipeline(cat: Catalog, stream: Stream, min_number_pick=None):
         cat_ray = rtp.output_catalog(cat)
         return cat_ray
 
-    cat_located = location_meta_processor(cat_picked)
+    cat_located = location_meta_processor(cat_picked,
+                                          min_number_picks=min_number_pick)
     if cat_located is None:
         return cat
 

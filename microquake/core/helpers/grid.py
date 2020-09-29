@@ -51,20 +51,22 @@ def get_grid_point(station_code, phase, location,
     return tt.interpolate(location, grid_coordinate=grid_coordinates)[0]
 
 
-def get_ray(station_code, phase, location, grid_coordinate=False):
+def get_ray(station_code, phase, location, grid_coordinate=False,
+            max_iter=100):
     """
     return a ray for a given location - station pair for a given phase
     :param station_code: station code
     :param phase: phase ('P', 'S')
     :param location: start of the ray
-    :param grid_coordinate: whether start is expressed in  grid
+    :param grid_coordinate: whether start is expressed in  grid (Default=True)
+    :param max_iter: maximum number of iteration (Default=100)
     coordinates or model coordinates (default False)
     :return:
     """
     travel_time = get_grid(station_code, phase, grid_type='time')
 
     return ray_tracer(travel_time, location,
-                      grid_coordinates=grid_coordinate)
+                      grid_coordinates=grid_coordinate, max_iter=max_iter)
 
 
 def create_arrivals_from_picks(picks, event_location, origin_time):
